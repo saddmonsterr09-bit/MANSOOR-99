@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OPENFRAME — A public video wall</title>
+  <link rel="stylesheet" href="/theme.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body>
+  <div class="noise fixed inset-0 z-50"></div>
+
+  <header class="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-8 lg:px-10">
+    <a href="/" class="flex items-center gap-3" aria-label="Openframe home">
+      <span class="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] bg-[var(--color-primary)] text-xl font-black text-[var(--color-primary-contrast)]">O</span>
+      <span class="font-black tracking-[.18em] text-sm">OPENFRAME</span>
+    </a>
+    <nav class="hidden items-center gap-8 text-sm text-[var(--color-muted)] md:flex">
+      <a class="transition hover:text-[var(--color-text)]" href="#wall">The wall</a>
+      <a class="transition hover:text-[var(--color-text)]" href="#upload">Share a video</a>
+    </nav>
+    <a href="#upload" class="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Upload now <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <main class="relative z-10 mx-auto max-w-7xl px-5 pb-20 sm:px-8 lg:px-10">
+    <section class="grid items-center gap-12 pb-20 pt-12 lg:grid-cols-[1.05fr_.95fr] lg:pb-28 lg:pt-20">
+      <div class="float-in">
+        <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">
+          <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]"></span>
+          Open to everyone
+        </div>
+        <h1 class="max-w-3xl font-[var(--font-heading)] text-5xl leading-[.94] tracking-[-.055em] sm:text-7xl lg:text-8xl">Your story.<br><span class="text-[var(--color-primary)]">On the wall.</span></h1>
+        <p class="mt-7 max-w-xl text-lg leading-8 text-[var(--color-muted)]">A living gallery made by the people who show up. Drop a video, add your name, and leave a little piece of your world behind.</p>
+        <div class="mt-9 flex flex-wrap items-center gap-4">
+          <a href="#upload" class="rounded-full bg-[var(--color-primary)] px-6 py-3.5 font-bold text-[var(--color-primary-contrast)] shadow-lg shadow-yellow-400/10 transition hover:-translate-y-0.5 hover:brightness-110">Share your video <span class="ml-2">↓</span></a>
+          <a href="#wall" class="rounded-full border border-white/15 px-6 py-3.5 font-bold transition hover:border-white/35">Explore the wall</a>
+        </div>
+      </div>
+      <div class="relative mx-auto w-full max-w-xl float-in [animation-delay:120ms]">
+        <div class="absolute -inset-5 rounded-[2rem] bg-[var(--color-primary)]/10 blur-3xl"></div>
+        <div class="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[var(--color-surface)] p-3 glow">
+          <div class="aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-[#413711] via-[#171711] to-[#080808] p-7 sm:p-10">
+            <div class="flex h-full flex-col justify-between">
+              <div class="flex items-center justify-between text-xs uppercase tracking-[.2em] text-white/50"><span>Vol. 01</span><span>Public / 24</span></div>
+              <div>
+                <div class="mb-5 text-7xl font-black leading-none text-[var(--color-primary)] sm:text-9xl">✦</div>
+                <p class="max-w-xs text-3xl font-black leading-tight tracking-tight sm:text-4xl">Made by<br>the crowd.</p>
+              </div>
+              <div class="flex items-end justify-between border-t border-white/15 pt-4 text-xs text-white/50"><span>OPENFRAME<br>VIDEO WALL</span><span class="text-right">WATCH<br>SHARE<br>REPEAT</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="upload" class="scroll-mt-8 rounded-[var(--radius)] border border-white/10 bg-[var(--color-surface)] p-5 sm:p-8 lg:p-10">
+      <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">01 / Add to the wall</p>
+          <h2 class="text-3xl font-black tracking-tight sm:text-4xl">Drop something real.</h2>
+        </div>
+        <p class="max-w-sm text-sm leading-6 text-[var(--color-muted)]">No account. No complicated form. Just choose a video and tell us who made it.</p>
+      </div>
+      <label id="dropZone" class="upload-zone group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-[var(--radius)] border border-dashed border-white/20 px-6 text-center transition hover:border-[var(--color-primary)]/70 hover:bg-white/[.02]">
+        <input id="videoInput" type="file" accept="video/*" class="sr-only">
+        <span class="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-primary)] text-3xl text-[var(--color-primary-contrast)] transition group-hover:scale-105">↑</span>
+        <span class="text-lg font-bold">Drag & drop your video here</span>
+        <span class="mt-2 text-sm text-[var(--color-muted)]">or click to browse · MP4, MOV, WEBM · up to 1 GB · published publicly</span>
+      </label>
+      <div id="filePanel" class="mt-5 hidden rounded-[var(--radius)] border border-white/10 bg-black/20 p-5">
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex min-w-0 items-center gap-4">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)]/15 text-xl">▶</div>
+            <div class="min-w-0">
+              <p id="fileName" class="truncate font-bold"></p>
+              <p id="fileSize" class="mt-1 text-sm text-[var(--color-muted)]"></p>
+            </div>
+          </div><button id="clearFile" class="text-sm text-[var(--color-muted)] underline underline-offset-4 hover:text-white">Remove</button>
+        </div>
+        <div class="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]"><input id="creatorName" class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-[var(--color-primary)]" placeholder="Your name (optional)"><input id="videoTitle" class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-[var(--color-primary)]" placeholder="Give it a title"><button id="stageButton" class="rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold text-[var(--color-primary-contrast)] transition hover:brightness-110">Publish video</button></div>
+        <p id="uploadStatus" class="mt-4 hidden text-sm text-[var(--color-primary)]"></p>
+      </div>
+    </section>
+
+    <section id="wall" class="scroll-mt-8 pt-24">
+      <div class="mb-8 flex items-end justify-between">
+        <div>
+          <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">02 / The public wall</p>
+          <h2 class="text-3xl font-black tracking-tight sm:text-4xl">Latest arrivals</h2>
+        </div><span id="countLabel" class="pill rounded-full px-3 py-1.5 text-xs text-[var(--color-muted)]">3 videos</span>
+      </div>
+      <div id="videoGrid" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+        <article class="video-card overflow-hidden rounded-[var(--radius)] border border-white/10 bg-[var(--color-surface)]">
+          <div class="relative aspect-video bg-gradient-to-br from-[#25210c] to-[#090909] p-5">
+            <div class="flex h-full items-center justify-center rounded-xl border border-white/10 text-5xl text-[var(--color-primary)]">✦</div><span class="absolute bottom-8 left-8 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest">01:24</span>
+          </div>
+          <div class="p-5">
+            <h3 class="font-bold">A walk through golden hour</h3>
+            <p class="mt-2 text-sm text-[var(--color-muted)]">by Maya R. · just now</p>
+          </div>
+        </article>
+        <article class="video-card overflow-hidden rounded-[var(--radius)] border border-white/10 bg-[var(--color-surface)]">
+          <div class="relative aspect-video bg-gradient-to-br from-[#172c2b] to-[#090909] p-5">
+            <div class="flex h-full items-center justify-center rounded-xl border border-white/10 text-5xl text-teal-200">◒</div><span class="absolute bottom-8 left-8 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest">00:48</span>
+          </div>
+          <div class="p-5">
+            <h3 class="font-bold">Sounds from the outside</h3>
+            <p class="mt-2 text-sm text-[var(--color-muted)]">by Ayo · 4 min ago</p>
+          </div>
+        </article>
+        <article class="video-card overflow-hidden rounded-[var(--radius)] border border-white/10 bg-[var(--color-surface)]">
+          <div class="relative aspect-video bg-gradient-to-br from-[#2b1725] to-[#090909] p-5">
+            <div class="flex h-full items-center justify-center rounded-xl border border-white/10 text-5xl text-pink-200">✳</div><span class="absolute bottom-8 left-8 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest">02:10</span>
+          </div>
+          <div class="p-5">
+            <h3 class="font-bold">Everybody has a beginning</h3>
+            <p class="mt-2 text-sm text-[var(--color-muted)]">by Jordan K. · 11 min ago</p>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="relative z-10 border-t border-white/10">
+    <div class="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-[var(--color-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
+      <p>OPENFRAME <span class="mx-2 text-white/20">/</span> made for shared moments</p>
+      <p>Public by design <span class="ml-2 text-[var(--color-primary)]">●</span></p>
+    </div>
+  </footer>
+
+  <script>
+    const input = document.getElementById('videoInput');
+    const dropZone = document.getElementById('dropZone');
+    const filePanel = document.getElementById('filePanel');
+    const fileName = document.getElementById('fileName');
+    const fileSize = document.getElementById('fileSize');
+    const status = document.getElementById('uploadStatus');
+    const grid = document.getElementById('videoGrid');
+    const countLabel = document.getElementById('countLabel');
+    let selectedFile = null;
+
+    function readableSize(bytes) {
+      if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    function showFile(file) {
+      if (!file || !file.type.startsWith('video/')) {
+        status.textContent = 'Please choose a video file.';
+        status.classList.remove('hidden');
+        return;
+      }
+      if (file.size > 1024 * 1024 * 1024) {
+        status.textContent = 'That file is larger than the 1 GB limit.';
+        status.classList.remove('hidden');
+        return;
+      }
+      selectedFile = file;
+      fileName.textContent = file.name;
+      fileSize.textContent = `${readableSize(file.size)} · ready to preview`;
+      filePanel.classList.remove('hidden');
+      status.classList.add('hidden');
+    }
+
+    input.addEventListener('change', () => showFile(input.files[0]));
+    ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, event => {
+      event.preventDefault();
+      dropZone.classList.add('is-dragging');
+    }));
+    ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, event => {
+      event.preventDefault();
+      dropZone.classList.remove('is-dragging');
+    }));
+    dropZone.addEventListener('drop', event => showFile(event.dataTransfer.files[0]));
+    document.getElementById('clearFile').addEventListener('click', () => {
+      selectedFile = null;
+      input.value = '';
+      filePanel.classList.add('hidden');
+    });
+
+    function renderVideo(video) {
+      const card = document.createElement('article');
+      card.className = 'video-card overflow-hidden rounded-[var(--radius)] border border-white/10 bg-[var(--color-surface)]';
+      card.innerHTML = `<video class="aspect-video w-full object-cover" controls preload="metadata" src="${video.url}"></video><div class="p-5"><h3 class="font-bold"></h3><p class="mt-2 text-sm text-[var(--color-muted)]"></p></div>`;
+      card.querySelector('h3').textContent = video.title;
+      card.querySelector('p').textContent = `by ${video.creator}`;
+      return card;
+    }
+
+    async function loadPublicVideos() {
+      try {
+        const response = await fetch('/api/videos');
+        if (!response.ok) return;
+        const videos = await response.json();
+        grid.replaceChildren(...videos.map(renderVideo));
+        countLabel.textContent = `${videos.length} videos`;
+      } catch (error) {
+        console.info('Public video storage is not connected yet.');
+      }
+    }
+
+    document.getElementById('stageButton').addEventListener('click', async () => {
+      if (!selectedFile) return;
+      const button = document.getElementById('stageButton');
+      const title = document.getElementById('videoTitle').value.trim() || selectedFile.name.replace(/\.[^/.]+$/, '');
+      const creator = document.getElementById('creatorName').value.trim() || 'Anonymous creator';
+      const formData = new FormData();
+      formData.append('video', selectedFile);
+      formData.append('title', title);
+      formData.append('creator', creator);
+      button.disabled = true;
+      button.textContent = 'Uploading…';
+      status.classList.add('hidden');
+
+      try {
+        const response = await fetch('/api/upload', { method: 'POST', body: formData });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Upload failed.');
+        grid.prepend(renderVideo(result));
+        countLabel.textContent = `${grid.children.length} videos`;
+        status.textContent = 'Published permanently to the public wall.';
+        status.classList.remove('hidden');
+        filePanel.classList.add('hidden');
+        input.value = '';
+        selectedFile = null;
+      } catch (error) {
+        status.textContent = `${error.message} Check that the Cloudflare Worker is connected.`;
+        status.classList.remove('hidden');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Publish video';
+      }
+    });
+
+    loadPublicVideos();
+
+  </script>
+</body>
+
+</html>

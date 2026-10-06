@@ -1,0 +1,11 @@
+name = "openframe-video-wall"
+main = "cloudflare-worker.js"
+compatibility_date = "2026-09-30"
+
+[assets]
+directory = "."
+binding = "ASSETS"
+
+[[r2_buckets]]
+binding = "VIDEOS"
+bucket_name = "personal"
