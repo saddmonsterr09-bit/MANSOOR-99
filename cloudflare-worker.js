@@ -1,4 +1,5 @@
-const MAX_FILE_SIZE = 1024 * 1024 * 1024;
+// Keep uploads below Cloudflare's single-request limits. Use multipart uploads for larger files.
+const MAX_FILE_SIZE = 90 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([
   "video/mp4",
   "video/quicktime",
@@ -43,8 +44,9 @@ export default {
     }
 
     if (url.pathname === "/api/upload" && request.method === "POST") {
-      const form = await request.formData();
-      const file = form.get("video");
+      try {
+        const form = await request.formData();
+        const file = form.get("video");
 
       if (!(file instanceof File)) return json({
         error: "A video file is required."
@@ -72,12 +74,17 @@ export default {
         }
       });
 
-      return json({
-        key,
-        title,
-        creator,
-        url: `/media/${encodeURIComponent(key)}`
-      }, 201);
+        return json({
+          key,
+          title,
+          creator,
+          url: `/media/${encodeURIComponent(key)}`
+        }, 201);
+      } catch (error) {
+        return json({
+          error: error?.message || "The upload could not be completed."
+        }, 500);
+      }
     }
 
     if (url.pathname === "/api/videos" && request.method === "GET") {

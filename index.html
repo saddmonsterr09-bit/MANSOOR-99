@@ -67,7 +67,7 @@
         <input id="videoInput" type="file" accept="video/*" class="sr-only">
         <span class="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-primary)] text-3xl text-[var(--color-primary-contrast)] transition group-hover:scale-105">↑</span>
         <span class="text-lg font-bold">Drag & drop your video here</span>
-        <span class="mt-2 text-sm text-[var(--color-muted)]">or click to browse · MP4, MOV, WEBM · up to 1 GB · published publicly</span>
+        <span class="mt-2 text-sm text-[var(--color-muted)]">or click to browse · MP4, MOV, WEBM · up to 90 MB · published publicly</span>
       </label>
       <div id="filePanel" class="mt-5 hidden rounded-[var(--radius)] border border-white/10 bg-black/20 p-5">
         <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
@@ -152,8 +152,9 @@
         status.classList.remove('hidden');
         return;
       }
-      if (file.size > 1024 * 1024 * 1024) {
-        status.textContent = 'That file is larger than the 1 GB limit.';
+      const maxUploadSize = 90 * 1024 * 1024;
+      if (file.size > maxUploadSize) {
+        status.textContent = 'This app accepts videos up to 90 MB. Please choose a smaller video.';
         status.classList.remove('hidden');
         return;
       }
@@ -197,7 +198,7 @@
         grid.replaceChildren(...videos.map(renderVideo));
         countLabel.textContent = `${videos.length} videos`;
       } catch (error) {
-        console.info('Public video storage is not connected yet.');
+        console.info('The Node.js backend is not available yet. Start the server and try again.');
       }
     }
 
@@ -211,23 +212,48 @@
       formData.append('title', title);
       formData.append('creator', creator);
       button.disabled = true;
-      button.textContent = 'Uploading…';
-      status.classList.add('hidden');
+      button.textContent = 'Uploading… 0%';
+      status.textContent = 'Uploading your video. Please keep this tab open.';
+      status.classList.remove('hidden');
 
       try {
-        const response = await fetch('/api/upload', { method: 'POST', body: formData });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'Upload failed.');
+        const result = await new Promise((resolve, reject) => {
+          const request = new XMLHttpRequest();
+          request.open('POST', '/api/upload');
+          request.timeout = 30 * 60 * 1000;
+          request.upload.addEventListener('progress', event => {
+            if (!event.lengthComputable) return;
+            const percent = Math.round((event.loaded / event.total) * 100);
+            button.textContent = `Uploading… ${percent}%`;
+            status.textContent = `Uploading your video… ${percent}%`;
+          });
+          request.addEventListener('load', () => {
+            let data;
+            try {
+              data = JSON.parse(request.responseText);
+            } catch (error) {
+              reject(new Error(`Server returned an invalid response (${request.status}).`));
+              return;
+            }
+            if (request.status < 200 || request.status >= 300) {
+              reject(new Error(data.error || `Upload failed (${request.status}).`));
+              return;
+            }
+            resolve(data);
+          });
+          request.addEventListener('error', () => reject(new Error('Network error. Check the Worker deployment and try again.')));
+          request.addEventListener('timeout', () => reject(new Error('The upload timed out. Try a smaller video or a faster connection.')));
+          request.addEventListener('abort', () => reject(new Error('The upload was cancelled.')));
+          request.send(formData);
+        });
         grid.prepend(renderVideo(result));
         countLabel.textContent = `${grid.children.length} videos`;
         status.textContent = 'Published permanently to the public wall.';
-        status.classList.remove('hidden');
         filePanel.classList.add('hidden');
         input.value = '';
         selectedFile = null;
       } catch (error) {
-        status.textContent = `${error.message} Check that the Cloudflare Worker is connected.`;
-        status.classList.remove('hidden');
+        status.textContent = error.message;
       } finally {
         button.disabled = false;
         button.textContent = 'Publish video';
