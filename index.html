@@ -281,6 +281,44 @@
       button.setAttribute('aria-pressed', String(result.liked));
     }
 
+    const localLikeStorageKey = 'fullMastiLocalLikes';
+
+    function readLocalLike(mediaId) {
+      try {
+        const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}');
+        return savedLikes[mediaId] || {
+          count: 0,
+          liked: false
+        };
+      } catch (error) {
+        return {
+          count: 0,
+          liked: false
+        };
+      }
+    }
+
+    function saveLocalLike(mediaId, state) {
+      try {
+        const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}');
+        savedLikes[mediaId] = state;
+        localStorage.setItem(localLikeStorageKey, JSON.stringify(savedLikes));
+      } catch (error) {
+        console.info('This browser could not save the local like state.');
+      }
+    }
+
+    function toggleLocalLike(mediaId, button) {
+      const current = readLocalLike(mediaId);
+      const liked = !current.liked;
+      const result = {
+        count: Math.max(0, current.count + (liked ? 1 : -1)),
+        liked
+      };
+      saveLocalLike(mediaId, result);
+      updateLikeButton(button, result);
+    }
+
     async function loadLikeState(mediaId, button) {
       try {
         const query = new URLSearchParams({
@@ -288,20 +326,16 @@
           visitorId
         });
         const response = await fetch(`/api/likes?${query}`);
-        if (response.ok) updateLikeButton(button, await response.json());
+        if (!response.ok) throw new Error('Likes API is unavailable.');
+        updateLikeButton(button, await response.json());
       } catch (error) {
-        console.info('Like counts are unavailable until the Node.js backend is running.');
+        updateLikeButton(button, readLocalLike(mediaId));
       }
     }
 
-    function makeLikeButton(mediaId, hero = false) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = `like-button inline-flex items-center gap-2 rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] ${hero ? 'like-hero absolute bottom-6 right-6 token-overlay backdrop-blur' : 'mt-4'}`;
-      button.dataset.mediaId = mediaId;
-      button.setAttribute('aria-pressed', 'false');
-      button.innerHTML = '<span class="like-icon" aria-hidden="true">♡</span><span class="like-count">0</span><span>Likes</span>';
+    function attachLikeHandler(button) {
       button.addEventListener('click', async () => {
+        const mediaId = button.dataset.mediaId;
         button.disabled = true;
         try {
           const response = await fetch('/api/likes', {
@@ -315,14 +349,25 @@
             })
           });
           const result = await response.json();
-          if (!response.ok) throw new Error(result.error || 'Could not update your like.');
+          if (!response.ok) throw new Error(result.error || 'Likes API is unavailable.');
           updateLikeButton(button, result);
         } catch (error) {
-          wallStatus.textContent = `${error.message} Please try again.`;
+          toggleLocalLike(mediaId, button);
+          wallStatus.textContent = 'Like saved in this browser. Connect the likes API to share counts with everyone.';
         } finally {
           button.disabled = false;
         }
       });
+    }
+
+    function makeLikeButton(mediaId, hero = false) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `like-button inline-flex items-center gap-2 rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] ${hero ? 'like-hero absolute bottom-6 right-6 token-overlay backdrop-blur' : 'mt-4'}`;
+      button.dataset.mediaId = mediaId;
+      button.setAttribute('aria-pressed', 'false');
+      button.innerHTML = '<span class="like-icon" aria-hidden="true">♡</span><span class="like-count">0</span><span>Likes</span>';
+      attachLikeHandler(button);
       loadLikeState(mediaId, button);
       return button;
     }
@@ -442,7 +487,9 @@
       request.send(formData);
     });
 
-    loadLikeState('featured-sad-image', document.querySelector('.like-hero'));
+    const featuredLikeButton = document.querySelector('.like-hero');
+    attachLikeHandler(featuredLikeButton);
+    loadLikeState('featured-sad-image', featuredLikeButton);
     loadMedia();
 
   </script>
