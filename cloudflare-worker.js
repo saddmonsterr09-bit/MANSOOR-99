@@ -40,6 +40,24 @@ function mediaUrl(key) {
   return `/media/${encodeURIComponent(key)}`;
 }
 
+async function verifyGoogleToken(token, clientId) {
+  if (!token || !clientId) return null;
+
+  try {
+    const query = new URLSearchParams({
+      id_token: token
+    });
+    const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?${query}`);
+    if (!response.ok) return null;
+
+    const payload = await response.json();
+    if (payload.aud !== clientId || payload.email_verified !== "true" || !payload.sub) return null;
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
+
 async function listMedia(env, prefix) {
   const results = [];
   let cursor;
@@ -84,7 +102,52 @@ export default {
       });
     }
 
+    if (url.pathname === "/api/auth/config" && request.method === "GET") {
+      return json({
+        googleClientId: env.GOOGLE_CLIENT_ID || null
+      });
+    }
+
+    if (url.pathname === "/api/auth/google" && request.method === "POST") {
+      if (!env.GOOGLE_CLIENT_ID) {
+        return json({
+          error: "Google sign-in is not configured yet."
+        }, 503);
+      }
+
+      try {
+        const body = await request.json();
+        const user = await verifyGoogleToken(body.credential, env.GOOGLE_CLIENT_ID);
+        if (!user) {
+          return json({
+            error: "Google sign-in could not be verified. Please try again."
+          }, 401);
+        }
+        return json({
+          name: user.name || user.email || "Google user",
+          email: user.email || ""
+        });
+      } catch (error) {
+        return json({
+          error: "Google sign-in could not be verified. Please try again."
+        }, 400);
+      }
+    }
+
     if (url.pathname === "/api/upload" && request.method === "POST") {
+      if (!env.GOOGLE_CLIENT_ID) {
+        return json({
+          error: "Google sign-in is not configured on this server yet."
+        }, 503);
+      }
+      const authorization = request.headers.get("authorization") || "";
+      const tokenMatch = authorization.match(/^Bearer\s+(.+)$/i);
+      const googleUser = tokenMatch ? await verifyGoogleToken(tokenMatch[1], env.GOOGLE_CLIENT_ID) : null;
+      if (!googleUser) {
+        return json({
+          error: "Sign in with a verified Google account before uploading."
+        }, 401);
+      }
       try {
         const form = await request.formData();
         const file = form.get("media") || form.get("video");
