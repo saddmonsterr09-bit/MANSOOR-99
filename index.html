@@ -92,13 +92,18 @@
           <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">01 / Add to the wall</p>
           <h2 class="text-3xl font-black tracking-tight sm:text-4xl">Drop something real.</h2>
         </div>
-        <p class="max-w-sm text-sm leading-6 text-[var(--color-muted)]">Share a photo or video. No account needed. Uploaded media is saved to the site's permanent cloud storage.</p>
+        <p class="max-w-sm text-sm leading-6 text-[var(--color-muted)]">Choose photo, video, or GIF, then upload it to the public wall. No account needed.</p>
+      </div>
+      <div class="mb-4 grid grid-cols-3 gap-3" role="group" aria-label="Choose upload type">
+        <button type="button" class="upload-type-option rounded-[var(--radius)] border token-border bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-[var(--color-primary-contrast)] transition" data-upload-type="photo" aria-pressed="true">📷 Photo</button>
+        <button type="button" class="upload-type-option rounded-[var(--radius)] border token-border token-panel px-4 py-3 text-sm font-bold text-[var(--color-text)] transition hover:border-[var(--color-primary)]" data-upload-type="video" aria-pressed="false">▶ Video</button>
+        <button type="button" class="upload-type-option rounded-[var(--radius)] border token-border token-panel px-4 py-3 text-sm font-bold text-[var(--color-text)] transition hover:border-[var(--color-primary)]" data-upload-type="gif" aria-pressed="false">✨ GIF</button>
       </div>
       <label id="dropZone" class="upload-zone group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-[var(--radius)] border border-dashed token-border px-6 text-center transition hover:border-[var(--color-primary)] hover:bg-[var(--color-bg)]">
-        <input id="mediaInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska" class="sr-only">
+        <input id="mediaInput" type="file" accept="image/jpeg,image/png,image/webp,image/avif" class="sr-only">
         <span class="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-primary)] text-3xl text-[var(--color-primary-contrast)] transition group-hover:scale-105">↑</span>
-        <span class="text-lg font-bold">Drag &amp; drop a photo or video here</span>
-        <span class="mt-2 text-sm text-[var(--color-muted)]">or click to browse · JPG, PNG, WEBP, GIF, MP4, MOV, WEBM · up to 90 MB</span>
+        <span id="dropTitle" class="text-lg font-bold">Drag &amp; drop a photo here</span>
+        <span id="dropHint" class="mt-2 text-sm text-[var(--color-muted)]">or click to browse · JPG, PNG, WEBP, AVIF · up to 90 MB</span>
       </label>
 
       <div id="filePanel" class="mt-5 hidden rounded-[var(--radius)] border token-border-soft bg-[var(--color-bg)] p-5">
@@ -160,6 +165,24 @@
     const mediaGrid = document.getElementById('mediaGrid');
     const countLabel = document.getElementById('countLabel');
     const maxUploadSize = 90 * 1024 * 1024;
+    const uploadTypes = {
+      photo: {
+        accept: 'image/jpeg,image/png,image/webp,image/avif',
+        title: 'Drag & drop a photo here',
+        hint: 'or click to browse · JPG, PNG, WEBP, AVIF · up to 90 MB'
+      },
+      video: {
+        accept: 'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska',
+        title: 'Drag & drop a video here',
+        hint: 'or click to browse · MP4, MOV, WEBM, OGG, MKV · up to 90 MB'
+      },
+      gif: {
+        accept: 'image/gif',
+        title: 'Drag & drop a GIF here',
+        hint: 'or click to browse · GIF · up to 90 MB'
+      }
+    };
+    let activeUploadType = 'photo';
     let selectedFile = null;
     let galleryItems = [];
 
@@ -182,14 +205,42 @@
       uploadStatus.classList.remove('hidden');
     }
 
+    function setUploadType(type) {
+      activeUploadType = type;
+      const settings = uploadTypes[type];
+      mediaInput.accept = settings.accept;
+      document.getElementById('dropTitle').textContent = settings.title;
+      document.getElementById('dropHint').textContent = settings.hint;
+      document.querySelectorAll('.upload-type-option').forEach((button) => {
+        const isActive = button.dataset.uploadType === type;
+        button.setAttribute('aria-pressed', String(isActive));
+        button.classList.toggle('bg-[var(--color-primary)]', isActive);
+        button.classList.toggle('text-[var(--color-primary-contrast)]', isActive);
+        button.classList.toggle('token-panel', !isActive);
+        button.classList.toggle('text-[var(--color-text)]', !isActive);
+      });
+      selectedFile = null;
+      mediaInput.value = '';
+      filePanel.classList.add('hidden');
+      uploadStatus.classList.add('hidden');
+    }
+
+    document.querySelectorAll('.upload-type-option').forEach((button) => {
+      button.addEventListener('click', () => setUploadType(button.dataset.uploadType));
+    });
+
     function showFile(file) {
       if (!file) return;
-      const isPhoto = file.type.startsWith('image/');
-      const isVideo = file.type.startsWith('video/');
-      if (!isPhoto && !isVideo) {
-        showUploadMessage('Please choose a supported photo or video file.');
+      const matchesSelection = activeUploadType === 'photo' ?
+        file.type.startsWith('image/') && file.type !== 'image/gif' :
+        activeUploadType === 'video' ? file.type.startsWith('video/') :
+          file.type === 'image/gif';
+      if (!matchesSelection) {
+        showUploadMessage(`Please choose a ${activeUploadType === 'gif' ? 'GIF' : activeUploadType} file for the selected option.`);
         return;
       }
+      const isPhoto = activeUploadType === 'photo' || activeUploadType === 'gif';
+      const isVideo = activeUploadType === 'video';
       if (file.size > maxUploadSize) {
         showUploadMessage('Files must be 90 MB or smaller. Please choose a smaller file.');
         return;
