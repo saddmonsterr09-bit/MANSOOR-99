@@ -1,1 +1,7 @@
-
+{
+  // ...
+  "vars": {
+    "GOOGLE_CLIENT_KEY": "976549415008-0piu9u1lqomrm3vpdf1v5v6ii0etajdd.apps.googleusercontent.com"
+  },
+  // ...
+}
