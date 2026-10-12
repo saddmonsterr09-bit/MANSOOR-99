@@ -8,6 +8,7 @@
   <title>Full Masti 🤤 — A public video &amp; photo wall</title>
   <link rel="stylesheet" href="/theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     .token-border {
       border-color: color-mix(in srgb, var(--color-text) 12%, transparent);
@@ -40,6 +41,73 @@
       background: color-mix(in srgb, var(--color-primary) 9%, transparent);
     }
 
+    #upload {
+      display: none;
+      position: fixed;
+      z-index: 45;
+      right: 1rem;
+      bottom: 6rem;
+      left: 1rem;
+      max-height: calc(100svh - 8rem);
+      overflow-y: auto;
+      box-shadow: 0 24px 80px rgba(var(--color-bg-rgb), .7);
+    }
+
+    #upload.is-open {
+      display: block;
+    }
+
+    .reels-feed {
+      display: grid;
+      gap: 1rem;
+      max-height: min(78svh, 52rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scroll-snap-type: y mandatory;
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-primary) var(--color-surface);
+    }
+
+    .reel-card {
+      position: relative;
+      min-height: 32rem;
+      height: min(78svh, 52rem);
+      overflow: hidden;
+      scroll-snap-align: start;
+      background: var(--color-surface);
+    }
+
+    .reel-card video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: var(--color-bg);
+    }
+
+    .reel-details {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      padding: 5rem 1.25rem 1.25rem;
+      background: linear-gradient(transparent, rgba(var(--color-bg-rgb), .88));
+    }
+
+    .bottom-dock {
+      padding-bottom: max(.75rem, env(safe-area-inset-bottom));
+    }
+
+    @media (max-width: 640px) {
+      .reels-feed {
+        max-height: 72svh;
+      }
+
+      .reel-card {
+        min-height: 28rem;
+        height: 72svh;
+      }
+    }
+
   </style>
 </head>
 
@@ -55,8 +123,22 @@
       <a class="transition hover:text-[var(--color-text)]" href="#wall">The wall</a>
       <a class="transition hover:text-[var(--color-text)]" href="#upload">Share photos &amp; videos</a>
     </nav>
-    <a href="#upload" class="rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Share now <span aria-hidden="true">↗</span></a>
+    <button id="accountButton" type="button" class="rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Log in / Sign up</button>
   </header>
+
+  <div id="accountDialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-[var(--color-bg)]/80 px-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="accountDialogTitle">
+    <section class="relative w-full max-w-md rounded-[var(--radius)] border token-border token-panel p-6 shadow-2xl sm:p-8">
+      <button id="closeAccountDialog" type="button" class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border token-border text-xl text-[var(--color-muted)] transition hover:text-[var(--color-text)]" aria-label="Close login dialog">×</button>
+      <p class="mb-3 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">Your account</p>
+      <h2 id="accountDialogTitle" class="pr-8 text-2xl font-black tracking-tight">Welcome to the wall</h2>
+      <p class="mt-3 text-sm leading-6 text-[var(--color-muted)]">Log in or create an account with Google. You can browse photos and watch reels without signing in; Google sign-in is needed to upload.</p>
+      <div class="mt-7 grid gap-3">
+        <div id="googleContinueButton" class="flex justify-center"></div>
+        <div id="googleSignupButton" class="flex justify-center"></div>
+      </div>
+      <p id="accountDialogStatus" class="mt-4 text-center text-sm text-[var(--color-muted)]" aria-live="polite"></p>
+    </section>
+  </div>
 
   <main class="relative z-10 mx-auto max-w-7xl px-5 pb-20 sm:px-8 lg:px-10">
     <section class="grid items-center gap-12 pb-20 pt-8 lg:grid-cols-[1.05fr_.95fr] lg:pb-28 lg:pt-14">
@@ -78,7 +160,6 @@
         <div class="absolute -inset-5 rounded-[2rem] bg-[var(--color-primary)]/10 blur-3xl"></div>
         <figure class="relative overflow-hidden rounded-[2rem] border token-border token-panel p-3 glow">
           <img src="/SAD.jpg" alt="Featured Chaddi Gram photo" class="aspect-[4/5] w-full rounded-[1.5rem] object-cover" fetchpriority="high">
-          <figcaption class="token-overlay absolute bottom-7 left-7 rounded-full border token-border px-4 py-2 text-xs font-bold uppercase tracking-[.18em]">Featured photo · SAD.jpg</figcaption>
         </figure>
         <div class="mt-4 flex justify-end">
           <button class="like-button like-hero inline-flex items-center gap-2 rounded-full border token-border token-panel px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)]" data-media-id="featured-sad-image" type="button" aria-pressed="false"><span class="like-icon" aria-hidden="true">♡</span><span class="like-count">0</span><span>Likes</span></button>
@@ -86,7 +167,22 @@
       </div>
     </section>
 
-    <section id="upload" class="scroll-mt-8 rounded-[var(--radius)] border token-border bg-[var(--color-surface)] p-5 sm:p-8 lg:p-10">
+    <section id="upload" class="scroll-mt-8 rounded-[var(--radius)] border token-border bg-[var(--color-surface)] p-3 sm:p-4">
+      <button id="toggleUpload" type="button" class="flex w-full items-center justify-center gap-3 rounded-[var(--radius)] px-4 py-3 text-sm font-bold transition hover:bg-[var(--color-primary)]/10" aria-expanded="false" aria-controls="uploadOptions">
+        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl leading-none text-[var(--color-primary-contrast)]" aria-hidden="true">+</span>
+        <span>Share a moment</span>
+      </button>
+      <div id="uploadOptions" class="mt-5 hidden">
+      <div class="mb-6 flex flex-col gap-3 rounded-[var(--radius)] border token-border-soft bg-[var(--color-bg)] p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p id="authStatus" class="font-semibold">Sign in with Google to upload. Browsing and watching videos stay open to everyone.</p>
+          <p id="authAccount" class="mt-1 text-sm text-[var(--color-muted)]" aria-live="polite"></p>
+        </div>
+        <div class="flex shrink-0 items-center gap-3">
+          <div id="googleSignInButton"></div>
+          <button id="signOutButton" type="button" class="hidden rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)]">Sign out</button>
+        </div>
+      </div>
       <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">01 / Add to the wall</p>
@@ -124,6 +220,7 @@
         </div>
         <p id="uploadStatus" class="mt-4 hidden text-sm text-[var(--color-primary)]" role="status" aria-live="polite"></p>
       </div>
+      </div>
     </section>
 
     <section id="wall" class="scroll-mt-8 pt-24">
@@ -145,7 +242,29 @@
       <div id="mediaGrid" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3"></div>
       <p id="wallStatus" class="mt-5 text-sm text-[var(--color-muted)]" role="status" aria-live="polite"></p>
     </section>
+
+    <section id="reels" class="scroll-mt-8 pt-24">
+      <div class="mb-8">
+        <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">03 / Video feed</p>
+        <h2 class="text-3xl font-black tracking-tight sm:text-4xl">Watch the reels</h2>
+        <p class="mt-3 max-w-xl text-sm leading-6 text-[var(--color-muted)]">Scroll vertically to move through community videos.</p>
+      </div>
+      <div id="reelsFeed" class="reels-feed mx-auto max-w-md" aria-label="Video reels"></div>
+      <p id="reelsStatus" class="mt-5 text-center text-sm text-[var(--color-muted)]" role="status" aria-live="polite"></p>
+    </section>
   </main>
+
+  <nav class="bottom-dock fixed inset-x-0 bottom-0 z-40 flex w-full items-center justify-center gap-8 border-t token-border-soft token-overlay px-5 pt-1 backdrop-blur-xl" aria-label="Quick navigation">
+    <a href="#wall" class="flex min-w-16 flex-col items-center gap-1 text-xs font-semibold text-[var(--color-muted)] transition hover:text-[var(--color-text)]">
+      <span class="text-xl" aria-hidden="true">⌂</span>
+      <span>Wall</span>
+    </a>
+    <button id="bottomPlus" type="button" class="flex h-11 w-11 -translate-y-1 items-center justify-center rounded-[var(--radius)] bg-[var(--color-primary)] text-3xl font-light leading-none text-[var(--color-primary-contrast)] shadow-lg transition hover:scale-105" aria-label="Open upload options" aria-expanded="false" aria-controls="uploadOptions">+</button>
+    <a href="#reels" class="flex min-w-16 flex-col items-center gap-1 text-xs font-semibold text-[var(--color-muted)] transition hover:text-[var(--color-text)]">
+      <span class="text-xl" aria-hidden="true">▶</span>
+      <span>Reels</span>
+    </a>
+  </nav>
 
   <footer class="relative z-10 border-t token-border-soft">
     <div class="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-[var(--color-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
@@ -163,7 +282,18 @@
     const uploadStatus = document.getElementById('uploadStatus');
     const wallStatus = document.getElementById('wallStatus');
     const mediaGrid = document.getElementById('mediaGrid');
+    const reelsFeed = document.getElementById('reelsFeed');
+    const reelsStatus = document.getElementById('reelsStatus');
     const countLabel = document.getElementById('countLabel');
+    const authStatus = document.getElementById('authStatus');
+    const authAccount = document.getElementById('authAccount');
+    const googleSignInButton = document.getElementById('googleSignInButton');
+    const signOutButton = document.getElementById('signOutButton');
+    const accountDialog = document.getElementById('accountDialog');
+    const accountDialogStatus = document.getElementById('accountDialogStatus');
+    const authStorageKey = 'fullMastiGoogleCredential';
+    let googleCredential = sessionStorage.getItem(authStorageKey) || '';
+    let googleUser = null;
     const maxUploadSize = 90 * 1024 * 1024;
     const uploadTypes = {
       photo: {
@@ -224,6 +354,50 @@
       filePanel.classList.add('hidden');
       uploadStatus.classList.add('hidden');
     }
+
+    const toggleUpload = document.getElementById('toggleUpload');
+    const uploadOptions = document.getElementById('uploadOptions');
+
+    const bottomPlus = document.getElementById('bottomPlus');
+    const uploadSection = document.getElementById('upload');
+
+    function openAccountDialog() {
+      accountDialog.classList.remove('hidden');
+      accountDialog.classList.add('flex');
+      document.getElementById('closeAccountDialog').focus();
+    }
+
+    function closeAccountDialog() {
+      accountDialog.classList.add('hidden');
+      accountDialog.classList.remove('flex');
+      document.getElementById('accountButton').focus();
+    }
+
+    document.getElementById('accountButton').addEventListener('click', openAccountDialog);
+    document.getElementById('closeAccountDialog').addEventListener('click', closeAccountDialog);
+    accountDialog.addEventListener('click', (event) => {
+      if (event.target === accountDialog) closeAccountDialog();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !accountDialog.classList.contains('hidden')) closeAccountDialog();
+    });
+
+    toggleUpload.addEventListener('click', () => {
+      const isExpanded = toggleUpload.getAttribute('aria-expanded') === 'true';
+      toggleUpload.setAttribute('aria-expanded', String(!isExpanded));
+      bottomPlus.setAttribute('aria-expanded', String(!isExpanded));
+      uploadSection.classList.toggle('is-open', !isExpanded);
+      uploadOptions.classList.toggle('hidden', isExpanded);
+    });
+
+    bottomPlus.addEventListener('click', () => toggleUpload.click());
+
+    document.querySelectorAll('a[href="#upload"]').forEach((link) => {
+      link.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (!uploadSection.classList.contains('is-open')) toggleUpload.click();
+      });
+    });
 
     document.querySelectorAll('.upload-type-option').forEach((button) => {
       button.addEventListener('click', () => setUploadType(button.dataset.uploadType));
@@ -404,6 +578,62 @@
       return card;
     }
 
+    function renderReels(items) {
+      const videos = items.filter((item) => item.type === 'video');
+      reelsFeed.replaceChildren();
+      if (!videos.length) {
+        reelsStatus.textContent = 'No videos yet. Share a video to start the reels feed.';
+        return;
+      }
+
+      reelsStatus.textContent = '';
+      videos.forEach((item) => {
+        const card = document.createElement('article');
+        card.className = 'reel-card rounded-[var(--radius)]';
+
+        const video = document.createElement('video');
+        video.src = item.url;
+        video.controls = true;
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.setAttribute('aria-label', item.title || 'Community video');
+
+        const details = document.createElement('div');
+        details.className = 'reel-details';
+
+        const title = document.createElement('h3');
+        title.className = 'text-lg font-bold';
+        title.textContent = item.title || 'Untitled moment';
+
+        const creator = document.createElement('p');
+        creator.className = 'mt-1 text-sm text-[var(--color-muted)]';
+        creator.textContent = `by ${item.creator || 'Anonymous creator'}`;
+
+        details.append(title, creator, makeLikeButton(item.key || item.id));
+        card.append(video, details);
+        reelsFeed.append(card);
+      });
+
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            const video = entry.target.querySelector('video');
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
+              video.play().catch(() => {});
+            } else {
+              video.pause();
+            }
+          });
+        }, {
+          root: reelsFeed,
+          threshold: [0, 0.65, 1]
+        });
+        reelsFeed.querySelectorAll('.reel-card').forEach((card) => observer.observe(card));
+      }
+    }
+
     function applyFilter() {
       const filter = document.getElementById('mediaFilter').value;
       const cards = [...mediaGrid.children];
@@ -424,6 +654,7 @@
         if (!response.ok) throw new Error('Could not load media.');
         galleryItems = await response.json();
         mediaGrid.replaceChildren(...galleryItems.map(renderMedia));
+        renderReels(galleryItems);
         applyFilter();
         if (!galleryItems.length) wallStatus.textContent = 'Be the first to share a photo or video.';
       } catch (error) {
@@ -432,7 +663,120 @@
       }
     }
 
+    function showSignedInUser(user) {
+      googleUser = user;
+      authStatus.textContent = 'Google account connected. You can publish your upload.';
+      authAccount.textContent = user?.name ? `Signed in as ${user.name}${user.email ? ` · ${user.email}` : ''}` : '';
+      googleSignInButton.classList.add('hidden');
+      signOutButton.classList.remove('hidden');
+      accountDialogStatus.textContent = 'Google account connected.';
+      closeAccountDialog();
+    }
+
+    function showSignedOutUser(message = 'Sign in with Google to upload. Browsing and watching videos stay open to everyone.') {
+      googleUser = null;
+      authStatus.textContent = message;
+      accountDialogStatus.textContent = message;
+      authAccount.textContent = '';
+      googleSignInButton.classList.remove('hidden');
+      signOutButton.classList.add('hidden');
+    }
+
+    async function verifyGoogleCredential(credential) {
+      const response = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({ credential })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Google sign-in could not be verified.');
+      googleCredential = credential;
+      sessionStorage.setItem(authStorageKey, credential);
+      showSignedInUser(result);
+    }
+
+    async function initializeGoogleSignIn() {
+      try {
+        const configResponse = await fetch('/api/auth/config');
+        const config = await configResponse.json();
+        if (!configResponse.ok || !config.googleClientId) {
+          showSignedOutUser('Google sign-in is not configured yet. The site owner needs to add GOOGLE_CLIENT_ID.');
+          googleSignInButton.textContent = '';
+          return;
+        }
+
+        let attempts = 0;
+        const waitForLibrary = window.setInterval(() => {
+          attempts += 1;
+          if (window.google?.accounts?.id) {
+            window.clearInterval(waitForLibrary);
+            window.google.accounts.id.initialize({
+              client_id: config.googleClientId,
+              callback: async (response) => {
+                try {
+                  await verifyGoogleCredential(response.credential);
+                } catch (error) {
+                  showSignedOutUser(error.message);
+                }
+              }
+            });
+            window.google.accounts.id.renderButton(googleSignInButton, {
+              type: 'standard',
+              theme: 'outline',
+              size: 'large',
+              text: 'continue_with',
+              shape: 'pill'
+            });
+            window.google.accounts.id.renderButton(document.getElementById('googleContinueButton'), {
+              type: 'standard',
+              theme: 'outline',
+              size: 'large',
+              text: 'continue_with',
+              shape: 'pill',
+              width: 280
+            });
+            window.google.accounts.id.renderButton(document.getElementById('googleSignupButton'), {
+              type: 'standard',
+              theme: 'outline',
+              size: 'large',
+              text: 'signup_with',
+              shape: 'pill',
+              width: 280
+            });
+            if (googleCredential) {
+              verifyGoogleCredential(googleCredential).catch(() => {
+                googleCredential = '';
+                sessionStorage.removeItem(authStorageKey);
+                showSignedOutUser('Your Google sign-in expired. Sign in again to upload.');
+              });
+            }
+          } else if (attempts >= 100) {
+            window.clearInterval(waitForLibrary);
+            showSignedOutUser('Google sign-in could not load. Check your connection and reload the page.');
+          }
+        }, 100);
+      } catch (error) {
+        showSignedOutUser('Could not check Google sign-in settings. Please reload the page.');
+      }
+    }
+
+    signOutButton.addEventListener('click', () => {
+      googleCredential = '';
+      sessionStorage.removeItem(authStorageKey);
+      window.google?.accounts?.id?.disableAutoSelect();
+      showSignedOutUser();
+    });
+
+    initializeGoogleSignIn();
+
     document.getElementById('publishButton').addEventListener('click', (event) => {
+      if (!googleCredential || !googleUser) {
+        showUploadMessage('Sign in with Google before publishing. You can still browse the wall and watch videos without an account.');
+        return;
+      }
+
       if (!selectedFile) {
         showUploadMessage('Choose a photo or video before publishing.');
         return;
@@ -450,6 +794,7 @@
 
       const request = new XMLHttpRequest();
       request.open('POST', '/api/upload');
+      request.setRequestHeader('Authorization', `Bearer ${googleCredential}`);
       request.timeout = 30 * 60 * 1000;
       request.upload.addEventListener('progress', (progressEvent) => {
         if (!progressEvent.lengthComputable) return;
