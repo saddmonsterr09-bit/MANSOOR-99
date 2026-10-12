@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import { OAuth2Client } from "google-auth-library";
 import multer from "multer";
 import Database from "better-sqlite3";
 import {
@@ -53,6 +54,12 @@ database.exec(`
   );
   CREATE INDEX IF NOT EXISTS likes_media_id_idx ON likes (media_id);
 `);
+
+const googleClientId = process.env.GOOGLE_CLIENT_ID || "";
+const googleAuthClient = googleClientId ? new OAuth2Client(googleClientId) : null;
+if (!googleClientId) {
+  console.warn("Google sign-in is disabled until GOOGLE_CLIENT_ID is configured.");
+}
 
 const requiredR2Environment = ["R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"];
 const missingR2Environment = requiredR2Environment.filter((name) => !process.env[name]);
@@ -114,6 +121,84 @@ const getLikeCount = database.prepare("SELECT COUNT(*) AS count FROM likes WHERE
 const hasVisitorLiked = database.prepare("SELECT 1 FROM likes WHERE media_id = ? AND visitor_id = ?");
 const addLike = database.prepare("INSERT INTO likes (media_id, visitor_id) VALUES (?, ?)");
 const removeLike = database.prepare("DELETE FROM likes WHERE media_id = ? AND visitor_id = ?");
+
+app.get("/api/auth/config", (request, response) => {
+  response.json({
+    googleClientId: googleClientId || null
+  });
+});
+
+app.post("/api/auth/google", async (request, response) => {
+  if (!googleAuthClient) {
+    return response.status(503).json({
+      error: "Google sign-in is not configured yet."
+    });
+  }
+
+  const credential = request.body?.credential;
+  if (typeof credential !== "string" || !credential) {
+    return response.status(400).json({
+      error: "A Google sign-in credential is required."
+    });
+  }
+
+  try {
+    const ticket = await googleAuthClient.verifyIdToken({
+      idToken: credential,
+      audience: googleClientId
+    });
+    const payload = ticket.getPayload();
+    if (!payload?.sub || !payload.email_verified) {
+      return response.status(401).json({
+        error: "Use a verified Google account to continue."
+      });
+    }
+
+    response.json({
+      name: payload.name || payload.email || "Google user",
+      email: payload.email || ""
+    });
+  } catch (error) {
+    response.status(401).json({
+      error: "Google sign-in could not be verified. Please try again."
+    });
+  }
+});
+
+async function requireGoogleAuth(request, response, next) {
+  if (!googleAuthClient) {
+    return response.status(503).json({
+      error: "Google sign-in is not configured on this server yet."
+    });
+  }
+
+  const authorization = request.get("authorization") || "";
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
+  if (!match) {
+    return response.status(401).json({
+      error: "Sign in with Google before uploading."
+    });
+  }
+
+  try {
+    const ticket = await googleAuthClient.verifyIdToken({
+      idToken: match[1],
+      audience: googleClientId
+    });
+    const payload = ticket.getPayload();
+    if (!payload?.sub || !payload.email_verified) {
+      return response.status(401).json({
+        error: "Use a verified Google account before uploading."
+      });
+    }
+    request.googleUser = payload;
+    next();
+  } catch (error) {
+    response.status(401).json({
+      error: "Your Google sign-in expired. Sign in again to upload."
+    });
+  }
+}
 
 app.get("/api/likes", (request, response) => {
   const {
@@ -217,7 +302,7 @@ app.get("/api/videos", async (request, response) => {
   }
 });
 
-app.post("/api/upload", upload.fields([{
+app.post("/api/upload", requireGoogleAuth, upload.fields([{
     name: "media",
     maxCount: 1
   },
