@@ -1,13 +1,12 @@
 {
 "name": "mansoor-99",
+"main": "./cloudflare-worker.js",
 "compatibility_date": "2026-10-06",
 "assets": {
-"directory": "./"
+"directory": "./",
+"binding": "ASSETS"
 },
 "observability": {
-"enabled": false,
-"logs": {
-"invocation_logs": true
-}
+"enabled": false
 }
 }
