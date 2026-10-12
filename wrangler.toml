@@ -1,14 +1,1 @@
-name = "openframe-video-wall"
-main = "cloudflare-worker.js"
-compatibility_date = "2026-09-30"
 
-[assets]
-directory = "."
-binding = "ASSETS"
-
-# The Worker uses this binding for photo, GIF, and video objects in R2.
-[[r2_buckets]]
-binding = "VIDEOS"
-bucket_name = "personal"
-[vars]
-GOOGLE_CLIENT_ID = "976549415008-0piu9u1lqomrm3vpdf1v5v6ii0etajdd.apps.googleusercontent.com"
