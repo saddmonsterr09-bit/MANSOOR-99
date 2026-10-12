@@ -4,265 +4,395 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>OPENFRAME — A public video wall</title>
+  <meta name="theme-color" content="var(--color-bg)">
+  <title>Full Masti 🤤 — A public video &amp; photo wall</title>
   <link rel="stylesheet" href="/theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6233865789731517"
-     crossorigin="anonymous"></script>
+  <style>
+    .token-border {
+      border-color: color-mix(in srgb, var(--color-text) 12%, transparent);
+    }
+
+    .token-border-soft {
+      border-color: color-mix(in srgb, var(--color-text) 8%, transparent);
+    }
+
+    .token-panel {
+      background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+    }
+
+    .token-overlay {
+      background: color-mix(in srgb, var(--color-bg) 78%, transparent);
+    }
+
+    .media-card img,
+    .media-card video {
+      background: var(--color-bg);
+    }
+
+    .like-button[aria-pressed="true"] {
+      color: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+
+    .upload-zone.is-dragging {
+      border-color: var(--color-primary);
+      background: color-mix(in srgb, var(--color-primary) 9%, transparent);
+    }
+
+  </style>
 </head>
 
 <body>
   <div class="noise fixed inset-0 z-50"></div>
 
   <header class="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-8 lg:px-10">
-    <a href="/" class="flex items-center gap-3" aria-label="Openframe home">
-      <span class="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] bg-[var(--color-primary)] text-xl font-black text-[var(--color-primary-contrast)]">O</span>
-      <span class="font-black tracking-[.18em] text-sm">OPENFRAME</span>
+    <a href="/" class="flex items-center gap-3" aria-label="Chaddi Gram home">
+      <span class="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] bg-[var(--color-primary)] text-xl font-black text-[var(--color-primary-contrast)]">🔥</span>
+      <span class="text-sm font-black tracking-[.12em]">Full Masti 🤤</span>
     </a>
-    <nav class="hidden items-center gap-8 text-sm text-[var(--color-muted)] md:flex">
+    <nav class="hidden items-center gap-8 text-sm text-[var(--color-muted)] md:flex" aria-label="Main navigation">
       <a class="transition hover:text-[var(--color-text)]" href="#wall">The wall</a>
-      <a class="transition hover:text-[var(--color-text)]" href="#upload">Share a video</a>
+      <a class="transition hover:text-[var(--color-text)]" href="#upload">Share photos &amp; videos</a>
     </nav>
-    <a href="#upload" class="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Upload now <span aria-hidden="true">↗</span></a>
+    <a href="#upload" class="rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Share now <span aria-hidden="true">↗</span></a>
   </header>
 
   <main class="relative z-10 mx-auto max-w-7xl px-5 pb-20 sm:px-8 lg:px-10">
-    <section class="grid items-center gap-12 pb-20 pt-12 lg:grid-cols-[1.05fr_.95fr] lg:pb-28 lg:pt-20">
+    <section class="grid items-center gap-12 pb-20 pt-8 lg:grid-cols-[1.05fr_.95fr] lg:pb-28 lg:pt-14">
       <div class="float-in">
         <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">
           <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]"></span>
           Open to everyone
         </div>
-        <h1 class="max-w-3xl font-[var(--font-heading)] text-5xl leading-[.94] tracking-[-.055em] sm:text-7xl lg:text-8xl">Your story.<br><span class="text-[var(--color-primary)]">On the wall.</span></h1>
-        <p class="mt-7 max-w-xl text-lg leading-8 text-[var(--color-muted)]">A living gallery made by the people who show up. Drop a video, add your name, and leave a little piece of your world behind.</p>
+        <h1 class="max-w-3xl font-[var(--font-heading)] text-5xl leading-[.94] tracking-[-.055em] sm:text-7xl lg:text-8xl">Your moments.<br><span class="text-[var(--color-primary)]">On the wall.</span></h1>
+        <p class="mt-7 max-w-xl text-lg leading-8 text-[var(--color-muted)]">A living gallery of shared moments. Upload a photo or video, add your name, and leave a little piece of your world behind.</p>
         <div class="mt-9 flex flex-wrap items-center gap-4">
-          <a href="#upload" class="rounded-full bg-[var(--color-primary)] px-6 py-3.5 font-bold text-[var(--color-primary-contrast)] shadow-lg shadow-yellow-400/10 transition hover:-translate-y-0.5 hover:brightness-110">Share your video <span class="ml-2">↓</span></a>
-          <a href="#wall" class="rounded-full border border-white/15 px-6 py-3.5 font-bold transition hover:border-white/35">Explore the wall</a>
+          <a href="#upload" class="rounded-full bg-[var(--color-primary)] px-6 py-3.5 font-bold text-[var(--color-primary-contrast)] shadow-lg transition hover:-translate-y-0.5 hover:brightness-110">Share a moment <span class="ml-2">↓</span></a>
+          <a href="#wall" class="rounded-full border token-border px-6 py-3.5 font-bold transition hover:border-[var(--color-primary)]">Explore the wall</a>
         </div>
+        <p class="mt-8 text-sm font-semibold text-[var(--color-muted)]">Created by <span class="text-[var(--color-primary)]">Mansoor Dev</span></p>
       </div>
+
       <div class="relative mx-auto w-full max-w-xl float-in [animation-delay:120ms]">
         <div class="absolute -inset-5 rounded-[2rem] bg-[var(--color-primary)]/10 blur-3xl"></div>
-        <div class="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[var(--color-surface)] p-3 glow">
-          <div class="aspect-[4/5] overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-[#413711] via-[#171711] to-[#080808] p-7 sm:p-10">
-            <div class="flex h-full flex-col justify-between">
-              <div class="flex items-center justify-between text-xs uppercase tracking-[.2em] text-white/50"><span>Vol. 01</span><span>Public / 24</span></div>
-              <div>
-                <div class="mb-5 text-7xl font-black leading-none text-[var(--color-primary)] sm:text-9xl">✦</div>
-                <p class="max-w-xs text-3xl font-black leading-tight tracking-tight sm:text-4xl">Made by<br>the crowd.</p>
-              </div>
-              <div class="flex items-end justify-between border-t border-white/15 pt-4 text-xs text-white/50"><span>OPENFRAME<br>VIDEO WALL</span><span class="text-right">WATCH<br>SHARE<br>REPEAT</span></div>
-            </div>
-          </div>
+        <figure class="relative overflow-hidden rounded-[2rem] border token-border token-panel p-3 glow">
+          <img src="/SAD.jpg" alt="Featured Chaddi Gram photo" class="aspect-[4/5] w-full rounded-[1.5rem] object-cover" fetchpriority="high">
+          <figcaption class="token-overlay absolute bottom-7 left-7 rounded-full border token-border px-4 py-2 text-xs font-bold uppercase tracking-[.18em]">Featured photo · SAD.jpg</figcaption>
+        </figure>
+        <div class="mt-4 flex justify-end">
+          <button class="like-button like-hero inline-flex items-center gap-2 rounded-full border token-border token-panel px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)]" data-media-id="featured-sad-image" type="button" aria-pressed="false"><span class="like-icon" aria-hidden="true">♡</span><span class="like-count">0</span><span>Likes</span></button>
         </div>
       </div>
     </section>
 
-    <section id="upload" class="scroll-mt-8 rounded-[var(--radius)] border border-white/10 bg-[var(--color-surface)] p-5 sm:p-8 lg:p-10">
+    <section id="upload" class="scroll-mt-8 rounded-[var(--radius)] border token-border bg-[var(--color-surface)] p-5 sm:p-8 lg:p-10">
       <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">01 / Add to the wall</p>
           <h2 class="text-3xl font-black tracking-tight sm:text-4xl">Drop something real.</h2>
         </div>
-        <p class="max-w-sm text-sm leading-6 text-[var(--color-muted)]">No account. No complicated form. Just choose a video and tell us who made it.</p>
+        <p class="max-w-sm text-sm leading-6 text-[var(--color-muted)]">Share a photo or video. No account needed. Uploaded media is saved to the site's permanent cloud storage.</p>
       </div>
-      <label id="dropZone" class="upload-zone group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-[var(--radius)] border border-dashed border-white/20 px-6 text-center transition hover:border-[var(--color-primary)]/70 hover:bg-white/[.02]">
-        <input id="videoInput" type="file" accept="video/*" class="sr-only">
+      <label id="dropZone" class="upload-zone group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-[var(--radius)] border border-dashed token-border px-6 text-center transition hover:border-[var(--color-primary)] hover:bg-[var(--color-bg)]">
+        <input id="mediaInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska" class="sr-only">
         <span class="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-primary)] text-3xl text-[var(--color-primary-contrast)] transition group-hover:scale-105">↑</span>
-        <span class="text-lg font-bold">Drag & drop your video here</span>
-        <span class="mt-2 text-sm text-[var(--color-muted)]">or click to browse · MP4, MOV, WEBM · up to 90 MB · published publicly</span>
+        <span class="text-lg font-bold">Drag &amp; drop a photo or video here</span>
+        <span class="mt-2 text-sm text-[var(--color-muted)]">or click to browse · JPG, PNG, WEBP, GIF, MP4, MOV, WEBM · up to 90 MB</span>
       </label>
-      <div id="filePanel" class="mt-5 hidden rounded-[var(--radius)] border border-white/10 bg-black/20 p-5">
+
+      <div id="filePanel" class="mt-5 hidden rounded-[var(--radius)] border token-border-soft bg-[var(--color-bg)] p-5">
         <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div class="flex min-w-0 items-center gap-4">
-            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)]/15 text-xl">▶</div>
+            <div id="fileTypeIcon" class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)]/15 text-xl">✦</div>
             <div class="min-w-0">
               <p id="fileName" class="truncate font-bold"></p>
               <p id="fileSize" class="mt-1 text-sm text-[var(--color-muted)]"></p>
             </div>
-          </div><button id="clearFile" class="text-sm text-[var(--color-muted)] underline underline-offset-4 hover:text-white">Remove</button>
+          </div>
+          <button id="clearFile" type="button" class="text-sm text-[var(--color-muted)] underline underline-offset-4 hover:text-[var(--color-text)]">Remove</button>
         </div>
-        <div class="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]"><input id="creatorName" class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-[var(--color-primary)]" placeholder="Your name (optional)"><input id="videoTitle" class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm outline-none placeholder:text-white/30 focus:border-[var(--color-primary)]" placeholder="Give it a title"><button id="stageButton" class="rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold text-[var(--color-primary-contrast)] transition hover:brightness-110">Publish video</button></div>
-        <p id="uploadStatus" class="mt-4 hidden text-sm text-[var(--color-primary)]"></p>
+        <div class="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+          <input id="creatorName" class="rounded-xl border token-border-soft bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-primary)]" placeholder="Your name (optional)">
+          <input id="mediaTitle" class="rounded-xl border token-border-soft bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-primary)]" placeholder="Give it a title">
+          <button id="publishButton" type="button" class="rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold text-[var(--color-primary-contrast)] transition hover:brightness-110">Publish</button>
+        </div>
+        <p id="uploadStatus" class="mt-4 hidden text-sm text-[var(--color-primary)]" role="status" aria-live="polite"></p>
       </div>
     </section>
 
     <section id="wall" class="scroll-mt-8 pt-24">
-      <div class="mb-8 flex items-end justify-between">
+      <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">02 / The public wall</p>
           <h2 class="text-3xl font-black tracking-tight sm:text-4xl">Latest arrivals</h2>
-        </div><span id="countLabel" class="pill rounded-full px-3 py-1.5 text-xs text-[var(--color-muted)]">3 videos</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <label for="mediaFilter" class="sr-only">Filter gallery</label>
+          <select id="mediaFilter" class="rounded-full border token-border-soft bg-[var(--color-surface)] px-4 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]">
+            <option value="all">All media</option>
+            <option value="photo">Photos</option>
+            <option value="video">Videos</option>
+          </select>
+          <span id="countLabel" class="pill rounded-full px-3 py-1.5 text-xs text-[var(--color-muted)]">Loading</span>
+        </div>
       </div>
-      <div id="videoGrid" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-        <article class="video-card overflow-hidden rounded-[var(--radius)] border border-white/10 bg-[var(--color-surface)]">
-          <div class="relative aspect-video bg-gradient-to-br from-[#25210c] to-[#090909] p-5">
-            <div class="flex h-full items-center justify-center rounded-xl border border-white/10 text-5xl text-[var(--color-primary)]">✦</div><span class="absolute bottom-8 left-8 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest">01:24</span>
-          </div>
-          <div class="p-5">
-            <h3 class="font-bold">A walk through golden hour</h3>
-            <p class="mt-2 text-sm text-[var(--color-muted)]">by Maya R. · just now</p>
-          </div>
-        </article>
-        <article class="video-card overflow-hidden rounded-[var(--radius)] border border-white/10 bg-[var(--color-surface)]">
-          <div class="relative aspect-video bg-gradient-to-br from-[#172c2b] to-[#090909] p-5">
-            <div class="flex h-full items-center justify-center rounded-xl border border-white/10 text-5xl text-teal-200">◒</div><span class="absolute bottom-8 left-8 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest">00:48</span>
-          </div>
-          <div class="p-5">
-            <h3 class="font-bold">Sounds from the outside</h3>
-            <p class="mt-2 text-sm text-[var(--color-muted)]">by Ayo · 4 min ago</p>
-          </div>
-        </article>
-        <article class="video-card overflow-hidden rounded-[var(--radius)] border border-white/10 bg-[var(--color-surface)]">
-          <div class="relative aspect-video bg-gradient-to-br from-[#2b1725] to-[#090909] p-5">
-            <div class="flex h-full items-center justify-center rounded-xl border border-white/10 text-5xl text-pink-200">✳</div><span class="absolute bottom-8 left-8 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest">02:10</span>
-          </div>
-          <div class="p-5">
-            <h3 class="font-bold">Everybody has a beginning</h3>
-            <p class="mt-2 text-sm text-[var(--color-muted)]">by Jordan K. · 11 min ago</p>
-          </div>
-        </article>
-      </div>
+      <div id="mediaGrid" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3"></div>
+      <p id="wallStatus" class="mt-5 text-sm text-[var(--color-muted)]" role="status" aria-live="polite"></p>
     </section>
   </main>
 
-  <footer class="relative z-10 border-t border-white/10">
+  <footer class="relative z-10 border-t token-border-soft">
     <div class="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-[var(--color-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
-      <p>OPENFRAME <span class="mx-2 text-white/20">/</span> made for shared moments</p>
-      <p>Public by design <span class="ml-2 text-[var(--color-primary)]">●</span></p>
+      <p><strong class="font-black">Full Masti 🤤</strong> <span class="mx-2">/</span> Created by <span class="text-[var(--color-primary)]">Mansoor Dev</span></p>
+      <p>Photos &amp; videos, shared with everyone <span class="ml-2 text-[var(--color-primary)]">●</span></p>
     </div>
   </footer>
 
   <script>
-    const input = document.getElementById('videoInput');
+    const mediaInput = document.getElementById('mediaInput');
     const dropZone = document.getElementById('dropZone');
     const filePanel = document.getElementById('filePanel');
     const fileName = document.getElementById('fileName');
     const fileSize = document.getElementById('fileSize');
-    const status = document.getElementById('uploadStatus');
-    const grid = document.getElementById('videoGrid');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const wallStatus = document.getElementById('wallStatus');
+    const mediaGrid = document.getElementById('mediaGrid');
     const countLabel = document.getElementById('countLabel');
+    const maxUploadSize = 90 * 1024 * 1024;
     let selectedFile = null;
+    let galleryItems = [];
+
+    function getVisitorId() {
+      let visitorId = localStorage.getItem('chaddiGramVisitorId') || localStorage.getItem('openframeVisitorId');
+      if (!visitorId) visitorId = crypto.randomUUID();
+      localStorage.setItem('chaddiGramVisitorId', visitorId);
+      return visitorId;
+    }
+
+    const visitorId = getVisitorId();
 
     function readableSize(bytes) {
-      if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+      if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
       return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     }
 
+    function showUploadMessage(message) {
+      uploadStatus.textContent = message;
+      uploadStatus.classList.remove('hidden');
+    }
+
     function showFile(file) {
-      if (!file || !file.type.startsWith('video/')) {
-        status.textContent = 'Please choose a video file.';
-        status.classList.remove('hidden');
+      if (!file) return;
+      const isPhoto = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      if (!isPhoto && !isVideo) {
+        showUploadMessage('Please choose a supported photo or video file.');
         return;
       }
-      const maxUploadSize = 90 * 1024 * 1024;
       if (file.size > maxUploadSize) {
-        status.textContent = 'This app accepts videos up to 90 MB. Please choose a smaller video.';
-        status.classList.remove('hidden');
+        showUploadMessage('Files must be 90 MB or smaller. Please choose a smaller file.');
         return;
       }
       selectedFile = file;
       fileName.textContent = file.name;
-      fileSize.textContent = `${readableSize(file.size)} · ready to preview`;
+      fileSize.textContent = `${readableSize(file.size)} · ${isPhoto ? 'photo' : 'video'} · ready to upload`;
+      document.getElementById('fileTypeIcon').textContent = isPhoto ? '▧' : '▶';
       filePanel.classList.remove('hidden');
-      status.classList.add('hidden');
+      uploadStatus.classList.add('hidden');
     }
 
-    input.addEventListener('change', () => showFile(input.files[0]));
-    ['dragenter', 'dragover'].forEach(eventName => dropZone.addEventListener(eventName, event => {
-      event.preventDefault();
-      dropZone.classList.add('is-dragging');
-    }));
-    ['dragleave', 'drop'].forEach(eventName => dropZone.addEventListener(eventName, event => {
-      event.preventDefault();
-      dropZone.classList.remove('is-dragging');
-    }));
-    dropZone.addEventListener('drop', event => showFile(event.dataTransfer.files[0]));
+    mediaInput.addEventListener('change', () => showFile(mediaInput.files[0]));
+    ['dragenter', 'dragover'].forEach((eventName) => {
+      dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropZone.classList.add('is-dragging');
+      });
+    });
+    ['dragleave', 'drop'].forEach((eventName) => {
+      dropZone.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        dropZone.classList.remove('is-dragging');
+      });
+    });
+    dropZone.addEventListener('drop', (event) => showFile(event.dataTransfer.files[0]));
+
     document.getElementById('clearFile').addEventListener('click', () => {
       selectedFile = null;
-      input.value = '';
+      mediaInput.value = '';
       filePanel.classList.add('hidden');
+      uploadStatus.classList.add('hidden');
     });
 
-    function renderVideo(video) {
-      const card = document.createElement('article');
-      card.className = 'video-card overflow-hidden rounded-[var(--radius)] border border-white/10 bg-[var(--color-surface)]';
-      card.innerHTML = `<video class="aspect-video w-full object-cover" controls preload="metadata" src="${video.url}"></video><div class="p-5"><h3 class="font-bold"></h3><p class="mt-2 text-sm text-[var(--color-muted)]"></p></div>`;
-      card.querySelector('h3').textContent = video.title;
-      card.querySelector('p').textContent = `by ${video.creator}`;
-      return card;
+    function updateLikeButton(button, result) {
+      button.querySelector('.like-count').textContent = result.count;
+      button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
+      button.setAttribute('aria-pressed', String(result.liked));
     }
 
-    async function loadPublicVideos() {
+    async function loadLikeState(mediaId, button) {
       try {
-        const response = await fetch('/api/videos');
-        if (!response.ok) return;
-        const videos = await response.json();
-        grid.replaceChildren(...videos.map(renderVideo));
-        countLabel.textContent = `${videos.length} videos`;
+        const query = new URLSearchParams({
+          mediaId,
+          visitorId
+        });
+        const response = await fetch(`/api/likes?${query}`);
+        if (response.ok) updateLikeButton(button, await response.json());
       } catch (error) {
-        console.info('The Node.js backend is not available yet. Start the server and try again.');
+        console.info('Like counts are unavailable until the Node.js backend is running.');
       }
     }
 
-    document.getElementById('stageButton').addEventListener('click', async () => {
-      if (!selectedFile) return;
-      const button = document.getElementById('stageButton');
-      const title = document.getElementById('videoTitle').value.trim() || selectedFile.name.replace(/\.[^/.]+$/, '');
+    function makeLikeButton(mediaId, hero = false) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `like-button inline-flex items-center gap-2 rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] ${hero ? 'like-hero absolute bottom-6 right-6 token-overlay backdrop-blur' : 'mt-4'}`;
+      button.dataset.mediaId = mediaId;
+      button.setAttribute('aria-pressed', 'false');
+      button.innerHTML = '<span class="like-icon" aria-hidden="true">♡</span><span class="like-count">0</span><span>Likes</span>';
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+          const response = await fetch('/api/likes', {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+              mediaId,
+              visitorId
+            })
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Could not update your like.');
+          updateLikeButton(button, result);
+        } catch (error) {
+          wallStatus.textContent = `${error.message} Please try again.`;
+        } finally {
+          button.disabled = false;
+        }
+      });
+      loadLikeState(mediaId, button);
+      return button;
+    }
+
+    function renderMedia(item) {
+      const card = document.createElement('article');
+      card.className = 'media-card overflow-hidden rounded-[var(--radius)] border token-border-soft bg-[var(--color-surface)]';
+      card.dataset.type = item.type;
+      const mediaId = item.key || item.id;
+      let media;
+      if (item.type === 'photo') {
+        media = document.createElement('img');
+        media.src = item.url;
+        media.alt = item.title || 'Community photo';
+        media.loading = 'lazy';
+        media.className = 'aspect-video w-full object-cover';
+      } else {
+        media = document.createElement('video');
+        media.src = item.url;
+        media.controls = true;
+        media.preload = 'metadata';
+        media.className = 'aspect-video w-full object-cover';
+      }
+      const details = document.createElement('div');
+      details.className = 'p-5';
+      const title = document.createElement('h3');
+      title.className = 'font-bold';
+      title.textContent = item.title || 'Untitled moment';
+      const creator = document.createElement('p');
+      creator.className = 'mt-2 text-sm text-[var(--color-muted)]';
+      creator.textContent = `by ${item.creator || 'Anonymous creator'} · ${item.type === 'photo' ? 'Photo' : 'Video'}`;
+      details.append(title, creator, makeLikeButton(mediaId));
+      card.append(media, details);
+      return card;
+    }
+
+    function applyFilter() {
+      const filter = document.getElementById('mediaFilter').value;
+      const cards = [...mediaGrid.children];
+      let visibleCount = 0;
+      cards.forEach((card) => {
+        const isVisible = filter === 'all' || card.dataset.type === filter;
+        card.classList.toggle('hidden', !isVisible);
+        if (isVisible) visibleCount += 1;
+      });
+      countLabel.textContent = `${visibleCount} ${visibleCount === 1 ? 'post' : 'posts'}`;
+    }
+
+    document.getElementById('mediaFilter').addEventListener('change', applyFilter);
+
+    async function loadMedia() {
+      try {
+        const response = await fetch('/api/media');
+        if (!response.ok) throw new Error('Could not load media.');
+        galleryItems = await response.json();
+        mediaGrid.replaceChildren(...galleryItems.map(renderMedia));
+        applyFilter();
+        if (!galleryItems.length) wallStatus.textContent = 'Be the first to share a photo or video.';
+      } catch (error) {
+        countLabel.textContent = 'Wall offline';
+        wallStatus.textContent = 'The public wall will load when the Node.js backend and storage are connected.';
+      }
+    }
+
+    document.getElementById('publishButton').addEventListener('click', (event) => {
+      if (!selectedFile) {
+        showUploadMessage('Choose a photo or video before publishing.');
+        return;
+      }
+      const button = event.currentTarget;
+      const title = document.getElementById('mediaTitle').value.trim() || selectedFile.name.replace(/\.[^/.]+$/, '');
       const creator = document.getElementById('creatorName').value.trim() || 'Anonymous creator';
       const formData = new FormData();
-      formData.append('video', selectedFile);
+      formData.append('media', selectedFile);
       formData.append('title', title);
       formData.append('creator', creator);
       button.disabled = true;
       button.textContent = 'Uploading… 0%';
-      status.textContent = 'Uploading your video. Please keep this tab open.';
-      status.classList.remove('hidden');
+      showUploadMessage('Uploading to cloud storage. Please keep this tab open.');
 
-      try {
-        const result = await new Promise((resolve, reject) => {
-          const request = new XMLHttpRequest();
-          request.open('POST', '/api/upload');
-          request.timeout = 30 * 60 * 1000;
-          request.upload.addEventListener('progress', event => {
-            if (!event.lengthComputable) return;
-            const percent = Math.round((event.loaded / event.total) * 100);
-            button.textContent = `Uploading… ${percent}%`;
-            status.textContent = `Uploading your video… ${percent}%`;
-          });
-          request.addEventListener('load', () => {
-            let data;
-            try {
-              data = JSON.parse(request.responseText);
-            } catch (error) {
-              reject(new Error(`Server returned an invalid response (${request.status}).`));
-              return;
-            }
-            if (request.status < 200 || request.status >= 300) {
-              reject(new Error(data.error || `Upload failed (${request.status}).`));
-              return;
-            }
-            resolve(data);
-          });
-          request.addEventListener('error', () => reject(new Error('Network error. Check the Worker deployment and try again.')));
-          request.addEventListener('timeout', () => reject(new Error('The upload timed out. Try a smaller video or a faster connection.')));
-          request.addEventListener('abort', () => reject(new Error('The upload was cancelled.')));
-          request.send(formData);
-        });
-        grid.prepend(renderVideo(result));
-        countLabel.textContent = `${grid.children.length} videos`;
-        status.textContent = 'Published permanently to the public wall.';
-        filePanel.classList.add('hidden');
-        input.value = '';
-        selectedFile = null;
-      } catch (error) {
-        status.textContent = error.message;
-      } finally {
+      const request = new XMLHttpRequest();
+      request.open('POST', '/api/upload');
+      request.timeout = 30 * 60 * 1000;
+      request.upload.addEventListener('progress', (progressEvent) => {
+        if (!progressEvent.lengthComputable) return;
+        const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+        button.textContent = `Uploading… ${percent}%`;
+        showUploadMessage(`Uploading your ${selectedFile.type.startsWith('image/') ? 'photo' : 'video'}… ${percent}%`);
+      });
+      request.addEventListener('load', async () => {
+        try {
+          const result = JSON.parse(request.responseText);
+          if (request.status < 200 || request.status >= 300) throw new Error(result.error || `Upload failed (${request.status}).`);
+          showUploadMessage('Published successfully to the public wall.');
+          selectedFile = null;
+          mediaInput.value = '';
+          filePanel.classList.add('hidden');
+          document.getElementById('mediaTitle').value = '';
+          await loadMedia();
+        } catch (error) {
+          showUploadMessage(error.message || 'Upload failed. Please try again.');
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Publish';
+        }
+      });
+      request.addEventListener('error', () => {
+        showUploadMessage('Network error. Check that the Node.js backend is running and try again.');
         button.disabled = false;
-        button.textContent = 'Publish video';
-      }
+        button.textContent = 'Publish';
+      });
+      request.addEventListener('timeout', () => {
+        showUploadMessage('The upload timed out. Try a smaller file or a faster connection.');
+        button.disabled = false;
+        button.textContent = 'Publish';
+      });
+      request.send(formData);
     });
 
-    loadPublicVideos();
+    loadLikeState('featured-sad-image', document.querySelector('.like-hero'));
+    loadMedia();
 
   </script>
 </body>
