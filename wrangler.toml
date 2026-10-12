@@ -6,6 +6,7 @@ compatibility_date = "2026-09-30"
 directory = "."
 binding = "ASSETS"
 
+# The Worker uses this binding for photo, GIF, and video objects in R2.
 [[r2_buckets]]
 binding = "VIDEOS"
 bucket_name = "personal"
