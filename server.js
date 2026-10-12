@@ -2,6 +2,14 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import multer from "multer";
+import Database from "better-sqlite3";
+import {
+  mkdirSync
+} from "node:fs";
+import {
+  dirname,
+  resolve
+} from "node:path";
 import {
   GetObjectCommand,
   HeadObjectCommand,
@@ -14,33 +22,54 @@ const app = express();
 const port = Number(process.env.PORT || 3000);
 const bucketName = process.env.R2_BUCKET || "personal";
 const maxFileSize = 90 * 1024 * 1024;
-const allowedTypes = new Set([
+const allowedVideoTypes = new Set([
   "video/mp4",
   "video/quicktime",
   "video/webm",
   "video/ogg",
   "video/x-matroska"
 ]);
+const allowedImageTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif"
+]);
 
-const requiredEnvironment = [
-  "R2_ENDPOINT",
-  "R2_ACCESS_KEY_ID",
-  "R2_SECRET_ACCESS_KEY"
-];
+const databasePath = resolve(process.env.DATABASE_PATH || "../openframe-data/openframe.sqlite");
+mkdirSync(dirname(databasePath), {
+  recursive: true
+});
+const database = new Database(databasePath);
+database.pragma("journal_mode = WAL");
+database.pragma("foreign_keys = ON");
+database.exec(`
+  CREATE TABLE IF NOT EXISTS likes (
+    media_id TEXT NOT NULL,
+    visitor_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (media_id, visitor_id)
+  );
+  CREATE INDEX IF NOT EXISTS likes_media_id_idx ON likes (media_id);
+`);
 
-const missingEnvironment = requiredEnvironment.filter((name) => !process.env[name]);
-if (missingEnvironment.length > 0) {
-  console.warn(`Missing environment variables: ${missingEnvironment.join(", ")}`);
+const requiredR2Environment = ["R2_ENDPOINT", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY"];
+const missingR2Environment = requiredR2Environment.filter((name) => !process.env[name]);
+if (missingR2Environment.length) {
+  console.warn(`R2 storage is disabled until these environment variables are set: ${missingR2Environment.join(", ")}`);
 }
 
-const r2 = new S3Client({
-  region: "auto",
-  endpoint: process.env.R2_ENDPOINT,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID || "missing",
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "missing"
-  }
-});
+const r2 = missingR2Environment.length === 0 ?
+  new S3Client({
+    region: "auto",
+    endpoint: process.env.R2_ENDPOINT,
+    credentials: {
+      accessKeyId: process.env.R2_ACCESS_KEY_ID,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY
+    }
+  }) :
+  null;
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -50,6 +79,9 @@ const upload = multer({
 });
 
 app.use(cors());
+app.use(express.json({
+  limit: "20kb"
+}));
 app.use(express.static("."));
 
 function safeText(value, fallback, maxLength) {
@@ -60,70 +92,159 @@ function safeText(value, fallback, maxLength) {
 function extensionFor(type, name) {
   const fromName = String(name || "").match(/\.([a-z0-9]+)$/i);
   if (fromName) return fromName[1].toLowerCase();
+  if (type === "image/jpeg") return "jpg";
+  if (type === "video/quicktime") return "mov";
   return type.split("/")[1].replace("quicktime", "mov");
 }
 
-function publicVideo(object, metadata = {}) {
-  return {
-    key: object.Key,
-    title: metadata.title || object.Key.split("/").pop(),
-    creator: metadata.creator || "Anonymous creator",
-    uploadedAt: metadata.uploadedAt || object.LastModified?.toISOString() || new Date().toISOString(),
-    url: `/media/${encodeURIComponent(object.Key)}`
-  };
+function requireR2(response) {
+  if (r2) return true;
+  response.status(503).json({
+    error: "Cloudflare R2 storage is not configured on this server yet."
+  });
+  return false;
 }
 
-app.get("/api/videos", async (request, response) => {
+function validLikeInput(mediaId, visitorId) {
+  return typeof mediaId === "string" && mediaId.trim().length > 0 && mediaId.length <= 220 &&
+    typeof visitorId === "string" && /^[a-f0-9-]{36}$/i.test(visitorId);
+}
+
+const getLikeCount = database.prepare("SELECT COUNT(*) AS count FROM likes WHERE media_id = ?");
+const hasVisitorLiked = database.prepare("SELECT 1 FROM likes WHERE media_id = ? AND visitor_id = ?");
+const addLike = database.prepare("INSERT INTO likes (media_id, visitor_id) VALUES (?, ?)");
+const removeLike = database.prepare("DELETE FROM likes WHERE media_id = ? AND visitor_id = ?");
+
+app.get("/api/likes", (request, response) => {
+  const {
+    mediaId,
+    visitorId
+  } = request.query;
+  if (!validLikeInput(mediaId, visitorId)) {
+    return response.status(400).json({
+      error: "A valid media ID and visitor ID are required."
+    });
+  }
+  response.json({
+    mediaId,
+    count: getLikeCount.get(mediaId).count,
+    liked: Boolean(hasVisitorLiked.get(mediaId, visitorId))
+  });
+});
+
+app.post("/api/likes", (request, response) => {
+  const {
+    mediaId,
+    visitorId
+  } = request.body || {};
+  if (!validLikeInput(mediaId, visitorId)) {
+    return response.status(400).json({
+      error: "A valid media ID and visitor ID are required."
+    });
+  }
   try {
-    const listed = await r2.send(new ListObjectsV2Command({
-      Bucket: bucketName,
-      Prefix: "videos/",
-      MaxKeys: 1000
-    }));
-
-    const videos = await Promise.all((listed.Contents || []).map(async (object) => {
-      try {
-        const stored = await r2.send(new HeadObjectCommand({
-          Bucket: bucketName,
-          Key: object.Key
-        }));
-        return publicVideo(object, stored.Metadata);
-      } catch {
-        return publicVideo(object);
-      }
-    }));
-
-    videos.sort((first, second) => new Date(second.uploadedAt) - new Date(first.uploadedAt));
-    response.json(videos);
+    const toggleLike = database.transaction(() => {
+      const alreadyLiked = Boolean(hasVisitorLiked.get(mediaId, visitorId));
+      if (alreadyLiked) removeLike.run(mediaId, visitorId);
+      else addLike.run(mediaId, visitorId);
+      return !alreadyLiked;
+    });
+    const liked = toggleLike.immediate();
+    response.json({
+      mediaId,
+      count: getLikeCount.get(mediaId).count,
+      liked
+    });
   } catch (error) {
-    console.error("Could not list videos:", error);
+    console.error("Could not update like:", error);
+    response.status(500).json({
+      error: "Could not update the like. Please try again."
+    });
+  }
+});
+
+async function listMedia(prefix) {
+  const listed = await r2.send(new ListObjectsV2Command({
+    Bucket: bucketName,
+    Prefix: `${prefix}/`,
+    MaxKeys: 1000
+  }));
+  return Promise.all((listed.Contents || []).map(async (object) => {
+    let metadata = {};
+    try {
+      const stored = await r2.send(new HeadObjectCommand({
+        Bucket: bucketName,
+        Key: object.Key
+      }));
+      metadata = stored.Metadata || {};
+    } catch (error) {
+      console.warn(`Could not read metadata for ${object.Key}:`, error.message);
+    }
+    return {
+      key: object.Key,
+      type: metadata.kind || (prefix === "photos" ? "photo" : "video"),
+      title: metadata.title || object.Key.split("/").pop(),
+      creator: metadata.creator || "Anonymous creator",
+      uploadedAt: metadata.uploadedat || object.LastModified?.toISOString() || new Date().toISOString(),
+      url: `/media/${encodeURIComponent(object.Key)}`
+    };
+  }));
+}
+
+app.get("/api/media", async (request, response) => {
+  if (!requireR2(response)) return;
+  try {
+    const [videos, photos] = await Promise.all([listMedia("videos"), listMedia("photos")]);
+    response.json([...videos, ...photos].sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)));
+  } catch (error) {
+    console.error("Could not list media:", error);
     response.status(500).json({
       error: "Could not load the public wall."
     });
   }
 });
 
-app.post("/api/upload", upload.single("video"), async (request, response) => {
+// Retain the original videos endpoint for older clients.
+app.get("/api/videos", async (request, response) => {
+  if (!requireR2(response)) return;
   try {
-    const file = request.file;
-    if (!file) {
-      return response.status(400).json({
-        error: "A video file is required."
-      });
-    }
-    if (!allowedTypes.has(file.mimetype)) {
+    response.json((await listMedia("videos")).sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)));
+  } catch (error) {
+    console.error("Could not list videos:", error);
+    response.status(500).json({
+      error: "Could not load videos."
+    });
+  }
+});
+
+app.post("/api/upload", upload.fields([{
+    name: "media",
+    maxCount: 1
+  },
+  {
+    name: "video",
+    maxCount: 1
+  }
+]), async (request, response) => {
+  if (!requireR2(response)) return;
+  try {
+    const file = request.files?.media?.[0] || request.files?.video?.[0];
+    if (!file) return response.status(400).json({
+      error: "Choose a photo or video before publishing."
+    });
+
+    const isPhoto = allowedImageTypes.has(file.mimetype);
+    const isVideo = allowedVideoTypes.has(file.mimetype);
+    if (!isPhoto && !isVideo) {
       return response.status(415).json({
-        error: "This video format is not supported."
+        error: "This photo or video format is not supported."
       });
     }
 
     const id = `${Date.now()}-${crypto.randomUUID()}`;
-    const key = `videos/${id}.${extensionFor(file.mimetype, file.originalname)}`;
-    const title = safeText(
-      request.body.title,
-      file.originalname.replace(/\.[^/.]+$/, ""),
-      120
-    );
+    const folder = isPhoto ? "photos" : "videos";
+    const key = `${folder}/${id}.${extensionFor(file.mimetype, file.originalname)}`;
+    const title = safeText(request.body.title, file.originalname.replace(/\.[^/.]+$/, ""), 120);
     const creator = safeText(request.body.creator, "Anonymous creator", 80);
     const uploadedAt = new Date().toISOString();
 
@@ -133,39 +254,40 @@ app.post("/api/upload", upload.single("video"), async (request, response) => {
       Body: file.buffer,
       ContentType: file.mimetype,
       Metadata: {
+        kind: isPhoto ? "photo" : "video",
         title,
         creator,
-        uploadedAt
+        uploadedat: uploadedAt
       }
     }));
 
     response.status(201).json({
       key,
+      type: isPhoto ? "photo" : "video",
       title,
       creator,
       uploadedAt,
       url: `/media/${encodeURIComponent(key)}`
     });
   } catch (error) {
-    console.error("Upload failed:", error);
+    console.error("Media upload failed:", error);
     response.status(500).json({
-      error: "The upload could not be completed."
+      error: "Upload could not be completed. Please try again."
     });
   }
 });
 
 app.get("/media/:encodedKey", async (request, response) => {
+  if (!requireR2(response)) return;
   const key = decodeURIComponent(request.params.encodedKey);
-  if (!key.startsWith("videos/")) {
+  if (!key.startsWith("videos/") && !key.startsWith("photos/")) {
     return response.status(404).send("Not found");
   }
-
   try {
     const object = await r2.send(new GetObjectCommand({
       Bucket: bucketName,
       Key: key
     }));
-
     response.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     if (object.ContentType) response.setHeader("Content-Type", object.ContentType);
     object.Body.pipe(response);
@@ -175,10 +297,39 @@ app.get("/media/:encodedKey", async (request, response) => {
   }
 });
 
+// If no real SAD.jpg has been added yet, keep the featured-image slot visible.
+// A real SAD.jpg in the project root is served by express.static before this route.
+app.get("/SAD.jpg", (request, response) => {
+  response.type("image/svg+xml").send(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1125">
+      <defs>
+        <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#321329" />
+          <stop offset=".52" stop-color="#a72e71" />
+          <stop offset="1" stop-color="#f3a5ca" />
+        </linearGradient>
+        <linearGradient id="hill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#27151f" />
+          <stop offset="1" stop-color="#100d12" />
+        </linearGradient>
+        <filter id="blur"><feGaussianBlur stdDeviation="36" /></filter>
+      </defs>
+      <rect width="900" height="1125" fill="url(#sky)" />
+      <circle cx="664" cy="316" r="145" fill="#ffd8e9" opacity=".76" filter="url(#blur)" />
+      <circle cx="664" cy="316" r="90" fill="#ffe9f2" opacity=".9" />
+      <path d="M0 632 Q158 512 326 636 T667 594 T900 616 V1125 H0Z" fill="#541e43" opacity=".78" />
+      <path d="M0 754 Q222 591 424 757 T900 701 V1125 H0Z" fill="url(#hill)" />
+      <path d="M0 900 Q214 824 425 900 T900 870 V1125 H0Z" fill="#100d12" />
+      <path d="M450 1125 Q485 1011 445 907 Q419 837 442 774" fill="none" stroke="#f7bdd9" stroke-width="5" opacity=".48" />
+      <text x="64" y="1032" fill="#fff7fb" font-family="Arial, sans-serif" font-size="25" letter-spacing="8" opacity=".82">A MOMENT ON THE WALL</text>
+    </svg>
+  `);
+});
+
 app.use((error, request, response, next) => {
   if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
     return response.status(413).json({
-      error: "Videos must be 90 MB or smaller."
+      error: "Photos and videos must be 90 MB or smaller."
     });
   }
   console.error("Unexpected server error:", error);
@@ -188,5 +339,6 @@ app.use((error, request, response, next) => {
 });
 
 app.listen(port, () => {
-  console.log(`Openframe is running on port ${port}`);
+  console.log(`Chaddi Gram is running on port ${port}`);
+  console.log(`Likes database: ${databasePath}`);
 });
