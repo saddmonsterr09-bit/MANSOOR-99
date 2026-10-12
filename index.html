@@ -173,6 +173,9 @@
         <span>Share a moment</span>
       </button>
       <div id="uploadOptions" class="mt-5 hidden">
+      <div class="mb-4 flex justify-end">
+        <button id="closeUpload" type="button" class="flex h-9 w-9 items-center justify-center rounded-full border token-border text-xl text-[var(--color-muted)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-text)]" aria-label="Close upload panel">×</button>
+      </div>
       <div class="mb-6 flex flex-col gap-3 rounded-[var(--radius)] border token-border-soft bg-[var(--color-bg)] p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p id="authStatus" class="font-semibold">Sign in with Google to upload. Browsing and watching videos stay open to everyone.</p>
@@ -388,6 +391,13 @@
       bottomPlus.setAttribute('aria-expanded', String(!isExpanded));
       uploadSection.classList.toggle('is-open', !isExpanded);
       uploadOptions.classList.toggle('hidden', isExpanded);
+    });
+
+    document.getElementById('closeUpload').addEventListener('click', () => {
+      toggleUpload.setAttribute('aria-expanded', 'false');
+      bottomPlus.setAttribute('aria-expanded', 'false');
+      uploadSection.classList.remove('is-open');
+      uploadOptions.classList.add('hidden');
     });
 
     bottomPlus.addEventListener('click', () => toggleUpload.click());
@@ -665,6 +675,9 @@
 
     function showSignedInUser(user) {
       googleUser = user;
+      const accountButton = document.getElementById('accountButton');
+      accountButton.textContent = '✓ Success';
+      accountButton.setAttribute('aria-label', user?.name ? `Signed in as ${user.name}` : 'Google sign-in successful');
       authStatus.textContent = 'Google account connected. You can publish your upload.';
       authAccount.textContent = user?.name ? `Signed in as ${user.name}${user.email ? ` · ${user.email}` : ''}` : '';
       googleSignInButton.classList.add('hidden');
@@ -675,6 +688,9 @@
 
     function showSignedOutUser(message = 'Sign in with Google to upload. Browsing and watching videos stay open to everyone.') {
       googleUser = null;
+      const accountButton = document.getElementById('accountButton');
+      accountButton.textContent = 'Log in / Sign up';
+      accountButton.setAttribute('aria-label', 'Log in or sign up');
       authStatus.textContent = message;
       accountDialogStatus.textContent = message;
       authAccount.textContent = '';
