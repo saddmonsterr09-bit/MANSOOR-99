@@ -1,10 +1,13 @@
 :root {
-  --color-primary: #f5c542;
-  --color-primary-contrast: #11100c;
+  --color-primary: #ec4899;
+  --color-primary-contrast: #fff7fb;
   --color-bg: #0b0b0a;
   --color-surface: #151512;
   --color-text: #f7f3e8;
   --color-muted: #a6a292;
+  --color-primary-rgb: 236, 72, 153;
+  --color-text-rgb: 247, 243, 232;
+  --color-bg-rgb: 11, 11, 10;
   --font-heading: "Arial Black", "Inter", system-ui, sans-serif;
   --font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --radius: 1.25rem;
@@ -16,6 +19,8 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -23,6 +28,29 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+video {
+  max-width: 100%;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+select {
+  color: inherit;
+}
+
+button {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 ::selection {
@@ -30,29 +58,80 @@ body {
   color: var(--color-primary-contrast);
 }
 
-.noise {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.28'/%3E%3C/svg%3E");
-  opacity: .035;
-  pointer-events: none;
+/* Safe solid-color fallbacks for browsers without color-mix(). */
+.token-border {
+  border-color: rgba(var(--color-text-rgb), .16);
+}
+
+.token-border-soft {
+  border-color: rgba(var(--color-text-rgb), .11);
+}
+
+.token-panel {
+  background: var(--color-surface);
+}
+
+.token-overlay {
+  background: rgba(var(--color-bg-rgb), .88);
+}
+
+.pill {
+  border: 1px solid rgba(var(--color-text-rgb), .1);
+  background: rgba(var(--color-text-rgb), .035);
 }
 
 .glow {
-  box-shadow: 0 0 0 1px rgba(245, 197, 66, .1), 0 20px 80px rgba(245, 197, 66, .08);
+  box-shadow: 0 0 0 1px rgba(var(--color-primary-rgb), .12), 0 20px 80px rgba(var(--color-primary-rgb), .10);
 }
 
 .upload-zone.is-dragging {
   border-color: var(--color-primary);
-  background: rgba(245, 197, 66, .08);
+  background: rgba(var(--color-primary-rgb), .10);
   transform: translateY(-2px);
 }
 
-.video-card video {
-  background: #050505;
+.video-card video,
+.media-card img,
+.media-card video {
+  background: var(--color-bg);
 }
 
-.pill {
-  border: 1px solid rgba(255, 255, 255, .1);
-  background: rgba(255, 255, 255, .035);
+.like-button[aria-pressed="true"] {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* Use the richer translucent treatments where supported. */
+@supports (color: color-mix(in srgb, white, black)) {
+  .token-border {
+    border-color: color-mix(in srgb, var(--color-text) 12%, transparent);
+  }
+
+  .token-border-soft {
+    border-color: color-mix(in srgb, var(--color-text) 8%, transparent);
+  }
+
+  .token-panel {
+    background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  }
+
+  .token-overlay {
+    background: color-mix(in srgb, var(--color-bg) 78%, transparent);
+  }
+
+  .glow {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent), 0 20px 80px color-mix(in srgb, var(--color-primary) 10%, transparent);
+  }
+
+  .upload-zone.is-dragging {
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  }
+}
+
+.noise {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.28'/%3E%3C/svg%3E");
+  opacity: .035;
+  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -70,5 +149,20 @@ body {
       opacity: 1;
       transform: translateY(0);
     }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
   }
 }
