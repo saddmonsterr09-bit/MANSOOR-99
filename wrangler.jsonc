@@ -1,7 +1,18 @@
 {
-  // ...
-  "vars": {
-    "GOOGLE_CLIENT_KEY": "976549415008-0piu9u1lqomrm3vpdf1v5v6ii0etajdd.apps.googleusercontent.com"
+  "name": "mansoor-99",
+  "main": "./cloudflare-worker.js",
+  "compatibility_date": "2026-10-06",
+  "assets": {
+    "directory": "./",
+    "binding": "ASSETS"
   },
-  // ...
+  "observability": {
+    "enabled": false
+  },
+  "r2_buckets": [
+    {
+      "binding": "VIDEOS",
+      "bucket_name": "personal"
+    }
+  ]
 }
