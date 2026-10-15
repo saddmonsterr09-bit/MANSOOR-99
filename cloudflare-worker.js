@@ -40,8 +40,8 @@ function mediaUrl(key) {
   return `/media/${encodeURIComponent(key)}`;
 }
 
-async function verifyGoogleToken(token, clientId) {
-  if (!token || !clientId) return null;
+async function verifyGoogleToken(token, googleCLientId) {
+  if (!token || !googleCLientId) return null;
 
   try {
     const query = new URLSearchParams({
@@ -51,7 +51,7 @@ async function verifyGoogleToken(token, clientId) {
     if (!response.ok) return null;
 
     const payload = await response.json();
-    if (payload.aud !== clientId || payload.email_verified !== "true" || !payload.sub) return null;
+    if (payload.aud !== googleCLientId || payload.email_verified !== "true" || !payload.sub) return null;
     return payload;
   } catch (error) {
     return null;
@@ -104,7 +104,7 @@ export default {
 
     if (url.pathname === "/api/auth/config" && request.method === "GET") {
       return json({
-        googleClientId: env.GOOGLE_CLIENT_ID || null
+        googlegoogleCLientId: env.GOOGLE_CLIENT_ID || null
       });
     }
 
