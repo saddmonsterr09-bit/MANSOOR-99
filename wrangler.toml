@@ -10,3 +10,6 @@ binding = "ASSETS"
 [[r2_buckets]]
 binding = "VIDEOS"
 bucket_name = "personal"
+
+[vars]
+GOOGLE_CLIENT_ID = "563430307863-39s8tu23rnk3uud2hj5onmb3ptog79cl.apps.googleusercontent.com"
