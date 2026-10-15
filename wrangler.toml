@@ -1,0 +1,12 @@
+name = "mansoor-99"
+main = "cloudflare-worker.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+[assets]
+directory = "."
+binding = "ASSETS"
+
+[[r2_buckets]]
+binding = "VIDEOS"
+bucket_name = "personal"
