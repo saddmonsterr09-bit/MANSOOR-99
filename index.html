@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="var(--color-bg)">
-  <title>Full Masti 🤤 — A public video &amp; photo wall</title>
+  <title>CHADDI GRAM 😀 — A public video &amp; photo wall</title>
   <link rel="stylesheet" href="/theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -115,9 +115,9 @@
   <div class="noise fixed inset-0 z-50"></div>
 
   <header class="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-8 lg:px-10">
-    <a href="/" class="flex items-center gap-3" aria-label="Chaddi Gram home">
+    <a href="/" class="flex items-center gap-3" aria-label="CHADDI GRAM home">
       <span class="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] bg-[var(--color-primary)] text-xl font-black text-[var(--color-primary-contrast)]">🔥</span>
-      <span class="text-sm font-black tracking-[.12em]">Full Masti 🤤</span>
+      <span class="text-sm font-black tracking-[.12em]">CHADDI GRAM 😀</span>
     </a>
     <nav class="hidden items-center gap-8 text-sm text-[var(--color-muted)] md:flex" aria-label="Main navigation">
       <a class="transition hover:text-[var(--color-text)]" href="#wall">The wall</a>
@@ -159,7 +159,7 @@
       <div class="relative mx-auto w-full max-w-xl float-in [animation-delay:120ms]">
         <div class="absolute -inset-5 rounded-[2rem] bg-[var(--color-primary)]/10 blur-3xl"></div>
         <figure class="relative overflow-hidden rounded-[2rem] border token-border token-panel p-3 glow">
-          <img src="/SAD.jpg" alt="Featured Chaddi Gram photo" class="aspect-[4/5] w-full rounded-[1.5rem] object-cover" fetchpriority="high">
+          <img src="/SAD.jpg" alt="Featured CHADDI GRAM photo" class="aspect-[4/5] w-full rounded-[1.5rem] object-cover" fetchpriority="high">
         </figure>
         <div class="mt-4 flex justify-end">
           <button class="like-button like-hero inline-flex items-center gap-2 rounded-full border token-border token-panel px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)]" data-media-id="featured-sad-image" type="button" aria-pressed="false"><span class="like-icon" aria-hidden="true">♡</span><span class="like-count">0</span><span>Likes</span></button>
@@ -173,9 +173,6 @@
         <span>Share a moment</span>
       </button>
       <div id="uploadOptions" class="mt-5 hidden">
-      <div class="mb-4 flex justify-end">
-        <button id="closeUpload" type="button" class="flex h-9 w-9 items-center justify-center rounded-full border token-border text-xl text-[var(--color-muted)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-text)]" aria-label="Close upload panel">×</button>
-      </div>
       <div class="mb-6 flex flex-col gap-3 rounded-[var(--radius)] border token-border-soft bg-[var(--color-bg)] p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p id="authStatus" class="font-semibold">Sign in with Google to upload. Browsing and watching videos stay open to everyone.</p>
@@ -192,6 +189,7 @@
           <h2 class="text-3xl font-black tracking-tight sm:text-4xl">Drop something real.</h2>
         </div>
         <p class="max-w-sm text-sm leading-6 text-[var(--color-muted)]">Choose photo, video, or GIF, then upload it to the public wall. No account needed.</p>
+        <button id="closeUpload" type="button" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border token-border text-xl text-[var(--color-muted)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-text)]" aria-label="Close upload panel">×</button>
       </div>
       <div class="mb-4 grid grid-cols-3 gap-3" role="group" aria-label="Choose upload type">
         <button type="button" class="upload-type-option rounded-[var(--radius)] border token-border bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-[var(--color-primary-contrast)] transition" data-upload-type="photo" aria-pressed="true">📷 Photo</button>
@@ -271,7 +269,7 @@
 
   <footer class="relative z-10 border-t token-border-soft">
     <div class="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-[var(--color-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
-      <p><strong class="font-black">Full Masti 🤤</strong> <span class="mx-2">/</span> Created by <span class="text-[var(--color-primary)]">Mansoor Dev</span></p>
+      <p><strong class="font-black">CHADDI GRAM 😀</strong> <span class="mx-2">/</span> Created by <span class="text-[var(--color-primary)]">Mansoor Dev</span></p>
       <p>Photos &amp; videos, shared with everyone <span class="ml-2 text-[var(--color-primary)]">●</span></p>
     </div>
   </footer>
@@ -393,14 +391,14 @@
       uploadOptions.classList.toggle('hidden', isExpanded);
     });
 
+    bottomPlus.addEventListener('click', () => toggleUpload.click());
+
     document.getElementById('closeUpload').addEventListener('click', () => {
       toggleUpload.setAttribute('aria-expanded', 'false');
       bottomPlus.setAttribute('aria-expanded', 'false');
       uploadSection.classList.remove('is-open');
       uploadOptions.classList.add('hidden');
     });
-
-    bottomPlus.addEventListener('click', () => toggleUpload.click());
 
     document.querySelectorAll('a[href="#upload"]').forEach((link) => {
       link.addEventListener('click', (event) => {
