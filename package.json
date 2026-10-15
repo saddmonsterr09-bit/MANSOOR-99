@@ -1,19 +1,9 @@
 {
-  "name": "openframe-video-wall",
+  "name": "full-masti-worker",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
-  },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.940.0",
-    "better-sqlite3": "^12.4.1",
-    "cors": "^2.8.5",
-    "dotenv": "^16.6.1",
-    "express": "^5.1.0",
-    "google-auth-library": "^9.15.1",
-    "multer": "^2.0.2"
+    "deploy": "wrangler deploy --config wrangler.toml"
   }
 }
