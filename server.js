@@ -1,9 +1,4 @@
-import "dotenv/config";
-import express from "express";
-import cors from "cors";
-import { OAuth2Client } from "google-auth-library";
-import multer from "multer";
-import Database from "better-sqlite3";
+import { createRequire } from "node:module";
 import {
   mkdirSync
 } from "node:fs";
@@ -11,6 +6,21 @@ import {
   dirname,
   resolve
 } from "node:path";
+import {
+  fileURLToPath
+} from "node:url";
+
+const projectRoot = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(resolve(projectRoot, "node-backend/package.json"));
+require("dotenv").config({
+  path: resolve(projectRoot, ".env")
+});
+
+const express = require("express");
+const cors = require("cors");
+const { OAuth2Client } = require("google-auth-library");
+const multer = require("multer");
+const Database = require("better-sqlite3");
 import {
   GetObjectCommand,
   HeadObjectCommand,
@@ -38,7 +48,7 @@ const allowedImageTypes = new Set([
   "image/avif"
 ]);
 
-const databasePath = resolve(process.env.DATABASE_PATH || "../openframe-data/openframe.sqlite");
+const databasePath = resolve(projectRoot, process.env.DATABASE_PATH || "../openframe-data/openframe.sqlite");
 mkdirSync(dirname(databasePath), {
   recursive: true
 });
@@ -89,7 +99,7 @@ app.use(cors());
 app.use(express.json({
   limit: "20kb"
 }));
-app.use(express.static("."));
+app.use(express.static(projectRoot));
 
 function safeText(value, fallback, maxLength) {
   const text = String(value || "").trim().slice(0, maxLength);
