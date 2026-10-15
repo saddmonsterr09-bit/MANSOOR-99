@@ -2,15 +2,24 @@
 
 A public photo and video wall with uploads stored in Cloudflare R2 and shared likes stored in SQLite.
 
-## Run the Node.js app
+## Deploy to Cloudflare Workers
+
+1. Open the Cloudflare Worker project and use the repository root as its working directory.
+2. Leave the build command empty. Set the deploy command to `npx wrangler deploy`.
+3. The Worker configuration is in `wrangler.jsonc`; it uses `cloudflare-worker.js` as its entry point.
+4. Set `GOOGLE_CLIENT_ID` as a Worker variable if you want Google sign-in and uploads. It is not needed to build or deploy the Worker.
+
+The root `package.json` intentionally has no Node server dependencies, so the Worker build does not try to install native Node packages such as `better-sqlite3`.
+
+## Run the optional Node.js backend
 
 1. Use Node.js 20 or newer.
-2. Install dependencies with `npm install`.
+2. Install dependencies with `npm --prefix node-backend install`.
 3. Copy `.env.example` to `.env` and add your Cloudflare R2 endpoint and credentials.
-4. Start the app with `npm start`.
+4. Start the server with `npm --prefix node-backend start`.
 5. Open the app at `http://localhost:3000`.
 
-The same Node.js server serves the website and API. Keep R2 credentials in server environment variables; never commit `.env` to GitHub.
+The Node.js server serves the website and API. Keep R2 credentials in server environment variables; never commit `.env` to GitHub.
 
 ## Google sign-in for uploads
 
