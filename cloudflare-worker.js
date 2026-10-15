@@ -104,7 +104,7 @@ export default {
 
     if (url.pathname === "/api/auth/config" && request.method === "GET") {
       return json({
-        googlegoogleCLientId: env.GOOGLE_CLIENT_ID || null
+        googleCLientId: env.GOOGLE_CLIENT_ID || null
       });
     }
 
