@@ -40,7 +40,6 @@
     <nav class="hidden items-center gap-8 text-sm text-[var(--color-muted)] md:flex" aria-label="Main navigation">
       <a class="transition hover:text-[var(--color-text)]" href="#wall">The wall</a>
       <a class="transition hover:text-[var(--color-text)]" href="#upload">Share photos &amp; videos</a>
-      <!-- Naya Profile Link -->
       <a class="transition hover:text-[var(--color-text)]" href="/profile/index.html">My Profile</a>
     </nav>
     <button id="accountButton" type="button" class="rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Log in / Sign up</button>
@@ -135,7 +134,6 @@
           <button id="clearFile" type="button" class="text-sm text-[var(--color-muted)] underline underline-offset-4 hover:text-[var(--color-text)]">Remove</button>
         </div>
         <div class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
-          <!-- Creator Name input hata diya gaya hai -->
           <input id="mediaTitle" class="rounded-xl border token-border-soft bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-primary)]" placeholder="Give it a title">
           <button id="publishButton" type="button" class="rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold text-[var(--color-primary-contrast)] transition hover:brightness-110">Publish</button>
         </div>
@@ -418,7 +416,6 @@
         const details = document.createElement('div'); details.className = 'reel-details';
         const title = document.createElement('h3'); title.className = 'text-lg font-bold'; title.textContent = item.title || 'Untitled moment';
         
-        // Creator Name par click karne se Profile khulega
         const creator = document.createElement('p'); creator.className = 'mt-1 text-sm text-[var(--color-muted)] cursor-pointer hover:underline pointer-events-auto';
         creator.textContent = `by ${item.creator || 'Anonymous creator'}`;
         creator.onclick = (e) => {
@@ -429,3 +426,11 @@
         details.append(title, creator, makeLikeButton(item.key || item.id)); card.append(video, details); reelsFeed.append(card);
       });
       if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            const video = entry.target.querySelector('video');
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.65) { video.play().catch(() => {}); }
+            else { video.pause(); }
+          });
+        }, { root: reelsFeed, threshold: [0, 0.65, 1] });
+        reelsFeed.querySelectorAll('.re
