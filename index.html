@@ -433,4 +433,215 @@
             else { video.pause(); }
           });
         }, { root: reelsFeed, threshold: [0, 0.65, 1] });
-        reelsFeed.querySelectorAll('.re
+        reelsFeed.querySelectorAll('.reel-card').forEach((card) => observer.observe(card));
+      }
+    }
+
+    function applyFilter() {
+      const filter = document.getElementById('mediaFilter').value;
+      const cards = [...mediaGrid.children];
+      let visibleCount = 0;
+      cards.forEach((card) => {
+        const isVisible = filter === 'all' || card.dataset.type === filter;
+        card.classList.toggle('hidden', !isVisible);
+        if (isVisible) visibleCount += 1;
+      });
+      countLabel.textContent = `${visibleCount} ${visibleCount === 1 ? 'post' : 'posts'}`;
+    }
+
+    document.getElementById('mediaFilter').addEventListener('change', applyFilter);
+
+    async function loadMedia() {
+      try {
+        const response = await fetch('/api/media');
+        if (!response.ok) throw new Error('Could not load media.');
+        galleryItems = await response.json();
+        mediaGrid.replaceChildren(...galleryItems.map(renderMedia));
+        renderReels(galleryItems);
+        applyFilter();
+        if (!galleryItems.length) wallStatus.textContent = 'Be the first to share a photo or video.';
+      } catch (error) {
+        countLabel.textContent = 'Wall offline';
+        wallStatus.textContent = 'The public wall will load when the Node.js backend and storage are connected.';
+      }
+    }
+
+    function showSignedInUser(user) {
+      googleUser = user;
+      
+      let registeredUsers = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}');
+      registeredUsers[user.email] = { name: user.name, picture: user.picture, email: user.email };
+      localStorage.setItem('reelsBookUsers', JSON.stringify(registeredUsers));
+      localStorage.setItem('currentReelsUser', JSON.stringify(registeredUsers[user.email]));
+
+      const accountButton = document.getElementById('accountButton');
+      accountButton.textContent = '✓ My Account';
+      accountButton.setAttribute('aria-label', user?.name ? `Signed in as ${user.name}` : 'Signed in');
+      
+      authStatus.textContent = 'Google account connected. You can publish.';
+      authAccount.textContent = `Signed in as ${user.name}`;
+      
+      googleSignInButton.classList.add('hidden');
+      signOutButton.classList.remove('hidden');
+      accountDialogStatus.textContent = 'Google account connected.';
+      closeAccountDialog();
+    }
+
+    function showSignedOutUser(message = 'Sign in with Google to upload. Browsing and watching videos stay open to everyone.') {
+      googleUser = null;
+      const accountButton = document.getElementById('accountButton');
+      accountButton.textContent = 'Log in / Sign up';
+      accountButton.setAttribute('aria-label', 'Log in or sign up');
+      authStatus.textContent = message;
+      accountDialogStatus.textContent = message;
+      authAccount.textContent = '';
+      googleSignInButton.classList.remove('hidden');
+      signOutButton.classList.add('hidden');
+    }
+
+    async function verifyGoogleCredential(credential) {
+      const response = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ credential })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Google sign-in could not be verified.');
+      googleCredential = credential;
+      sessionStorage.setItem(authStorageKey, credential);
+      showSignedInUser(result);
+    }
+
+    async function initializeGoogleSignIn() {
+      try {
+        const configResponse = await fetch('/api/auth/config');
+        const config = await configResponse.json();
+        if (!configResponse.ok || !config.googleClientId) {
+          showSignedOutUser('Google sign-in is not configured yet. The site owner needs to add GOOGLE_CLIENT_ID.');
+          googleSignInButton.textContent = '';
+          return;
+        }
+
+        let attempts = 0;
+        const waitForLibrary = window.setInterval(() => {
+          attempts += 1;
+          if (window.google?.accounts?.id) {
+            window.clearInterval(waitForLibrary);
+            window.google.accounts.id.initialize({
+              client_id: config.googleClientId,
+              callback: async (response) => {
+                try {
+                  await verifyGoogleCredential(response.credential);
+                } catch (error) {
+                  showSignedOutUser(error.message);
+                }
+              }
+            });
+            window.google.accounts.id.renderButton(googleSignInButton, {
+              type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill'
+            });
+            window.google.accounts.id.renderButton(document.getElementById('googleContinueButton'), {
+              type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: 280
+            });
+            window.google.accounts.id.renderButton(document.getElementById('googleSignupButton'), {
+              type: 'standard', theme: 'outline', size: 'large', text: 'signup_with', shape: 'pill', width: 280
+            });
+            if (googleCredential) {
+              verifyGoogleCredential(googleCredential).catch(() => {
+                googleCredential = '';
+                sessionStorage.removeItem(authStorageKey);
+                showSignedOutUser('Your Google sign-in expired. Sign in again to upload.');
+              });
+            }
+          } else if (attempts >= 100) {
+            window.clearInterval(waitForLibrary);
+            showSignedOutUser('Google sign-in could not load. Check your connection and reload the page.');
+          }
+        }, 100);
+      } catch (error) {
+        showSignedOutUser('Could not check Google sign-in settings. Please reload the page.');
+      }
+    }
+
+    signOutButton.addEventListener('click', () => {
+      googleCredential = '';
+      sessionStorage.removeItem(authStorageKey);
+      window.google?.accounts?.id?.disableAutoSelect();
+      showSignedOutUser();
+    });
+
+    initializeGoogleSignIn();
+
+    document.getElementById('publishButton').addEventListener('click', (event) => {
+      if (!googleCredential || !googleUser) {
+        showUploadMessage('Sign in with Google before publishing. You can still browse the wall and watch videos without an account.');
+        return;
+      }
+
+      if (!selectedFile) {
+        showUploadMessage('Choose a photo or video before publishing.');
+        return;
+      }
+      const button = event.currentTarget;
+      const title = document.getElementById('mediaTitle').value.trim() || selectedFile.name.replace(/\.[^/.]+$/, '');
+      
+      const formData = new FormData();
+      formData.append('media', selectedFile);
+      formData.append('title', title);
+      formData.append('creator', googleUser.name || 'Anonymous');
+      formData.append('creatorEmail', googleUser.email || '');
+      formData.append('creatorPic', googleUser.picture || '');
+
+      button.disabled = true;
+      button.textContent = 'Uploading… 0%';
+      showUploadMessage('Uploading to cloud storage. Please keep this tab open.');
+
+      const request = new XMLHttpRequest();
+      request.open('POST', '/api/upload');
+      request.setRequestHeader('Authorization', `Bearer ${googleCredential}`);
+      request.timeout = 30 * 60 * 1000;
+      request.upload.addEventListener('progress', (progressEvent) => {
+        if (!progressEvent.lengthComputable) return;
+        const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
+        button.textContent = `Uploading… ${percent}%`;
+        showUploadMessage(`Uploading your ${selectedFile.type.startsWith('image/') ? 'photo' : 'video'}… ${percent}%`);
+      });
+      request.addEventListener('load', async () => {
+        try {
+          const result = JSON.parse(request.responseText);
+          if (request.status < 200 || request.status >= 300) throw new Error(result.error || `Upload failed (${request.status}).`);
+          showUploadMessage('Published successfully to the public wall.');
+          selectedFile = null;
+          mediaInput.value = '';
+          filePanel.classList.add('hidden');
+          document.getElementById('mediaTitle').value = '';
+          await loadMedia();
+        } catch (error) {
+          showUploadMessage(error.message || 'Upload failed. Please try again.');
+        } finally {
+          button.disabled = false;
+          button.textContent = 'Publish';
+        }
+      });
+      request.addEventListener('error', () => {
+        showUploadMessage('Network error. Check that the backend is running and try again.');
+        button.disabled = false;
+        button.textContent = 'Publish';
+      });
+      request.addEventListener('timeout', () => {
+        showUploadMessage('The upload timed out. Try a smaller file or a faster connection.');
+        button.disabled = false;
+        button.textContent = 'Publish';
+      });
+      request.send(formData);
+    });
+
+    const featuredLikeButton = document.querySelector('.like-hero');
+    attachLikeHandler(featuredLikeButton);
+    loadLikeState('featured-sad-image', featuredLikeButton);
+    loadMedia();
+
+  </script>
+</body>
+
+</html>
