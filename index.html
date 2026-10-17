@@ -11,104 +11,21 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
-    .token-border {
-      border-color: color-mix(in srgb, var(--color-text) 12%, transparent);
-    }
-
-    .token-border-soft {
-      border-color: color-mix(in srgb, var(--color-text) 8%, transparent);
-    }
-
-    .token-panel {
-      background: color-mix(in srgb, var(--color-surface) 92%, transparent);
-    }
-
-    .token-overlay {
-      background: color-mix(in srgb, var(--color-bg) 78%, transparent);
-    }
-
-    .media-card img,
-    .media-card video {
-      background: var(--color-bg);
-    }
-
-    .like-button[aria-pressed="true"] {
-      color: var(--color-primary);
-      border-color: var(--color-primary);
-    }
-
-    .upload-zone.is-dragging {
-      border-color: var(--color-primary);
-      background: color-mix(in srgb, var(--color-primary) 9%, transparent);
-    }
-
-    #upload {
-      display: none;
-      position: fixed;
-      z-index: 45;
-      right: 1rem;
-      bottom: 6rem;
-      left: 1rem;
-      max-height: calc(100svh - 8rem);
-      overflow-y: auto;
-      box-shadow: 0 24px 80px rgba(var(--color-bg-rgb), .7);
-    }
-
-    #upload.is-open {
-      display: block;
-    }
-
-    .reels-feed {
-      display: grid;
-      gap: 1rem;
-      max-height: min(78svh, 52rem);
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      scroll-snap-type: y mandatory;
-      scrollbar-width: thin;
-      scrollbar-color: var(--color-primary) var(--color-surface);
-    }
-
-    .reel-card {
-      position: relative;
-      min-height: 32rem;
-      height: min(78svh, 52rem);
-      overflow: hidden;
-      scroll-snap-align: start;
-      background: var(--color-surface);
-    }
-
-    .reel-card video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      background: var(--color-bg);
-    }
-
-    .reel-details {
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      padding: 5rem 1.25rem 1.25rem;
-      background: linear-gradient(transparent, rgba(var(--color-bg-rgb), .88));
-    }
-
-    .bottom-dock {
-      padding-bottom: max(.75rem, env(safe-area-inset-bottom));
-    }
-
-    @media (max-width: 640px) {
-      .reels-feed {
-        max-height: 72svh;
-      }
-
-      .reel-card {
-        min-height: 28rem;
-        height: 72svh;
-      }
-    }
-
+    .token-border { border-color: color-mix(in srgb, var(--color-text) 12%, transparent); }
+    .token-border-soft { border-color: color-mix(in srgb, var(--color-text) 8%, transparent); }
+    .token-panel { background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
+    .token-overlay { background: color-mix(in srgb, var(--color-bg) 78%, transparent); }
+    .media-card img, .media-card video { background: var(--color-bg); }
+    .like-button[aria-pressed="true"] { color: var(--color-primary); border-color: var(--color-primary); }
+    .upload-zone.is-dragging { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 9%, transparent); }
+    #upload { display: none; position: fixed; z-index: 45; right: 1rem; bottom: 6rem; left: 1rem; max-height: calc(100svh - 8rem); overflow-y: auto; box-shadow: 0 24px 80px rgba(var(--color-bg-rgb), .7); }
+    #upload.is-open { display: block; }
+    .reels-feed { display: grid; gap: 1rem; max-height: min(78svh, 52rem); overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; scrollbar-width: thin; scrollbar-color: var(--color-primary) var(--color-surface); }
+    .reel-card { position: relative; min-height: 32rem; height: min(78svh, 52rem); overflow: hidden; scroll-snap-align: start; background: var(--color-surface); }
+    .reel-card video { width: 100%; height: 100%; object-fit: cover; background: var(--color-bg); }
+    .reel-details { position: absolute; right: 0; bottom: 0; left: 0; padding: 5rem 1.25rem 1.25rem; background: linear-gradient(transparent, rgba(var(--color-bg-rgb), .88)); }
+    .bottom-dock { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
+    @media (max-width: 640px) { .reels-feed { max-height: 72svh; } .reel-card { min-height: 28rem; height: 72svh; } }
   </style>
 </head>
 
@@ -123,6 +40,8 @@
     <nav class="hidden items-center gap-8 text-sm text-[var(--color-muted)] md:flex" aria-label="Main navigation">
       <a class="transition hover:text-[var(--color-text)]" href="#wall">The wall</a>
       <a class="transition hover:text-[var(--color-text)]" href="#upload">Share photos &amp; videos</a>
+      <!-- Naya Profile Link -->
+      <a class="transition hover:text-[var(--color-text)]" href="/profile/index.html">My Profile</a>
     </nav>
     <button id="accountButton" type="button" class="rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Log in / Sign up</button>
   </header>
@@ -215,8 +134,8 @@
           </div>
           <button id="clearFile" type="button" class="text-sm text-[var(--color-muted)] underline underline-offset-4 hover:text-[var(--color-text)]">Remove</button>
         </div>
-        <div class="mt-5 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-          <input id="creatorName" class="rounded-xl border token-border-soft bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-primary)]" placeholder="Your name (optional)">
+        <div class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <!-- Creator Name input hata diya gaya hai -->
           <input id="mediaTitle" class="rounded-xl border token-border-soft bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-primary)]" placeholder="Give it a title">
           <button id="publishButton" type="button" class="rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold text-[var(--color-primary-contrast)] transition hover:brightness-110">Publish</button>
         </div>
@@ -262,7 +181,7 @@
       <span>Wall</span>
     </a>
     <button id="bottomPlus" type="button" class="flex h-11 w-11 -translate-y-1 items-center justify-center rounded-[var(--radius)] bg-[var(--color-primary)] text-3xl font-light leading-none text-[var(--color-primary-contrast)] shadow-lg transition hover:scale-105" aria-label="Open upload options" aria-expanded="false" aria-controls="uploadOptions">+</button>
-    <a href="/reels" class="flex min-w-16 flex-col items-center gap-1 text-[var(--color-muted)] transition hover:text-[var(--color-text)]">
+    <a href="/reels" class="flex min-w-16 flex-col items-center gap-1 text-xs font-semibold text-[var(--color-muted)] transition hover:text-[var(--color-text)]">
       <span class="text-xl" aria-hidden="true">▶</span>
       <span>Reels</span>
     </a>
@@ -298,21 +217,9 @@
     let googleUser = null;
     const maxUploadSize = 90 * 1024 * 1024;
     const uploadTypes = {
-      photo: {
-        accept: 'image/jpeg,image/png,image/webp,image/avif',
-        title: 'Drag & drop a photo here',
-        hint: 'or click to browse · JPG, PNG, WEBP, AVIF · up to 90 MB'
-      },
-      video: {
-        accept: 'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska',
-        title: 'Drag & drop a video here',
-        hint: 'or click to browse · MP4, MOV, WEBM, OGG, MKV · up to 90 MB'
-      },
-      gif: {
-        accept: 'image/gif',
-        title: 'Drag & drop a GIF here',
-        hint: 'or click to browse · GIF · up to 90 MB'
-      }
+      photo: { accept: 'image/jpeg,image/png,image/webp,image/avif', title: 'Drag & drop a photo here', hint: 'or click to browse · JPG, PNG, WEBP, AVIF · up to 90 MB' },
+      video: { accept: 'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska', title: 'Drag & drop a video here', hint: 'or click to browse · MP4, MOV, WEBM, OGG, MKV · up to 90 MB' },
+      gif: { accept: 'image/gif', title: 'Drag & drop a GIF here', hint: 'or click to browse · GIF · up to 90 MB' }
     };
     let activeUploadType = 'photo';
     let selectedFile = null;
@@ -324,7 +231,6 @@
       localStorage.setItem('chaddiGramVisitorId', visitorId);
       return visitorId;
     }
-
     const visitorId = getVisitorId();
 
     function readableSize(bytes) {
@@ -359,7 +265,6 @@
 
     const toggleUpload = document.getElementById('toggleUpload');
     const uploadOptions = document.getElementById('uploadOptions');
-
     const bottomPlus = document.getElementById('bottomPlus');
     const uploadSection = document.getElementById('upload');
 
@@ -377,12 +282,8 @@
 
     document.getElementById('accountButton').addEventListener('click', openAccountDialog);
     document.getElementById('closeAccountDialog').addEventListener('click', closeAccountDialog);
-    accountDialog.addEventListener('click', (event) => {
-      if (event.target === accountDialog) closeAccountDialog();
-    });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !accountDialog.classList.contains('hidden')) closeAccountDialog();
-    });
+    accountDialog.addEventListener('click', (event) => { if (event.target === accountDialog) closeAccountDialog(); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !accountDialog.classList.contains('hidden')) closeAccountDialog(); });
 
     toggleUpload.addEventListener('click', () => {
       const isExpanded = toggleUpload.getAttribute('aria-expanded') === 'true';
@@ -414,20 +315,10 @@
 
     function showFile(file) {
       if (!file) return;
-      const matchesSelection = activeUploadType === 'photo' ?
-        file.type.startsWith('image/') && file.type !== 'image/gif' :
-        activeUploadType === 'video' ? file.type.startsWith('video/') :
-          file.type === 'image/gif';
-      if (!matchesSelection) {
-        showUploadMessage(`Please choose a ${activeUploadType === 'gif' ? 'GIF' : activeUploadType} file for the selected option.`);
-        return;
-      }
+      const matchesSelection = activeUploadType === 'photo' ? file.type.startsWith('image/') && file.type !== 'image/gif' : activeUploadType === 'video' ? file.type.startsWith('video/') : file.type === 'image/gif';
+      if (!matchesSelection) { showUploadMessage(`Please choose a ${activeUploadType === 'gif' ? 'GIF' : activeUploadType} file for the selected option.`); return; }
       const isPhoto = activeUploadType === 'photo' || activeUploadType === 'gif';
-      const isVideo = activeUploadType === 'video';
-      if (file.size > maxUploadSize) {
-        showUploadMessage('Files must be 90 MB or smaller. Please choose a smaller file.');
-        return;
-      }
+      if (file.size > maxUploadSize) { showUploadMessage('Files must be 90 MB or smaller. Please choose a smaller file.'); return; }
       selectedFile = file;
       fileName.textContent = file.name;
       fileSize.textContent = `${readableSize(file.size)} · ${isPhoto ? 'photo' : 'video'} · ready to upload`;
@@ -437,25 +328,12 @@
     }
 
     mediaInput.addEventListener('change', () => showFile(mediaInput.files[0]));
-    ['dragenter', 'dragover'].forEach((eventName) => {
-      dropZone.addEventListener(eventName, (event) => {
-        event.preventDefault();
-        dropZone.classList.add('is-dragging');
-      });
-    });
-    ['dragleave', 'drop'].forEach((eventName) => {
-      dropZone.addEventListener(eventName, (event) => {
-        event.preventDefault();
-        dropZone.classList.remove('is-dragging');
-      });
-    });
+    ['dragenter', 'dragover'].forEach((eventName) => { dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.add('is-dragging'); }); });
+    ['dragleave', 'drop'].forEach((eventName) => { dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.remove('is-dragging'); }); });
     dropZone.addEventListener('drop', (event) => showFile(event.dataTransfer.files[0]));
 
     document.getElementById('clearFile').addEventListener('click', () => {
-      selectedFile = null;
-      mediaInput.value = '';
-      filePanel.classList.add('hidden');
-      uploadStatus.classList.add('hidden');
+      selectedFile = null; mediaInput.value = ''; filePanel.classList.add('hidden'); uploadStatus.classList.add('hidden');
     });
 
     function updateLikeButton(button, result) {
@@ -465,81 +343,38 @@
     }
 
     const localLikeStorageKey = 'fullMastiLocalLikes';
-
     function readLocalLike(mediaId) {
-      try {
-        const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}');
-        return savedLikes[mediaId] || {
-          count: 0,
-          liked: false
-        };
-      } catch (error) {
-        return {
-          count: 0,
-          liked: false
-        };
-      }
+      try { const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}'); return savedLikes[mediaId] || { count: 0, liked: false }; } catch (error) { return { count: 0, liked: false }; }
     }
-
     function saveLocalLike(mediaId, state) {
-      try {
-        const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}');
-        savedLikes[mediaId] = state;
-        localStorage.setItem(localLikeStorageKey, JSON.stringify(savedLikes));
-      } catch (error) {
-        console.info('This browser could not save the local like state.');
-      }
+      try { const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}'); savedLikes[mediaId] = state; localStorage.setItem(localLikeStorageKey, JSON.stringify(savedLikes)); } catch (error) { console.info('This browser could not save the local like state.'); }
     }
-
     function toggleLocalLike(mediaId, button) {
-      const current = readLocalLike(mediaId);
-      const liked = !current.liked;
-      const result = {
-        count: Math.max(0, current.count + (liked ? 1 : -1)),
-        liked
-      };
-      saveLocalLike(mediaId, result);
-      updateLikeButton(button, result);
+      const current = readLocalLike(mediaId); const liked = !current.liked;
+      const result = { count: Math.max(0, current.count + (liked ? 1 : -1)), liked };
+      saveLocalLike(mediaId, result); updateLikeButton(button, result);
     }
 
     async function loadLikeState(mediaId, button) {
       try {
-        const query = new URLSearchParams({
-          mediaId,
-          visitorId
-        });
+        const query = new URLSearchParams({ mediaId, visitorId });
         const response = await fetch(`/api/likes?${query}`);
         if (!response.ok) throw new Error('Likes API is unavailable.');
         updateLikeButton(button, await response.json());
-      } catch (error) {
-        updateLikeButton(button, readLocalLike(mediaId));
-      }
+      } catch (error) { updateLikeButton(button, readLocalLike(mediaId)); }
     }
 
     function attachLikeHandler(button) {
       button.addEventListener('click', async () => {
-        const mediaId = button.dataset.mediaId;
-        button.disabled = true;
+        const mediaId = button.dataset.mediaId; button.disabled = true;
         try {
-          const response = await fetch('/api/likes', {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-              mediaId,
-              visitorId
-            })
-          });
+          const response = await fetch('/api/likes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mediaId, visitorId }) });
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || 'Likes API is unavailable.');
           updateLikeButton(button, result);
         } catch (error) {
-          toggleLocalLike(mediaId, button);
-          wallStatus.textContent = 'Like saved in this browser. Connect the likes API to share counts with everyone.';
-        } finally {
-          button.disabled = false;
-        }
+          toggleLocalLike(mediaId, button); wallStatus.textContent = 'Like saved in this browser. Connect the likes API to share counts with everyone.';
+        } finally { button.disabled = false; }
       });
     }
 
@@ -547,12 +382,9 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = `like-button inline-flex items-center gap-2 rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] ${hero ? 'like-hero absolute bottom-6 right-6 token-overlay backdrop-blur' : 'mt-4'}`;
-      button.dataset.mediaId = mediaId;
-      button.setAttribute('aria-pressed', 'false');
+      button.dataset.mediaId = mediaId; button.setAttribute('aria-pressed', 'false');
       button.innerHTML = '<span class="like-icon" aria-hidden="true">♡</span><span class="like-count">0</span><span>Likes</span>';
-      attachLikeHandler(button);
-      loadLikeState(mediaId, button);
-      return button;
+      attachLikeHandler(button); loadLikeState(mediaId, button); return button;
     }
 
     function renderMedia(item) {
@@ -562,297 +394,38 @@
       const mediaId = item.key || item.id;
       let media;
       if (item.type === 'photo') {
-        media = document.createElement('img');
-        media.src = item.url;
-        media.alt = item.title || 'Community photo';
-        media.loading = 'lazy';
-        media.className = 'aspect-video w-full object-cover';
+        media = document.createElement('img'); media.src = item.url; media.alt = item.title || 'Community photo'; media.loading = 'lazy'; media.className = 'aspect-video w-full object-cover';
       } else {
-        media = document.createElement('video');
-        media.src = item.url;
-        media.controls = true;
-        media.preload = 'metadata';
-        media.className = 'aspect-video w-full object-cover';
+        media = document.createElement('video'); media.src = item.url; media.controls = true; media.preload = 'metadata'; media.className = 'aspect-video w-full object-cover';
       }
-      const details = document.createElement('div');
-      details.className = 'p-5';
-      const title = document.createElement('h3');
-      title.className = 'font-bold';
-      title.textContent = item.title || 'Untitled moment';
-      const creator = document.createElement('p');
-      creator.className = 'mt-2 text-sm text-[var(--color-muted)]';
+      const details = document.createElement('div'); details.className = 'p-5';
+      const title = document.createElement('h3'); title.className = 'font-bold'; title.textContent = item.title || 'Untitled moment';
+      const creator = document.createElement('p'); creator.className = 'mt-2 text-sm text-[var(--color-muted)]';
       creator.textContent = `by ${item.creator || 'Anonymous creator'} · ${item.type === 'photo' ? 'Photo' : 'Video'}`;
-      details.append(title, creator, makeLikeButton(mediaId));
-      card.append(media, details);
-      return card;
+      details.append(title, creator, makeLikeButton(mediaId)); card.append(media, details); return card;
     }
 
     function renderReels(items) {
       const videos = items.filter((item) => item.type === 'video');
       reelsFeed.replaceChildren();
-      if (!videos.length) {
-        reelsStatus.textContent = 'No videos yet. Share a video to start the reels feed.';
-        return;
-      }
-
+      if (!videos.length) { reelsStatus.textContent = 'No videos yet. Share a video to start the reels feed.'; return; }
       reelsStatus.textContent = '';
       videos.forEach((item) => {
-        const card = document.createElement('article');
-        card.className = 'reel-card rounded-[var(--radius)]';
-
+        const card = document.createElement('article'); card.className = 'reel-card rounded-[var(--radius)]';
         const video = document.createElement('video');
-        video.src = item.url;
-        video.controls = true;
-        video.muted = true;
-        video.loop = true;
-        video.playsInline = true;
-        video.preload = 'metadata';
+        video.src = item.url; video.controls = true; video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'metadata';
         video.setAttribute('aria-label', item.title || 'Community video');
-
-        const details = document.createElement('div');
-        details.className = 'reel-details';
-
-        const title = document.createElement('h3');
-        title.className = 'text-lg font-bold';
-        title.textContent = item.title || 'Untitled moment';
-
-        const creator = document.createElement('p');
-        creator.className = 'mt-1 text-sm text-[var(--color-muted)]';
+        const details = document.createElement('div'); details.className = 'reel-details';
+        const title = document.createElement('h3'); title.className = 'text-lg font-bold'; title.textContent = item.title || 'Untitled moment';
+        
+        // Creator Name par click karne se Profile khulega
+        const creator = document.createElement('p'); creator.className = 'mt-1 text-sm text-[var(--color-muted)] cursor-pointer hover:underline pointer-events-auto';
         creator.textContent = `by ${item.creator || 'Anonymous creator'}`;
+        creator.onclick = (e) => {
+          e.stopPropagation();
+          window.location.href = `/profile/index.html?name=${encodeURIComponent(item.creator)}&pic=${encodeURIComponent(item.creatorPic || '')}`;
+        };
 
-        details.append(title, creator, makeLikeButton(item.key || item.id));
-        card.append(video, details);
-        reelsFeed.append(card);
+        details.append(title, creator, makeLikeButton(item.key || item.id)); card.append(video, details); reelsFeed.append(card);
       });
-
       if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
-          entries.forEach((entry) => {
-            const video = entry.target.querySelector('video');
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
-              video.play().catch(() => {});
-            } else {
-              video.pause();
-            }
-          });
-        }, {
-          root: reelsFeed,
-          threshold: [0, 0.65, 1]
-        });
-        reelsFeed.querySelectorAll('.reel-card').forEach((card) => observer.observe(card));
-      }
-    }
-
-    function applyFilter() {
-      const filter = document.getElementById('mediaFilter').value;
-      const cards = [...mediaGrid.children];
-      let visibleCount = 0;
-      cards.forEach((card) => {
-        const isVisible = filter === 'all' || card.dataset.type === filter;
-        card.classList.toggle('hidden', !isVisible);
-        if (isVisible) visibleCount += 1;
-      });
-      countLabel.textContent = `${visibleCount} ${visibleCount === 1 ? 'post' : 'posts'}`;
-    }
-
-    document.getElementById('mediaFilter').addEventListener('change', applyFilter);
-
-    async function loadMedia() {
-      try {
-        const response = await fetch('/api/media');
-        if (!response.ok) throw new Error('Could not load media.');
-        galleryItems = await response.json();
-        mediaGrid.replaceChildren(...galleryItems.map(renderMedia));
-        renderReels(galleryItems);
-        applyFilter();
-        if (!galleryItems.length) wallStatus.textContent = 'Be the first to share a photo or video.';
-      } catch (error) {
-        countLabel.textContent = 'Wall offline';
-        wallStatus.textContent = 'The public wall will load when the Node.js backend and storage are connected.';
-      }
-    }
-
-    function showSignedInUser(user) {
-      googleUser = user;
-      const accountButton = document.getElementById('accountButton');
-      accountButton.textContent = '✓ Success';
-      accountButton.setAttribute('aria-label', user?.name ? `Signed in as ${user.name}` : 'Google sign-in successful');
-      authStatus.textContent = 'Google account connected. You can publish your upload.';
-      authAccount.textContent = user?.name ? `Signed in as ${user.name}${user.email ? ` · ${user.email}` : ''}` : '';
-      googleSignInButton.classList.add('hidden');
-      signOutButton.classList.remove('hidden');
-      accountDialogStatus.textContent = 'Google account connected.';
-      closeAccountDialog();
-    }
-
-    function showSignedOutUser(message = 'Sign in with Google to upload. Browsing and watching videos stay open to everyone.') {
-      googleUser = null;
-      const accountButton = document.getElementById('accountButton');
-      accountButton.textContent = 'Log in / Sign up';
-      accountButton.setAttribute('aria-label', 'Log in or sign up');
-      authStatus.textContent = message;
-      accountDialogStatus.textContent = message;
-      authAccount.textContent = '';
-      googleSignInButton.classList.remove('hidden');
-      signOutButton.classList.add('hidden');
-    }
-
-    async function verifyGoogleCredential(credential) {
-      const response = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify({ credential })
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Google sign-in could not be verified.');
-      googleCredential = credential;
-      sessionStorage.setItem(authStorageKey, credential);
-      showSignedInUser(result);
-    }
-
-    async function initializeGoogleSignIn() {
-      try {
-        const configResponse = await fetch('/api/auth/config');
-        const config = await configResponse.json();
-        if (!configResponse.ok || !config.googleClientId) {
-          showSignedOutUser('Google sign-in is not configured yet. The site owner needs to add GOOGLE_CLIENT_ID.');
-          googleSignInButton.textContent = '';
-          return;
-        }
-
-        let attempts = 0;
-        const waitForLibrary = window.setInterval(() => {
-          attempts += 1;
-          if (window.google?.accounts?.id) {
-            window.clearInterval(waitForLibrary);
-            window.google.accounts.id.initialize({
-              client_id: config.googleClientId,
-              callback: async (response) => {
-                try {
-                  await verifyGoogleCredential(response.credential);
-                } catch (error) {
-                  showSignedOutUser(error.message);
-                }
-              }
-            });
-            window.google.accounts.id.renderButton(googleSignInButton, {
-              type: 'standard',
-              theme: 'outline',
-              size: 'large',
-              text: 'continue_with',
-              shape: 'pill'
-            });
-            window.google.accounts.id.renderButton(document.getElementById('googleContinueButton'), {
-              type: 'standard',
-              theme: 'outline',
-              size: 'large',
-              text: 'continue_with',
-              shape: 'pill',
-              width: 280
-            });
-            window.google.accounts.id.renderButton(document.getElementById('googleSignupButton'), {
-              type: 'standard',
-              theme: 'outline',
-              size: 'large',
-              text: 'signup_with',
-              shape: 'pill',
-              width: 280
-            });
-            if (googleCredential) {
-              verifyGoogleCredential(googleCredential).catch(() => {
-                googleCredential = '';
-                sessionStorage.removeItem(authStorageKey);
-                showSignedOutUser('Your Google sign-in expired. Sign in again to upload.');
-              });
-            }
-          } else if (attempts >= 100) {
-            window.clearInterval(waitForLibrary);
-            showSignedOutUser('Google sign-in could not load. Check your connection and reload the page.');
-          }
-        }, 100);
-      } catch (error) {
-        showSignedOutUser('Could not check Google sign-in settings. Please reload the page.');
-      }
-    }
-
-    signOutButton.addEventListener('click', () => {
-      googleCredential = '';
-      sessionStorage.removeItem(authStorageKey);
-      window.google?.accounts?.id?.disableAutoSelect();
-      showSignedOutUser();
-    });
-
-    initializeGoogleSignIn();
-
-    document.getElementById('publishButton').addEventListener('click', (event) => {
-      if (!googleCredential || !googleUser) {
-        showUploadMessage('Sign in with Google before publishing. You can still browse the wall and watch videos without an account.');
-        return;
-      }
-
-      if (!selectedFile) {
-        showUploadMessage('Choose a photo or video before publishing.');
-        return;
-      }
-      const button = event.currentTarget;
-      const title = document.getElementById('mediaTitle').value.trim() || selectedFile.name.replace(/\.[^/.]+$/, '');
-      const creator = document.getElementById('creatorName').value.trim() || 'Anonymous creator';
-      const formData = new FormData();
-      formData.append('media', selectedFile);
-      formData.append('title', title);
-      formData.append('creator', creator);
-      button.disabled = true;
-      button.textContent = 'Uploading… 0%';
-      showUploadMessage('Uploading to cloud storage. Please keep this tab open.');
-
-      const request = new XMLHttpRequest();
-      request.open('POST', '/api/upload');
-      request.setRequestHeader('Authorization', `Bearer ${googleCredential}`);
-      request.timeout = 30 * 60 * 1000;
-      request.upload.addEventListener('progress', (progressEvent) => {
-        if (!progressEvent.lengthComputable) return;
-        const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-        button.textContent = `Uploading… ${percent}%`;
-        showUploadMessage(`Uploading your ${selectedFile.type.startsWith('image/') ? 'photo' : 'video'}… ${percent}%`);
-      });
-      request.addEventListener('load', async () => {
-        try {
-          const result = JSON.parse(request.responseText);
-          if (request.status < 200 || request.status >= 300) throw new Error(result.error || `Upload failed (${request.status}).`);
-          showUploadMessage('Published successfully to the public wall.');
-          selectedFile = null;
-          mediaInput.value = '';
-          filePanel.classList.add('hidden');
-          document.getElementById('mediaTitle').value = '';
-          await loadMedia();
-        } catch (error) {
-          showUploadMessage(error.message || 'Upload failed. Please try again.');
-        } finally {
-          button.disabled = false;
-          button.textContent = 'Publish';
-        }
-      });
-      request.addEventListener('error', () => {
-        showUploadMessage('Network error. Check that the Node.js backend is running and try again.');
-        button.disabled = false;
-        button.textContent = 'Publish';
-      });
-      request.addEventListener('timeout', () => {
-        showUploadMessage('The upload timed out. Try a smaller file or a faster connection.');
-        button.disabled = false;
-        button.textContent = 'Publish';
-      });
-      request.send(formData);
-    });
-
-    const featuredLikeButton = document.querySelector('.like-hero');
-    attachLikeHandler(featuredLikeButton);
-    loadLikeState('featured-sad-image', featuredLikeButton);
-    loadMedia();
-
-  </script>
-</body>
-
-</html>
