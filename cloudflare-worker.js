@@ -77,6 +77,8 @@ async function listMedia(env, prefix) {
         type: metadata.kind || (prefix === "photos" ? "photo" : "video"),
         title: metadata.title || object.key.split("/").pop(),
         creator: metadata.creator || "Anonymous creator",
+        creatorEmail: metadata.creatorEmail || "", // Naya: Email wapas bhej rahe hain
+        creatorPic: metadata.creatorPic || "",     // Naya: Profile Pic wapas bhej rahe hain
         uploadedAt: metadata.uploadedAt || object.uploaded.toISOString(),
         url: mediaUrl(object.key)
       });
@@ -97,7 +99,7 @@ export default {
         headers: {
           "access-control-allow-origin": "*",
           "access-control-allow-methods": "GET, POST, OPTIONS",
-          "access-control-allow-headers": "content-type"
+          "access-control-allow-headers": "content-type, authorization"
         }
       });
     }
@@ -125,7 +127,8 @@ export default {
         }
         return json({
           name: user.name || user.email || "Google user",
-          email: user.email || ""
+          email: user.email || "",
+          picture: user.picture || "" // Naya: Google se Profile Picture bhi bhej rahe hain
         });
       } catch (error) {
         return json({
@@ -174,7 +177,12 @@ export default {
         const id = `${Date.now()}-${crypto.randomUUID()}`;
         const key = `${folder}/${id}.${extensionFor(file.type, file.name)}`;
         const title = safeText(form.get("title"), file.name.replace(/\.[^/.]+$/, ""), 120);
+        
+        // Frontend se naye fields receive kar rahe hain
         const creator = safeText(form.get("creator"), "Anonymous creator", 80);
+        const creatorEmail = safeText(form.get("creatorEmail"), "", 120);
+        const creatorPic = safeText(form.get("creatorPic"), "", 500);
+        
         const uploadedAt = new Date().toISOString();
 
         await env.VIDEOS.put(key, file.stream(), {
@@ -185,6 +193,8 @@ export default {
             kind: type,
             title,
             creator,
+            creatorEmail, // Save kar rahe hain
+            creatorPic,   // Save kar rahe hain
             uploadedAt
           }
         });
@@ -194,6 +204,8 @@ export default {
           type,
           title,
           creator,
+          creatorEmail,
+          creatorPic,
           uploadedAt,
           url: mediaUrl(key)
         }, 201);
