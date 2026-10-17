@@ -1,16 +1,7 @@
-// R2 binding name is VIDEOS; wrangler.toml connects it to the "personal" bucket.
 const MAX_FILE_SIZE = 90 * 1024 * 1024;
 const ALLOWED_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "image/avif",
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
-  "video/ogg",
-  "video/x-matroska"
+  "image/jpeg", "image/png", "image/webp", "image/gif", "image/avif",
+  "video/mp4", "video/quicktime", "video/webm", "video/ogg", "video/x-matroska"
 ]);
 
 function json(data, status = 200) {
@@ -42,14 +33,10 @@ function mediaUrl(key) {
 
 async function verifyGoogleToken(token, googleClientId) {
   if (!token || !googleClientId) return null;
-
   try {
-    const query = new URLSearchParams({
-      id_token: token
-    });
+    const query = new URLSearchParams({ id_token: token });
     const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?${query}`);
     if (!response.ok) return null;
-
     const payload = await response.json();
     if (payload.aud !== googleClientId || payload.email_verified !== "true" || !payload.sub) return null;
     return payload;
@@ -58,17 +45,12 @@ async function verifyGoogleToken(token, googleClientId) {
   }
 }
 
+// Purana solid listMedia function (Videos wapas laane ke liye)
 async function listMedia(env, prefix) {
   const results = [];
   let cursor;
-
   do {
-    const listed = await env.VIDEOS.list({
-      prefix: `${prefix}/`,
-      limit: 1000,
-      cursor
-    });
-
+    const listed = await env.VIDEOS.list({ prefix: `${prefix}/`, limit: 1000, cursor });
     for (const object of listed.objects) {
       const stored = await env.VIDEOS.head(object.key);
       const metadata = stored?.customMetadata || {};
@@ -77,16 +59,14 @@ async function listMedia(env, prefix) {
         type: metadata.kind || (prefix === "photos" ? "photo" : "video"),
         title: metadata.title || object.key.split("/").pop(),
         creator: metadata.creator || "Anonymous creator",
-        creatorEmail: metadata.creatorEmail || "", // Naya: Email wapas bhej rahe hain
-        creatorPic: metadata.creatorPic || "",     // Naya: Profile Pic wapas bhej rahe hain
+        creatorEmail: metadata.creatorEmail || "",
+        creatorPic: metadata.creatorPic || "",
         uploadedAt: metadata.uploadedAt || object.uploaded.toISOString(),
         url: mediaUrl(object.key)
       });
     }
-
     cursor = listed.truncated ? listed.cursor : undefined;
   } while (cursor);
-
   return results;
 }
 
@@ -105,176 +85,87 @@ export default {
     }
 
     if (url.pathname === "/api/auth/config" && request.method === "GET") {
-      return json({
-        googleClientId: env.GOOGLE_CLIENT_ID || null
-      });
+      return json({ googleClientId: env.GOOGLE_CLIENT_ID || null });
     }
 
     if (url.pathname === "/api/auth/google" && request.method === "POST") {
-      if (!env.GOOGLE_CLIENT_ID) {
-        return json({
-          error: "Google sign-in is not configured yet."
-        }, 503);
-      }
-
+      if (!env.GOOGLE_CLIENT_ID) return json({ error: "Not configured" }, 503);
       try {
         const body = await request.json();
         const user = await verifyGoogleToken(body.credential, env.GOOGLE_CLIENT_ID);
-        if (!user) {
-          return json({
-            error: "Google sign-in could not be verified. Please try again."
-          }, 401);
-        }
+        if (!user) return json({ error: "Verification failed" }, 401);
+        
         return json({
-          name: user.name || user.email || "Google user",
+          name: user.name || user.email || "User",
           email: user.email || "",
-          picture: user.picture || "" // Naya: Google se Profile Picture bhi bhej rahe hain
+          picture: user.picture || ""
         });
       } catch (error) {
-        return json({
-          error: "Google sign-in could not be verified. Please try again."
-        }, 400);
+        return json({ error: "Invalid request" }, 400);
       }
     }
 
     if (url.pathname === "/api/upload" && request.method === "POST") {
-      if (!env.GOOGLE_CLIENT_ID) {
-        return json({
-          error: "Google sign-in is not configured on this server yet."
-        }, 503);
-      }
+      if (!env.GOOGLE_CLIENT_ID) return json({ error: "Not configured" }, 503);
       const authorization = request.headers.get("authorization") || "";
       const tokenMatch = authorization.match(/^Bearer\s+(.+)$/i);
       const googleUser = tokenMatch ? await verifyGoogleToken(tokenMatch[1], env.GOOGLE_CLIENT_ID) : null;
-      if (!googleUser) {
-        return json({
-          error: "Sign in with a verified Google account before uploading."
-        }, 401);
-      }
+      if (!googleUser) return json({ error: "Sign in first" }, 401);
+
       try {
         const form = await request.formData();
         const file = form.get("media") || form.get("video");
-
-        if (!(file instanceof File)) {
-          return json({
-            error: "Choose a photo or video before publishing."
-          }, 400);
-        }
-        if (!ALLOWED_TYPES.has(file.type)) {
-          return json({
-            error: "This photo or video format is not supported."
-          }, 415);
-        }
-        if (file.size > MAX_FILE_SIZE) {
-          return json({
-            error: "Photos and videos must be 90 MB or smaller."
-          }, 413);
-        }
+        if (!(file instanceof File)) return json({ error: "Choose a file" }, 400);
+        if (!ALLOWED_TYPES.has(file.type)) return json({ error: "Format not supported" }, 415);
+        if (file.size > MAX_FILE_SIZE) return json({ error: "File too large" }, 413);
 
         const isPhoto = file.type.startsWith("image/");
         const type = isPhoto ? "photo" : "video";
         const folder = isPhoto ? "photos" : "videos";
         const id = `${Date.now()}-${crypto.randomUUID()}`;
         const key = `${folder}/${id}.${extensionFor(file.type, file.name)}`;
-        const title = safeText(form.get("title"), file.name.replace(/\.[^/.]+$/, ""), 120);
         
-        // Frontend se naye fields receive kar rahe hain
-        const creator = safeText(form.get("creator"), "Anonymous creator", 80);
+        const title = safeText(form.get("title"), file.name, 120);
+        const creator = safeText(form.get("creator"), "Anonymous", 80);
         const creatorEmail = safeText(form.get("creatorEmail"), "", 120);
         const creatorPic = safeText(form.get("creatorPic"), "", 500);
-        
         const uploadedAt = new Date().toISOString();
 
         await env.VIDEOS.put(key, file.stream(), {
-          httpMetadata: {
-            contentType: file.type
-          },
-          customMetadata: {
-            kind: type,
-            title,
-            creator,
-            creatorEmail, // Save kar rahe hain
-            creatorPic,   // Save kar rahe hain
-            uploadedAt
-          }
+          httpMetadata: { contentType: file.type },
+          customMetadata: { kind: type, title, creator, creatorEmail, creatorPic, uploadedAt }
         });
 
-        return json({
-          key,
-          type,
-          title,
-          creator,
-          creatorEmail,
-          creatorPic,
-          uploadedAt,
-          url: mediaUrl(key)
-        }, 201);
+        return json({ key, type, title, creator, uploadedAt, url: mediaUrl(key) }, 201);
       } catch (error) {
-        return json({
-          error: error?.message || "The upload could not be completed."
-        }, 500);
+        return json({ error: "Upload failed" }, 500);
       }
     }
 
     if (url.pathname === "/api/media" && request.method === "GET") {
       try {
-        const [videos, photos] = await Promise.all([
-          listMedia(env, "videos"),
-          listMedia(env, "photos")
-        ]);
+        const [videos, photos] = await Promise.all([listMedia(env, "videos"), listMedia(env, "photos")]);
         return json([...videos, ...photos].sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)));
       } catch (error) {
-        return json({
-          error: error?.message || "Could not load the public wall."
-        }, 500);
-      }
-    }
-
-    if (url.pathname === "/api/videos" && request.method === "GET") {
-      try {
-        const videos = await listMedia(env, "videos");
-        return json(videos.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)));
-      } catch (error) {
-        return json({
-          error: error?.message || "Could not load videos."
-        }, 500);
+        return json({ error: "Could not load media" }, 500);
       }
     }
 
     if (url.pathname.startsWith("/media/") && request.method === "GET") {
       let key;
-      try {
-        key = decodeURIComponent(url.pathname.slice("/media/".length));
-      } catch {
-        return new Response("Not found", {
-          status: 404
-        });
-      }
-
-      if (!key.startsWith("videos/") && !key.startsWith("photos/")) {
-        return new Response("Not found", {
-          status: 404
-        });
-      }
+      try { key = decodeURIComponent(url.pathname.slice("/media/".length)); } catch { return new Response("Not found", { status: 404 }); }
+      if (!key.startsWith("videos/") && !key.startsWith("photos/")) return new Response("Not found", { status: 404 });
 
       const object = await env.VIDEOS.get(key);
-      if (!object) return new Response("Not found", {
-        status: 404
-      });
+      if (!object) return new Response("Not found", { status: 404 });
 
       const headers = new Headers();
       object.writeHttpMetadata(headers);
       headers.set("cache-control", "public, max-age=31536000, immutable");
       headers.set("access-control-allow-origin", "*");
-      return new Response(object.body, {
-        headers
-      });
+      return new Response(object.body, { headers });
     }
 
-    return env.ASSETS ?
-      env.ASSETS.fetch(request) :
-      new Response("Not found", {
-        status: 404
-      });
+    return env.ASSETS ? env.ASSETS.fetch(request) : new Response("Not found", { status: 404 });
   }
 };
