@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="var(--color-bg)">
+  <title>My Profile — REELS BOOK 😎</title>
+  <link rel="stylesheet" href="/theme.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .token-border { border-color: color-mix(in srgb, var(--color-text) 12%, transparent); }
+    .token-border-soft { border-color: color-mix(in srgb, var(--color-text) 8%, transparent); }
+    .token-panel { background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
+    
+    .video-card {
+      position: relative;
+      aspect-ratio: 9/16;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .video-card video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+    .video-card:hover video {
+      transform: scale(1.05);
+    }
+    .play-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 2rem;
+      color: white;
+      opacity: 0.8;
+      pointer-events: none;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+
+<body class="bg-[var(--color-bg)] text-[var(--color-text)] min-h-screen">
+  
+  <!-- Top Navigation -->
+  <header class="sticky top-0 z-50 bg-[var(--color-bg)]/90 backdrop-blur-md border-b token-border-soft px-5 py-4 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-3">
+      <span class="text-2xl font-black">←</span>
+      <span class="text-sm font-black tracking-[.12em]">REELS BOOK 😎</span>
+    </a>
+    <h1 class="text-lg font-bold">My Profile</h1>
+    <div class="w-8"></div> <!-- Balance -->
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-3xl mx-auto px-5 py-8">
+    
+    <!-- Profile Info Section -->
+    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10 text-center sm:text-left">
+      <div class="relative">
+        <img id="profilePic" src="" alt="Profile Picture" class="w-28 h-28 rounded-full object-cover border-4 border-[var(--color-primary)] shadow-lg bg-gray-800">
+      </div>
+      <div class="flex-1">
+        <h2 id="profileName" class="text-3xl font-black mb-2">Loading...</h2>
+        <p id="profileEmail" class="text-[var(--color-muted)] text-sm mb-4">Loading...</p>
+        <div class="flex items-center justify-center sm:justify-start gap-6">
+          <div class="text-center">
+            <p id="videoCount" class="text-xl font-bold">0</p>
+            <p class="text-xs text-[var(--color-muted)] uppercase tracking-wider">Videos</p>
+          </div>
+          <!-- Add more stats here in future (e.g., Followers) -->
+        </div>
+      </div>
+      <div>
+        <a href="/#upload" class="inline-block bg-[var(--color-primary)] text-[var(--color-primary-contrast)] font-bold px-6 py-2.5 rounded-full hover:brightness-110 transition shadow-md">
+          + Upload New
+        </a>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-b token-border-soft mb-6 flex justify-center gap-8">
+      <button class="pb-3 border-b-2 border-[var(--color-primary)] font-bold text-sm">My Videos</button>
+    </div>
+
+    <!-- Videos Grid -->
+    <div id="userVideosGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+      <!-- Videos will be injected here via JS -->
+    </div>
+    
+    <!-- Empty State -->
+    <div id="noVideosState" class="hidden text-center py-20 flex-col items-center justify-center">
+      <div class="text-6xl mb-4">🎥</div>
+      <h3 class="text-xl font-bold mb-2">No videos yet</h3>
+      <p class="text-[var(--color-muted)] mb-6">You haven't uploaded any videos.</p>
+      <a href="/#upload" class="bg-[var(--color-primary)] text-[var(--color-primary-contrast)] font-bold px-6 py-3 rounded-full hover:brightness-110 transition shadow-md">
+        Share your first video
+      </a>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="text-center py-20">
+      <p class="text-[var(--color-muted)]">Loading your videos...</p>
+    </div>
+
+  </main>
+
+  <script>
+    // 1. Get User Data from Local Storage (Set during login)
+    const currentUser = JSON.parse(localStorage.getItem('currentReelsUser'));
+
+    if (!currentUser) {
+      // If no user is logged in, redirect to home
+      window.location.href = '/';
+    } else {
+      // Populate Profile UI
+      document.getElementById('profileName').textContent = currentUser.name || 'User';
+      document.getElementById('profileEmail').textContent = currentUser.email || '';
+      
+      // Set Profile Picture (Fallback to initial letter if no picture)
+      const picUrl = currentUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || 'User')}&background=random&color=fff&size=128`;
+      document.getElementById('profilePic').src = picUrl;
+    }
+
+    // 2. Load User's Videos
+    async function loadUserVideos() {
+      if (!currentUser) return;
+
+      try {
+        // Fetch all media from backend
+        const response = await fetch('/api/media');
+        if (!response.ok) throw new Error('Failed to fetch media');
+        const allMedia = await response.json();
+        
+        // Filter videos uploaded by THIS specific user
+        // Note: We match by creator name and also check if email matches if backend sends it
+        const userVideos = allMedia.filter(item => 
+          item.type === 'video' && 
+          (item.creator === currentUser.name || item.creatorEmail === currentUser.email)
+        );
+
+        // Update count
+        document.getElementById('videoCount').textContent = userVideos.length;
+        document.getElementById('loadingState').classList.add('hidden');
+
+        const grid = document.getElementById('userVideosGrid');
+        const noVideosState = document.getElementById('noVideosState');
+
+        if (userVideos.length === 0) {
+          noVideosState.classList.remove('hidden');
+          noVideosState.classList.add('flex');
+          return;
+        }
+
+        // Render videos
+        userVideos.forEach(video => {
+          const card = document.createElement('div');
+          card.className = 'video-card group';
+          
+          // Clicking a video takes user to Reels page (you can modify this to open a modal later)
+          card.onclick = () => {
+            window.location.href = '/reels'; 
+          };
+
+          const vid = document.createElement('video');
+          vid.src = video.url;
+          vid.muted = true; // Mute on grid
+          vid.loop = true;
+          vid.playsInline = true;
+          vid.preload = 'metadata';
+
+          // Hover play effect
+          card.onmouseenter = () => vid.play().catch(() => {});
+          card.onmouseleave = () => {
+            vid.pause();
+            vid.currentTime = 0;
+          };
+
+          // Play icon overlay
+          const playIcon = document.createElement('div');
+          playIcon.className = 'play-icon';
+          playIcon.innerHTML = '▶';
+
+          card.appendChild(vid);
+          card.appendChild(playIcon);
+          grid.appendChild(card);
+        });
+
+      } catch (error) {
+        console.error("Error loading videos:", error);
+        document.getElementById('loadingState').innerHTML = '<p class="text-red-500">Failed to load videos. Check backend connection.</p>';
+      }
+    }
+
+    // Initialize
+    loadUserVideos();
+  </script>
+</body>
+</html>
