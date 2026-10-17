@@ -177,8 +177,8 @@
         video.dataset.src = item.url; 
         video.controls = false;
         
-        // BY DEFAULT UNMUTED (Aawaz ON)
-        video.muted = false; 
+        // FIX 1: Video ko shuru mein MUTE rakhenge taake APK isko load kar sake
+        video.muted = true; 
         
         video.loop = true;
         video.playsInline = true;
@@ -191,7 +191,6 @@
            if (loader.parentNode) loader.remove();
         });
 
-        // Play/Pause on tap
         video.addEventListener('click', () => {
           if (video.paused) video.play();
           else video.pause();
@@ -225,16 +224,23 @@
             const video = entry.target.querySelector('video');
             const cardIndex = cards.indexOf(entry.target);
 
-            // Agar video screen par aaye (50% ya zyada)
             if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+              // FIX 2: Pehle saari videos ko pause karo (taki ek sath na chalein)
+              document.querySelectorAll('video').forEach(v => {
+                if (v !== video) v.pause();
+              });
+
               if (!video.src) {
                 video.src = video.dataset.src;
               }
               
-              video.muted = false; 
-              video.play().catch((error) => {
-                video.muted = true;
-                video.play().catch(() => {});
+              // Video play karo (mute hokar)
+              video.play().then(() => {
+                // Jab play ho jaye, toh foran unmute kar do taake aawaz aa jaye
+                video.muted = false; 
+              }).catch((error) => {
+                // Agar unmute karke play na ho, toh mute hi rakhne do
+                console.log("Autoplay block hua, video mute rahegi", error);
               });
 
               const nextCard = cards[cardIndex + 1];
@@ -242,11 +248,10 @@
                 nextCard.style.display = 'block';
               }
             } else {
-              // JAB VIDEO SCREEN SE BAHAR JAYE TOH PAUSE KAREIN
               video.pause();
             }
           });
-        }, { root: reelsFeed, threshold: [0, 0.5, 1] }); // threshold 0.5 kiya
+        }, { root: reelsFeed, threshold: [0, 0.5, 1] });
         
         cards.forEach((card) => observer.observe(card));
       }
