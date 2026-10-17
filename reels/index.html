@@ -149,12 +149,16 @@
         card.className = 'reel-card';
 
         const video = document.createElement('video');
-        video.src = item.url;
+        
+        // LAZY LOADING: URL ko src mein nahi, data-src mein save kiya
+        video.dataset.src = item.url; 
         video.controls = false;
-        video.muted = true; // Autoplay requires muted
+        video.muted = true; 
         video.loop = true;
         video.playsInline = true;
-        video.preload = 'metadata';
+        
+        // LAZY LOADING: Jab tak zaroorat na ho, download mat karo
+        video.setAttribute('preload', 'none'); 
         video.setAttribute('aria-label', item.title || 'Community video');
         
         // Play/Pause on tap
@@ -179,18 +183,25 @@
         reelsFeed.append(card);
       });
 
-      // Autoplay video when scrolled into view
+      // Autoplay video when scrolled into view (SMART PLAYBACK)
       if ('IntersectionObserver' in window) {
         const observer = new IntersectionObserver((entries) => {
           entries.forEach((entry) => {
             const video = entry.target.querySelector('video');
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
+            
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+              // Jab video screen par aaye, tabhi asli link load karo
+              if (!video.src) {
+                video.src = video.dataset.src;
+              }
+              // Aur play karo
               video.play().catch(() => {});
             } else {
+              // Jab screen se bahar jaye, pause kar do
               video.pause();
             }
           });
-        }, { root: reelsFeed, threshold: [0, 0.65, 1] });
+        }, { root: reelsFeed, threshold: [0, 0.6, 1] });
         
         reelsFeed.querySelectorAll('.reel-card').forEach((card) => observer.observe(card));
       }
