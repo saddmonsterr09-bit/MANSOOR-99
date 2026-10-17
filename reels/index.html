@@ -14,7 +14,6 @@
     .token-panel { background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
     .token-overlay { background: color-mix(in srgb, var(--color-bg) 78%, transparent); }
     
-    /* Reels Feed Container */
     .reels-feed {
       display: grid;
       gap: 0; 
@@ -26,7 +25,6 @@
     }
     .reels-feed::-webkit-scrollbar { display: none; }
     
-    /* Har video ka card */
     .reel-card {
       position: relative;
       height: 100svh;
@@ -71,20 +69,6 @@
       z-index: 10;
     }
     @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
-
-    /* Speaker Button Style */
-    .mute-btn {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: rgba(0,0,0,0.6);
-      border-radius: 50%;
-      padding: 0.5rem;
-      z-index: 20;
-      cursor: pointer;
-      pointer-events: auto;
-      font-size: 1.2rem;
-    }
   </style>
 </head>
 
@@ -106,10 +90,6 @@
   <script>
     const reelsFeed = document.getElementById('reelsFeed');
     const reelsStatus = document.getElementById('reelsStatus');
-    
-    // --- Global Mute State ---
-    // Hum ek variable rakhenge taake pata chale user ne mute kiya hai ya unmute
-    let isGlobalMuted = false; 
     
     // Generate Visitor ID for likes
     function getVisitorId() {
@@ -193,18 +173,13 @@
         loader.className = 'loader';
         card.appendChild(loader);
 
-        // --- Mute/Unmute Button ---
-        const muteBtn = document.createElement('button');
-        muteBtn.className = 'mute-btn';
-        muteBtn.innerHTML = isGlobalMuted ? '🔇' : '🔊'; // Default speaker icon
-        muteBtn.setAttribute('aria-label', 'Toggle Sound');
-        card.appendChild(muteBtn);
-
         const video = document.createElement('video');
         video.dataset.src = item.url; 
         video.controls = false;
-        // Shuru mein mute rakhenge warna browser block karega
-        video.muted = isGlobalMuted; 
+        
+        // BY DEFAULT UNMUTED (Aawaz ON)
+        video.muted = false; 
+        
         video.loop = true;
         video.playsInline = true;
         video.setAttribute('preload', 'none'); 
@@ -216,26 +191,10 @@
            if (loader.parentNode) loader.remove();
         });
 
-        // Click to play/pause
+        // Play/Pause on tap
         video.addEventListener('click', () => {
           if (video.paused) video.play();
           else video.pause();
-        });
-
-        // --- Button Click Logic ---
-        muteBtn.addEventListener('click', (e) => {
-          e.stopPropagation(); // Video pause na ho
-          
-          // Poori website ka mute state change karo
-          isGlobalMuted = !isGlobalMuted;
-          
-          // Saari videos ko ek sath mute ya unmute karo
-          const allVideos = reelsFeed.querySelectorAll('video');
-          allVideos.forEach(v => v.muted = isGlobalMuted);
-          
-          // Saare buttons ke icons update karo
-          const allBtns = reelsFeed.querySelectorAll('.mute-btn');
-          allBtns.forEach(btn => btn.innerHTML = isGlobalMuted ? '🔇' : '🔊');
         });
 
         const details = document.createElement('div');
@@ -270,7 +229,15 @@
               if (!video.src) {
                 video.src = video.dataset.src;
               }
-              video.play().catch(() => {});
+              
+              // Browser ko force karo aawaz ke sath play karne ke liye
+              video.muted = false; 
+              video.play().catch((error) => {
+                // Agar browser block kare, toh chupke se mute karke play karo taake video rukay na
+                console.log("Autoplay with sound blocked by browser. Muting temporarily.");
+                video.muted = true;
+                video.play().catch(() => {});
+              });
 
               const nextCard = cards[cardIndex + 1];
               if (nextCard) {
