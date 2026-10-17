@@ -225,16 +225,14 @@
             const video = entry.target.querySelector('video');
             const cardIndex = cards.indexOf(entry.target);
 
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+            // Agar video screen par aaye (50% ya zyada)
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
               if (!video.src) {
                 video.src = video.dataset.src;
               }
               
-              // Browser ko force karo aawaz ke sath play karne ke liye
               video.muted = false; 
               video.play().catch((error) => {
-                // Agar browser block kare, toh chupke se mute karke play karo taake video rukay na
-                console.log("Autoplay with sound blocked by browser. Muting temporarily.");
                 video.muted = true;
                 video.play().catch(() => {});
               });
@@ -244,10 +242,11 @@
                 nextCard.style.display = 'block';
               }
             } else {
+              // JAB VIDEO SCREEN SE BAHAR JAYE TOH PAUSE KAREIN
               video.pause();
             }
           });
-        }, { root: reelsFeed, threshold: [0, 0.6, 1] });
+        }, { root: reelsFeed, threshold: [0, 0.5, 1] }); // threshold 0.5 kiya
         
         cards.forEach((card) => observer.observe(card));
       }
