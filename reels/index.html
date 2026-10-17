@@ -14,9 +14,10 @@
     .token-panel { background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
     .token-overlay { background: color-mix(in srgb, var(--color-bg) 78%, transparent); }
     
+    /* Reels Feed Container */
     .reels-feed {
       display: grid;
-      gap: 1rem;
+      gap: 0; 
       max-height: 100svh;
       overflow-y: auto;
       overscroll-behavior: contain;
@@ -25,6 +26,7 @@
     }
     .reels-feed::-webkit-scrollbar { display: none; }
     
+    /* Har video ka card */
     .reel-card {
       position: relative;
       height: 100svh;
@@ -45,32 +47,69 @@
       padding: 5rem 1.25rem 2rem;
       background: linear-gradient(transparent, rgba(0,0,0,.8));
       color: white;
+      pointer-events: none;
     }
+    .like-button { pointer-events: auto; }
+    
     .like-button[aria-pressed="true"] {
       color: var(--color-primary);
       border-color: var(--color-primary);
+    }
+
+    /* Loading Spinner */
+    .loader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      z-index: 10;
+    }
+    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+    /* Speaker Button Style */
+    .mute-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(0,0,0,0.6);
+      border-radius: 50%;
+      padding: 0.5rem;
+      z-index: 20;
+      cursor: pointer;
+      pointer-events: auto;
+      font-size: 1.2rem;
     }
   </style>
 </head>
 
 <body class="bg-black text-white">
   <!-- Top Bar -->
-  <header class="fixed top-0 z-50 w-full flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
-    <a href="/" class="flex items-center gap-2 text-white" aria-label="Go back home">
+  <header class="fixed top-0 z-50 w-full flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+    <a href="/" class="flex items-center gap-2 text-white pointer-events-auto" aria-label="Go back home">
       <span class="text-2xl font-black">←</span>
       <span class="text-sm font-black tracking-[.12em]">REELS</span>
     </a>
   </header>
 
   <!-- Reels Container -->
-  <main class="h-[100svh] w-full max-w-md mx-auto bg-black">
+  <main class="h-[100svh] w-full max-w-md mx-auto bg-black relative">
     <div id="reelsFeed" class="reels-feed" aria-label="Video reels"></div>
-    <p id="reelsStatus" class="text-center text-sm text-gray-400 p-4" role="status"></p>
+    <p id="reelsStatus" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center text-sm text-gray-400 p-4" role="status"></p>
   </main>
 
   <script>
     const reelsFeed = document.getElementById('reelsFeed');
     const reelsStatus = document.getElementById('reelsStatus');
+    
+    // --- Global Mute State ---
+    // Hum ek variable rakhenge taake pata chale user ne mute kiya hai ya unmute
+    let isGlobalMuted = false; 
     
     // Generate Visitor ID for likes
     function getVisitorId() {
@@ -100,7 +139,8 @@
     }
 
     function attachLikeHandler(button) {
-      button.addEventListener('click', async () => {
+      button.addEventListener('click', async (e) => {
+        e.stopPropagation(); 
         const mediaId = button.dataset.mediaId;
         button.disabled = true;
         try {
@@ -132,9 +172,8 @@
       return button;
     }
 
-    // Render Reels
+    // RENDER REELS 
     function renderReels(items) {
-      // Filter only videos
       const videos = items.filter((item) => item.type === 'video');
       reelsFeed.replaceChildren();
       
@@ -144,27 +183,59 @@
       }
 
       reelsStatus.textContent = '';
-      videos.forEach((item) => {
+      
+      videos.forEach((item, index) => {
         const card = document.createElement('article');
         card.className = 'reel-card';
+        if (index !== 0) card.style.display = 'none'; 
+
+        const loader = document.createElement('div');
+        loader.className = 'loader';
+        card.appendChild(loader);
+
+        // --- Mute/Unmute Button ---
+        const muteBtn = document.createElement('button');
+        muteBtn.className = 'mute-btn';
+        muteBtn.innerHTML = isGlobalMuted ? '🔇' : '🔊'; // Default speaker icon
+        muteBtn.setAttribute('aria-label', 'Toggle Sound');
+        card.appendChild(muteBtn);
 
         const video = document.createElement('video');
-        
-        // LAZY LOADING: URL ko src mein nahi, data-src mein save kiya
         video.dataset.src = item.url; 
         video.controls = false;
-        video.muted = true; 
+        // Shuru mein mute rakhenge warna browser block karega
+        video.muted = isGlobalMuted; 
         video.loop = true;
         video.playsInline = true;
-        
-        // LAZY LOADING: Jab tak zaroorat na ho, download mat karo
         video.setAttribute('preload', 'none'); 
-        video.setAttribute('aria-label', item.title || 'Community video');
         
-        // Play/Pause on tap
+        video.addEventListener('playing', () => {
+          if (loader.parentNode) loader.remove();
+        });
+        video.addEventListener('loadeddata', () => {
+           if (loader.parentNode) loader.remove();
+        });
+
+        // Click to play/pause
         video.addEventListener('click', () => {
           if (video.paused) video.play();
           else video.pause();
+        });
+
+        // --- Button Click Logic ---
+        muteBtn.addEventListener('click', (e) => {
+          e.stopPropagation(); // Video pause na ho
+          
+          // Poori website ka mute state change karo
+          isGlobalMuted = !isGlobalMuted;
+          
+          // Saari videos ko ek sath mute ya unmute karo
+          const allVideos = reelsFeed.querySelectorAll('video');
+          allVideos.forEach(v => v.muted = isGlobalMuted);
+          
+          // Saare buttons ke icons update karo
+          const allBtns = reelsFeed.querySelectorAll('.mute-btn');
+          allBtns.forEach(btn => btn.innerHTML = isGlobalMuted ? '🔇' : '🔊');
         });
 
         const details = document.createElement('div');
@@ -183,33 +254,42 @@
         reelsFeed.append(card);
       });
 
-      // Autoplay video when scrolled into view (SMART PLAYBACK)
+      setupSmartPlayback();
+    }
+
+    function setupSmartPlayback() {
+      const cards = Array.from(reelsFeed.querySelectorAll('.reel-card'));
+      
       if ('IntersectionObserver' in window) {
         const observer = new IntersectionObserver((entries) => {
           entries.forEach((entry) => {
             const video = entry.target.querySelector('video');
-            
+            const cardIndex = cards.indexOf(entry.target);
+
             if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-              // Jab video screen par aaye, tabhi asli link load karo
               if (!video.src) {
                 video.src = video.dataset.src;
               }
-              // Aur play karo
               video.play().catch(() => {});
+
+              const nextCard = cards[cardIndex + 1];
+              if (nextCard) {
+                nextCard.style.display = 'block';
+              }
             } else {
-              // Jab screen se bahar jaye, pause kar do
               video.pause();
             }
           });
         }, { root: reelsFeed, threshold: [0, 0.6, 1] });
         
-        reelsFeed.querySelectorAll('.reel-card').forEach((card) => observer.observe(card));
+        cards.forEach((card) => observer.observe(card));
       }
     }
 
     // Load Data
     async function loadMedia() {
       try {
+        reelsStatus.textContent = 'Loading videos...';
         const response = await fetch('/api/media');
         if (!response.ok) throw new Error('Could not load media.');
         const galleryItems = await response.json();
