@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="var(--color-bg)">
+  <meta name="theme-color" content="#000000">
   <title>Reels Feed — REELS BOOK 😎</title>
   <link rel="stylesheet" href="/theme.css">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -13,6 +13,8 @@
     .token-border-soft { border-color: color-mix(in srgb, var(--color-text) 8%, transparent); }
     .token-panel { background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
     .token-overlay { background: color-mix(in srgb, var(--color-bg) 78%, transparent); }
+    
+    body { background: #000; color: #fff; }
     
     .reels-feed {
       display: grid;
@@ -35,7 +37,7 @@
     .reel-card video {
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: cover;
     }
     .reel-details {
       position: absolute;
@@ -93,9 +95,9 @@
     
     // Generate Visitor ID for likes
     function getVisitorId() {
-      let visitorId = localStorage.getItem('reelsbookVisitorId');
+      let visitorId = localStorage.getItem('ReelsbookVisitorId') || localStorage.getItem('openframeVisitorId');
       if (!visitorId) visitorId = crypto.randomUUID();
-      localStorage.setItem('reelsbookVisitorId', visitorId);
+      localStorage.setItem('ReelsbookVisitorId', visitorId);
       return visitorId;
     }
     const visitorId = getVisitorId();
@@ -104,12 +106,14 @@
     function updateLikeButton(button, result) {
       button.querySelector('.like-count').textContent = result.count;
       button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
+      button.querySelector('.like-icon').style.color = result.liked ? '#ec4899' : 'inherit';
       button.setAttribute('aria-pressed', String(result.liked));
     }
 
     async function loadLikeState(mediaId, button) {
       try {
-        const query = new URLSearchParams({ mediaId, visitorId });
+        // Added Cache Buster to force latest count
+        const query = new URLSearchParams({ mediaId, visitorId, t: Date.now() });
         const response = await fetch(`/api/likes?${query}`);
         if (!response.ok) throw new Error('Likes API is unavailable.');
         updateLikeButton(button, await response.json());
@@ -176,10 +180,7 @@
         const video = document.createElement('video');
         video.dataset.src = item.url; 
         video.controls = false;
-        
-        // FIX 1: Video ko shuru mein MUTE rakhenge taake APK isko load kar sake
         video.muted = true; 
-        
         video.loop = true;
         video.playsInline = true;
         video.setAttribute('preload', 'none'); 
@@ -204,7 +205,7 @@
         title.textContent = item.title || 'Untitled moment';
 
         const creator = document.createElement('p');
-        creator.className = 'mt-1 text-sm text-gray-300';
+        creator.className = 'mt-1 mb-2 text-sm text-gray-300';
         creator.textContent = `by ${item.creator || 'Anonymous creator'}`;
 
         details.append(title, creator, makeLikeButton(item.key || item.id));
@@ -225,7 +226,6 @@
             const cardIndex = cards.indexOf(entry.target);
 
             if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-              // FIX 2: Pehle saari videos ko pause karo (taki ek sath na chalein)
               document.querySelectorAll('video').forEach(v => {
                 if (v !== video) v.pause();
               });
@@ -234,12 +234,9 @@
                 video.src = video.dataset.src;
               }
               
-              // Video play karo (mute hokar)
               video.play().then(() => {
-                // Jab play ho jaye, toh foran unmute kar do taake aawaz aa jaye
                 video.muted = false; 
               }).catch((error) => {
-                // Agar unmute karke play na ho, toh mute hi rakhne do
                 console.log("Autoplay block hua, video mute rahegi", error);
               });
 
@@ -261,7 +258,7 @@
     async function loadMedia() {
       try {
         reelsStatus.textContent = 'Loading videos...';
-        const response = await fetch('/api/media');
+        const response = await fetch('/api/media?t=' + Date.now()); // Cache Buster
         if (!response.ok) throw new Error('Could not load media.');
         const galleryItems = await response.json();
         renderReels(galleryItems);
