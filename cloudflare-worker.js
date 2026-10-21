@@ -69,7 +69,6 @@ async function listMedia(env, prefix) {
   return results;
 }
 
-// Naya Modern Black Theme HTML (Direct Worker se serve hoga)
 const HTML_CONTENT = `
 <!doctype html>
 <html lang="en">
@@ -90,6 +89,8 @@ const HTML_CONTENT = `
     .post-media { width: 100%; max-height: 600px; object-fit: cover; background: #000; }
     #uploadModal { display: none; position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.9); align-items: center; justify-content: center; }
     #uploadModal.is-open { display: flex; }
+    .like-btn { display: flex; items-center; gap: 0.5rem; font-size: 1.25rem; cursor: pointer; }
+    .liked { color: #ec4899; }
   </style>
 </head>
 <body>
@@ -129,8 +130,6 @@ const HTML_CONTENT = `
       <button id="closeUploadBtn" class="absolute top-4 right-4 text-white text-xl">✕</button>
       <h2 class="text-xl font-bold mb-4 text-white">Create Post</h2>
       <div id="googleSignInButton" class="mb-4"></div>
-      
-      <!-- File Input & Title -->
       <input type="file" id="mediaFileInput" class="w-full text-white mb-2 text-sm bg-black p-2 rounded border border-gray-700">
       <input id="mediaTitle" type="text" placeholder="Caption..." class="w-full bg-black border border-gray-700 rounded p-2 text-white mb-2">
       <button id="publishButton" class="w-full bg-pink-500 text-white font-bold py-2 rounded">Publish</button>
@@ -139,7 +138,7 @@ const HTML_CONTENT = `
   </div>
 
   <script>
-    // Visitor ID logic for Likes
+    // --- VISITOR ID (Har user ke liye alag) ---
     function getVisitorId() {
       let v = localStorage.getItem('ReelsbookVisitorId');
       if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); }
@@ -147,28 +146,33 @@ const HTML_CONTENT = `
     }
     const visitorId = getVisitorId();
 
+    // Modals Open/Close
     document.getElementById('headerUploadBtn').onclick = () => document.getElementById('uploadModal').classList.add('is-open');
     document.getElementById('bottomNavUploadBtn').onclick = () => document.getElementById('uploadModal').classList.add('is-open');
     document.getElementById('addStoryBtn').onclick = () => document.getElementById('uploadModal').classList.add('is-open');
     document.getElementById('closeUploadBtn').onclick = () => document.getElementById('uploadModal').classList.remove('is-open');
 
-    // Function to create Like Button
+    // --- LIKE BUTTON FUNCTION (Force Update with Cache Buster) ---
     function createLikeButton(mediaId) {
       const btn = document.createElement('button');
-      btn.className = 'like-button flex items-center gap-1 text-gray-400 hover:text-white transition mt-2';
-      btn.innerHTML = '<span class="like-icon text-xl">♡</span><span class="like-count text-sm font-semibold">0</span>';
+      btn.className = 'like-btn text-gray-400 hover:text-white transition mt-2';
+      btn.innerHTML = '<span class="like-icon text-2xl">♡</span><span class="like-count text-sm font-semibold">0</span>';
       
-      // Load Initial State
-      fetch('/api/likes?mediaId=' + encodeURIComponent(mediaId) + '&visitorId=' + visitorId)
+      // Initial Load (Cache Buster Date.now added)
+      fetch('/api/likes?mediaId=' + encodeURIComponent(mediaId) + '&visitorId=' + visitorId + '&t=' + Date.now())
         .then(res => res.json())
         .then(data => {
           btn.querySelector('.like-count').textContent = data.count;
-          btn.querySelector('.like-icon').textContent = data.liked ? '♥' : '♡';
-          btn.querySelector('.like-icon').style.color = data.liked ? '#ec4899' : 'inherit';
-        }).catch(() => {});
+          if (data.liked) {
+            btn.querySelector('.like-icon').textContent = '♥';
+            btn.querySelector('.like-icon').classList.add('liked');
+          }
+        }).catch(err => console.log("Error loading likes", err));
 
-      // Click Handler
+      // On Click
       btn.onclick = async () => {
+        // Disable button temporarily to prevent spam clicking
+        btn.disabled = true; 
         try {
           const res = await fetch('/api/likes', {
             method: 'POST',
@@ -176,27 +180,45 @@ const HTML_CONTENT = `
             body: JSON.stringify({ mediaId, visitorId })
           });
           const data = await res.json();
+          
           if (res.ok) {
             btn.querySelector('.like-count').textContent = data.count;
-            btn.querySelector('.like-icon').textContent = data.liked ? '♥' : '♡';
-            btn.querySelector('.like-icon').style.color = data.liked ? '#ec4899' : 'inherit';
+            const icon = btn.querySelector('.like-icon');
+            icon.textContent = data.liked ? '♥' : '♡';
+            if(data.liked) { icon.classList.add('liked'); } else { icon.classList.remove('liked'); }
+          } else {
+            alert("Database Error: " + (data.details || data.error));
           }
-        } catch (e) {}
+        } catch (e) {
+          alert("Network Error. Check console.");
+          console.error(e);
+        } finally {
+          btn.disabled = false; // Enable again
+        }
       };
       return btn;
     }
 
+    // --- LOAD POSTS ---
     async function loadMedia() {
       document.getElementById('loadingFeed')?.remove();
       try {
-        const res = await fetch('/api/media');
+        // Add Cache Buster to media list too
+        const res = await fetch('/api/media?t=' + Date.now());
         const items = await res.json();
         const grid = document.getElementById('mediaGrid'); grid.innerHTML = '';
-        if(!items.length) { grid.innerHTML = '<div class="text-center text-gray-500">No posts yet.</div>'; return; }
+        
+        if(!items.length) { 
+          grid.innerHTML = '<div class="text-center text-gray-500">No posts yet.</div>'; 
+          return; 
+        }
         
         items.forEach(item => {
-          const card = document.createElement('article'); card.className = 'post-card';
-          card.innerHTML = `
+          const card = document.createElement('article'); 
+          card.className = 'post-card';
+          
+          // HTML Structure
+          card.innerHTML = \`
             <div class="flex items-center gap-3 py-3">
               <div class="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-xs text-white overflow-hidden">
                 \${item.creatorPic ? '<img src="'+item.creatorPic+'" class="w-full h-full object-cover">' : (item.creator ? item.creator[0] : 'A')}
@@ -205,8 +227,9 @@ const HTML_CONTENT = `
             </div>
             \${item.type === 'photo' ? '<img src="'+item.url+'" class="post-media">' : '<video src="'+item.url+'" controls class="post-media"></video>'}
             <div class="pt-2 text-sm text-white font-bold mb-1">\${item.title}</div>
-          `;
-          // Append Like button dynamically
+          \`;
+          
+          // Append dynamic Like Button
           card.appendChild(createLikeButton(item.key));
           grid.appendChild(card);
         });
@@ -216,11 +239,15 @@ const HTML_CONTENT = `
         const unique = [...new Map(items.map(i => [i.creator, i])).values()];
         unique.forEach(u => {
           if (!u.creator || u.creator === 'Anonymous') return;
-          const s = document.createElement('div'); s.className = 'flex flex-col items-center gap-1 shrink-0';
+          const s = document.createElement('div'); 
+          s.className = 'flex flex-col items-center gap-1 shrink-0';
           s.innerHTML = \`<div class="story-ring"><div class="story-ring-inner flex items-center justify-center bg-gray-800">\${u.creatorPic ? '<img src="'+u.creatorPic+'" class="w-full h-full object-cover rounded-full">' : '<span class="text-white font-bold text-lg">'+u.creator[0]+'</span>'}</div></div><span class="text-xs text-gray-300 w-16 truncate text-center">\${u.creator}</span>\`;
           stories.appendChild(s);
         });
-      } catch(e) { document.getElementById('mediaGrid').innerHTML = 'Error loading.'; }
+      } catch(e) { 
+        document.getElementById('mediaGrid').innerHTML = 'Error loading posts.'; 
+        console.error(e);
+      }
     }
     loadMedia();
   </script>
@@ -258,7 +285,7 @@ export default {
       }
     }
 
-    // NAYA: LIKES API D1 DATABASE KE SATH
+    // --- LIKES API WITH D1 DATABASE ---
     if (url.pathname === "/api/likes" && request.method === "GET") {
       const mediaId = url.searchParams.get("mediaId");
       const visitorId = url.searchParams.get("visitorId");
@@ -304,6 +331,7 @@ export default {
       }
     }
 
+    // --- UPLOAD API ---
     if (url.pathname === "/api/upload" && request.method === "POST") {
       if (!env.GOOGLE_CLIENT_ID) return json({ error: "Not configured" }, 503);
       const authorization = request.headers.get("authorization") || "";
@@ -365,7 +393,6 @@ export default {
       return new Response(object.body, { headers });
     }
 
-    // Serve the new HTML content directly
     if (url.pathname === "/" || url.pathname === "/index.html") {
       return new Response(HTML_CONTENT, {
         headers: { "content-type": "text/html;charset=UTF-8" }
