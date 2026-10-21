@@ -219,7 +219,6 @@
     <button id="bottomPlus" class="bg-[var(--color-primary)] text-white rounded-lg p-2 hover:brightness-110 transition" aria-expanded="false">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
     </button>
-    <!-- Yahan href="/reels/index.html" kar diya gaya hai taake click par page change ho -->
     <a href="/reels/index.html" id="navReels" class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
       <span class="text-[10px]">Reels</span>
@@ -312,6 +311,13 @@
     const uploadSection = document.getElementById('upload');
     const toggleUploadTop = document.getElementById('toggleUploadTop');
 
+    // Bottom Nav Home fix (sirf wall show karega)
+    document.getElementById('navHome').addEventListener('click', (e) => {
+      // e.preventDefault();
+      document.getElementById('reels').classList.add('hidden');
+      document.getElementById('wall').classList.remove('hidden');
+    });
+
     function openAccountDialog() {
       accountDialog.classList.remove('hidden');
       accountDialog.classList.add('flex');
@@ -387,9 +393,7 @@
       selectedFile = null; mediaInput.value = ''; filePanel.classList.add('hidden'); uploadStatus.classList.add('hidden');
     });
 
-    // ==========================================
-    // NAYA LIKES LOGIC (Connected to D1 Database)
-    // ==========================================
+    // LIKES LOGIC
     function updateLikeButton(button, result) {
       button.querySelector('.like-count').textContent = result.count;
       button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
@@ -440,6 +444,7 @@
       return button;
     }
 
+    // RENDER MEDIA (Yahan videos ko preload="none" kiya gaya hai)
     function renderMedia(item) {
       const card = document.createElement('article');
       card.className = 'post-card';
@@ -467,9 +472,16 @@
 
       let media;
       if (item.type === 'photo' || item.type === 'gif') {
-        media = document.createElement('img'); media.src = item.url; media.loading = 'lazy'; media.className = 'post-media';
+        media = document.createElement('img'); 
+        media.src = item.url; 
+        media.loading = 'lazy'; 
+        media.className = 'post-media';
       } else {
-        media = document.createElement('video'); media.src = item.url; media.controls = true; media.className = 'post-media';
+        media = document.createElement('video'); 
+        media.src = item.url; 
+        media.controls = true; 
+        media.className = 'post-media';
+        media.preload = 'none'; // NAYA: Video pehle se load nahi hogi
       }
 
       const actions = document.createElement('div');
@@ -489,6 +501,7 @@
       return card;
     }
 
+    // RENDER REELS (Main page wala section)
     function renderReels(items) {
       const videos = items.filter((item) => item.type === 'video');
       reelsFeed.replaceChildren();
@@ -497,7 +510,7 @@
       videos.forEach((item) => {
         const card = document.createElement('article'); card.className = 'reel-card rounded-2xl';
         const video = document.createElement('video');
-        video.src = item.url; video.controls = true; video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'metadata';
+        video.src = item.url; video.controls = true; video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'none'; // NAYA: Preload none
         video.setAttribute('aria-label', item.title || 'Community video');
         const details = document.createElement('div'); details.className = 'reel-details';
         const title = document.createElement('h3'); title.className = 'text-lg font-bold text-white'; title.textContent = item.title || 'Untitled moment';
