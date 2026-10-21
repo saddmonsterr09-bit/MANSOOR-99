@@ -45,7 +45,6 @@ async function verifyGoogleToken(token, googleClientId) {
   }
 }
 
-// Purana solid listMedia function (Videos wapas laane ke liye)
 async function listMedia(env, prefix) {
   const results = [];
   let cursor;
@@ -105,7 +104,7 @@ export default {
       }
     }
 
-    // NAYA: LIKES API D1 DATABASE KE SATH (Yeh hissa add kiya gaya hai)
+    // LIKES API D1 DATABASE KE SATH
     if (url.pathname === "/api/likes" && request.method === "GET") {
       const mediaId = url.searchParams.get("mediaId");
       const visitorId = url.searchParams.get("visitorId");
@@ -150,8 +149,8 @@ export default {
         return json({ error: "Database error", details: err.message }, 500);
       }
     }
-    // NAYA Hissa Khatam
 
+    // UPLOAD API
     if (url.pathname === "/api/upload" && request.method === "POST") {
       if (!env.GOOGLE_CLIENT_ID) return json({ error: "Not configured" }, 503);
       const authorization = request.headers.get("authorization") || "";
