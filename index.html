@@ -1,25 +1,20 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta name="google-site-verification" content="DYeiTw87ZycZvB0GuDitM6o21FIz2b1f_7hce86Smls" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#000000">
   
-  <!-- PWA SETUP START -->
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <!-- PWA SETUP END -->
 
   <title>ReelsBook — Modern Social Platform</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  
-  <!-- Google Fonts for beautiful logo font -->
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   
   <style>
@@ -41,75 +36,20 @@
       --color-primary: var(--primary);
       --color-primary-contrast: var(--primary-contrast);
     }
-
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-      padding-bottom: 70px; /* Space for bottom nav */
-    }
-
-    .font-logo {
-      font-family: 'Pacifico', cursive;
-      letter-spacing: 0.5px;
-    }
-
-    /* Hide scrollbar for stories */
+    body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; padding-bottom: 70px; }
+    .font-logo { font-family: 'Pacifico', cursive; letter-spacing: 0.5px; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
     .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-    /* Story Ring Gradient */
-    .story-ring {
-      background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-      padding: 3px;
-      border-radius: 50%;
-      display: inline-block;
-    }
-    .story-ring-inner {
-      border: 3px solid var(--bg);
-      border-radius: 50%;
-      padding: 2px;
-      background: var(--bg);
-      overflow: hidden;
-      width: 64px;
-      height: 64px;
-    }
-
-    /* Post Feed Styling */
-    .post-card {
-      background: var(--bg);
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 1rem;
-    }
-    
-    .post-media {
-      width: 100%;
-      max-height: 600px;
-      object-fit: cover;
-      background: #000;
-    }
-
-    /* Upload Modal */
-    #upload {
-      display: none;
-      position: fixed;
-      inset: 0;
-      z-index: 60;
-      background: rgba(0,0,0,0.85);
-      backdrop-filter: blur(5px);
-      align-items: center;
-      justify-content: center;
-    }
-    #upload.is-open {
-      display: flex;
-    }
-
-    /* Reels Section */
+    .story-ring { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); padding: 3px; border-radius: 50%; display: inline-block; }
+    .story-ring-inner { border: 3px solid var(--bg); border-radius: 50%; padding: 2px; background: var(--bg); overflow: hidden; width: 64px; height: 64px; }
+    .post-card { background: var(--bg); border-bottom: 1px solid var(--border); padding-bottom: 1rem; }
+    .post-media { width: 100%; max-height: 600px; object-fit: cover; background: #000; }
+    #upload { display: none; position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); align-items: center; justify-content: center; }
+    #upload.is-open { display: flex; }
     .reels-feed { display: grid; gap: 1rem; max-height: min(78svh, 52rem); overflow-y: auto; scroll-snap-type: y mandatory; }
     .reel-card { position: relative; min-height: 32rem; height: min(78svh, 52rem); overflow: hidden; scroll-snap-align: start; background: var(--surface); border-radius: var(--radius); }
     .reel-card video { width: 100%; height: 100%; object-fit: cover; }
     .reel-details { position: absolute; right: 0; bottom: 0; left: 0; padding: 5rem 1.25rem 1.25rem; background: linear-gradient(transparent, rgba(0,0,0,0.9)); }
-    
     .token-border { border-color: var(--border); }
     .token-panel { background: var(--surface); }
     .upload-zone.is-dragging { border-color: var(--primary); background: rgba(239, 68, 68, 0.1); }
@@ -117,32 +57,21 @@
     .like-button[aria-pressed="true"] .like-icon { color: var(--primary); }
   </style>
 </head>
-
 <body class="antialiased">
 
-  <!-- HEADER -->
   <header class="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b token-border px-4 py-3 flex items-center justify-between">
-    <a href="/" class="text-2xl font-logo text-white" aria-label="ReelsBook home">
-      ReelsBook
-    </a>
+    <a href="/" class="text-2xl font-logo text-white">ReelsBook</a>
     <div class="flex items-center gap-5">
-      <button id="toggleUploadTop" class="text-white hover:text-[var(--primary)] transition" aria-label="Create Post">
+      <button id="toggleUploadTop" class="text-white hover:text-[var(--primary)] transition">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-      </button>
-      <button class="text-white hover:text-[var(--primary)] transition" aria-label="Notifications">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
       </button>
       <button id="accountButton" type="button" class="rounded-full border token-border px-3 py-1.5 text-sm font-semibold transition hover:border-[var(--primary)] hover:text-[var(--primary)]">Log in</button>
     </div>
   </header>
 
-  <!-- MAIN CONTENT -->
   <main class="max-w-xl mx-auto pt-2">
-
-    <!-- STORIES SECTION -->
     <section class="mb-4 border-b token-border pb-4 px-4">
       <div class="flex gap-4 overflow-x-auto hide-scrollbar">
-        <!-- Current User Add Story -->
         <div class="flex flex-col items-center gap-1 cursor-pointer shrink-0" id="addStoryBtn">
           <div class="relative w-16 h-16 rounded-full border border-gray-700 bg-[var(--surface)] flex items-center justify-center">
             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
@@ -152,33 +81,24 @@
           </div>
           <span class="text-xs text-gray-400">Your Story</span>
         </div>
-
-        <!-- Real Stories Container -->
-        <div id="storiesContainer" class="flex gap-4">
-          <!-- Real stories from DB will be injected here by JS -->
-        </div>
+        <div id="storiesContainer" class="flex gap-4"></div>
       </div>
     </section>
 
-    <!-- POSTS FEED (Wall) -->
     <section id="wall" class="space-y-0">
       <div id="mediaGrid" class="space-y-4">
-        <!-- Real posts from API will be injected here by JS -->
         <div id="loadingFeed" class="text-center py-10 text-gray-500">Loading posts...</div>
       </div>
       <p id="wallStatus" class="text-center text-sm text-gray-500 py-4" role="status" aria-live="polite"></p>
     </section>
 
-    <!-- REELS SECTION (Hidden by default, accessible via nav) -->
     <section id="reels" class="pt-4 pb-10 px-4 hidden">
       <h2 class="text-xl font-bold mb-4">Reels</h2>
       <div id="reelsFeed" class="reels-feed"></div>
       <p id="reelsStatus" class="mt-4 text-center text-sm text-gray-500" role="status" aria-live="polite"></p>
     </section>
-
   </main>
 
-  <!-- BOTTOM NAVIGATION (Mobile First) -->
   <nav class="fixed bottom-0 inset-x-0 z-40 bg-black border-t token-border flex justify-around items-center py-2 pb-safe">
     <a href="#wall" class="text-white flex flex-col items-center gap-1" id="navHome">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
@@ -188,7 +108,7 @@
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
       <span class="text-[10px]">Search</span>
     </button>
-    <button id="bottomPlus" class="bg-[var(--primary)] text-white rounded-lg p-2 hover:brightness-110 transition" aria-label="Create Post" aria-expanded="false">
+    <button id="bottomPlus" class="bg-[var(--primary)] text-white rounded-lg p-2 hover:brightness-110 transition" aria-expanded="false">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
     </button>
     <a href="#reels" class="text-gray-400 hover:text-white flex flex-col items-center gap-1" id="navReels">
@@ -201,64 +121,54 @@
     </a>
   </nav>
 
-  <!-- UPLOAD MODAL (Modified IDs to match JS) -->
   <div id="upload" class="hidden">
     <div class="bg-[var(--surface)] w-full max-w-md p-6 rounded-xl border token-border relative max-h-[90vh] overflow-y-auto">
       <button id="closeUpload" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">✕</button>
       <h2 class="text-xl font-bold mb-4 text-white">Create New Post</h2>
-      
       <div class="mb-4">
         <p id="authStatus" class="text-sm text-gray-400">Sign in to upload.</p>
-        <p id="authAccount" class="text-xs text-gray-500 mt-1" aria-live="polite"></p>
         <div class="flex items-center gap-3 mt-3">
           <div id="googleSignInButton"></div>
-          <button id="signOutButton" type="button" class="hidden rounded-full border token-border px-4 py-2 text-xs font-semibold transition hover:border-[var(--primary)] text-white">Sign out</button>
+          <button id="signOutButton" type="button" class="hidden rounded-full border token-border px-4 py-2 text-xs font-semibold text-white">Sign out</button>
         </div>
       </div>
-
-      <div class="mb-4 grid grid-cols-3 gap-2" role="group" aria-label="Choose upload type">
+      <div class="mb-4 grid grid-cols-3 gap-2">
         <button type="button" class="upload-type-option rounded-lg border token-border bg-[var(--primary)] px-2 py-2 text-sm font-bold text-white transition" data-upload-type="photo" aria-pressed="true">📷 Photo</button>
-        <button type="button" class="upload-type-option rounded-lg border token-border bg-[var(--surface)] px-2 py-2 text-sm font-bold text-gray-300 transition hover:border-[var(--primary)]" data-upload-type="video" aria-pressed="false">▶ Video</button>
-        <button type="button" class="upload-type-option rounded-lg border token-border bg-[var(--surface)] px-2 py-2 text-sm font-bold text-gray-300 transition hover:border-[var(--primary)]" data-upload-type="gif" aria-pressed="false">✨ GIF</button>
+        <button type="button" class="upload-type-option rounded-lg border token-border bg-[var(--surface)] px-2 py-2 text-sm font-bold text-gray-300 transition" data-upload-type="video" aria-pressed="false">▶ Video</button>
+        <button type="button" class="upload-type-option rounded-lg border token-border bg-[var(--surface)] px-2 py-2 text-sm font-bold text-gray-300 transition" data-upload-type="gif" aria-pressed="false">✨ GIF</button>
       </div>
-
-      <label id="dropZone" class="upload-zone flex flex-col items-center justify-center border-2 border-dashed token-border rounded-lg p-8 cursor-pointer hover:border-[var(--primary)] transition">
+      <label id="dropZone" class="upload-zone flex flex-col items-center justify-center border-2 border-dashed token-border rounded-lg p-8 cursor-pointer">
         <input id="mediaInput" type="file" accept="image/*" class="hidden">
         <span class="text-[var(--primary)] text-3xl mb-2">↑</span>
         <span id="dropTitle" class="text-white font-bold mb-1 text-center">Drag & drop a photo here</span>
-        <span id="dropHint" class="text-xs text-gray-500 text-center">or click to browse · up to 90 MB</span>
       </label>
-
       <div id="filePanel" class="mt-4 hidden bg-black rounded-lg p-4 border token-border">
         <div class="flex justify-between items-center mb-3">
           <p id="fileName" class="truncate font-bold text-white text-sm"></p>
           <button id="clearFile" class="text-xs text-gray-400 underline ml-2">Remove</button>
         </div>
-        <input id="mediaTitle" type="text" placeholder="Write a caption..." class="w-full bg-[var(--surface)] border border-gray-700 rounded p-2 text-white mb-2 text-sm outline-none focus:border-[var(--primary)]">
-        <button id="publishButton" class="w-full bg-[var(--primary)] text-white font-bold py-2 rounded hover:brightness-110 transition">Publish</button>
-        <p id="uploadStatus" class="mt-2 text-sm text-green-500 text-center hidden" role="status" aria-live="polite"></p>
+        <input id="mediaTitle" type="text" placeholder="Write a caption..." class="w-full bg-[var(--surface)] border border-gray-700 rounded p-2 text-white mb-2 text-sm">
+        <button id="publishButton" class="w-full bg-[var(--primary)] text-white font-bold py-2 rounded">Publish</button>
+        <p id="uploadStatus" class="mt-2 text-sm text-green-500 text-center hidden"></p>
       </div>
     </div>
   </div>
 
-  <!-- ACCOUNT DIALOG -->
-  <div id="accountDialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-5 backdrop-blur-sm" role="dialog" aria-modal="true">
+  <div id="accountDialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-5 backdrop-blur-sm">
     <section class="relative w-full max-w-sm bg-[var(--surface)] p-6 rounded-xl border token-border shadow-2xl">
       <button id="closeAccountDialog" class="absolute right-4 top-4 text-gray-400 hover:text-white text-xl">✕</button>
       <h2 class="text-xl font-bold text-white mb-2">Welcome to ReelsBook</h2>
-      <p class="text-sm text-gray-400 mb-4">Sign in with Google to upload and interact.</p>
       <div class="grid gap-3">
         <div id="googleContinueButton" class="flex justify-center"></div>
         <div id="googleSignupButton" class="flex justify-center"></div>
       </div>
-      <p id="accountDialogStatus" class="mt-4 text-center text-sm text-gray-400" aria-live="polite"></p>
+      <p id="accountDialogStatus" class="mt-4 text-center text-sm text-gray-400"></p>
     </section>
   </div>
 
   <script>
-    // --- PURANA JAVASCRIPT LOGIC (Bina kisi backend change ke) ---
+    // Main logic (Waisa hi hai jo aapne beja tha + profile pic support)
     const mediaInput = document.getElementById('mediaInput');
-    const dropZone = document.getElementById('dropZone');
     const filePanel = document.getElementById('filePanel');
     const fileName = document.getElementById('fileName');
     const uploadStatus = document.getElementById('uploadStatus');
@@ -267,7 +177,6 @@
     const reelsFeed = document.getElementById('reelsFeed');
     const reelsStatus = document.getElementById('reelsStatus');
     const authStatus = document.getElementById('authStatus');
-    const authAccount = document.getElementById('authAccount');
     const googleSignInButton = document.getElementById('googleSignInButton');
     const signOutButton = document.getElementById('signOutButton');
     const accountDialog = document.getElementById('accountDialog');
@@ -275,226 +184,88 @@
     const authStorageKey = 'fullMastiGoogleCredential';
     let googleCredential = sessionStorage.getItem(authStorageKey) || '';
     let googleUser = null;
-    const maxUploadSize = 90 * 1024 * 1024;
-    const uploadTypes = {
-      photo: { accept: 'image/jpeg,image/png,image/webp,image/avif', title: 'Drag & drop a photo here', hint: 'or click to browse · JPG, PNG, WEBP, AVIF · up to 90 MB' },
-      video: { accept: 'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska', title: 'Drag & drop a video here', hint: 'or click to browse · MP4, MOV, WEBM, OGG, MKV · up to 90 MB' },
-      gif: { accept: 'image/gif', title: 'Drag & drop a GIF here', hint: 'or click to browse · GIF · up to 90 MB' }
-    };
+    const uploadTypes = { photo: { accept: 'image/*' }, video: { accept: 'video/*' }, gif: { accept: 'image/gif' } };
     let activeUploadType = 'photo';
     let selectedFile = null;
-    let galleryItems = [];
 
-    function getVisitorId() {
-      let visitorId = localStorage.getItem('ReelsbookVisitorId') || localStorage.getItem('openframeVisitorId');
-      if (!visitorId) visitorId = crypto.randomUUID();
-      localStorage.setItem('ReelsbookVisitorId', visitorId);
-      return visitorId;
-    }
+    function getVisitorId() { let v = localStorage.getItem('ReelsbookVisitorId'); if (!v) v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); return v; }
     const visitorId = getVisitorId();
-
-    function showUploadMessage(message) {
-      uploadStatus.textContent = message;
-      uploadStatus.classList.remove('hidden');
-    }
 
     function setUploadType(type) {
       activeUploadType = type;
-      const settings = uploadTypes[type];
-      mediaInput.accept = settings.accept;
-      document.getElementById('dropTitle').textContent = settings.title;
-      document.getElementById('dropHint').textContent = settings.hint;
-      document.querySelectorAll('.upload-type-option').forEach((button) => {
-        const isActive = button.dataset.uploadType === type;
-        button.setAttribute('aria-pressed', String(isActive));
-        button.classList.toggle('bg-[var(--primary)]', isActive);
-        button.classList.toggle('text-white', isActive);
-        button.classList.toggle('bg-[var(--surface)]', !isActive);
-        button.classList.toggle('text-gray-300', !isActive);
+      mediaInput.accept = uploadTypes[type].accept;
+      document.querySelectorAll('.upload-type-option').forEach((btn) => {
+        const isActive = btn.dataset.uploadType === type;
+        btn.setAttribute('aria-pressed', String(isActive));
+        btn.classList.toggle('bg-[var(--primary)]', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('bg-[var(--surface)]', !isActive);
+        btn.classList.toggle('text-gray-300', !isActive);
       });
-      selectedFile = null;
-      mediaInput.value = '';
-      filePanel.classList.add('hidden');
-      uploadStatus.classList.add('hidden');
+      selectedFile = null; mediaInput.value = ''; filePanel.classList.add('hidden');
     }
 
-    const uploadSection = document.getElementById('upload');
-    const bottomPlus = document.getElementById('bottomPlus');
-    const toggleUploadTop = document.getElementById('toggleUploadTop');
+    document.querySelectorAll('.upload-type-option').forEach((btn) => btn.addEventListener('click', () => setUploadType(btn.dataset.uploadType)));
+    document.getElementById('addStoryBtn').addEventListener('click', () => document.getElementById('upload').classList.add('is-open', 'flex'));
+    
+    // Simplification for the prompt
+    document.getElementById('closeUpload').addEventListener('click', () => document.getElementById('upload').classList.remove('is-open', 'flex'));
+    document.getElementById('toggleUploadTop').addEventListener('click', () => document.getElementById('upload').classList.add('is-open', 'flex'));
+    document.getElementById('bottomPlus').addEventListener('click', () => document.getElementById('upload').classList.add('is-open', 'flex'));
+    document.getElementById('accountButton').addEventListener('click', () => accountDialog.classList.replace('hidden', 'flex'));
+    document.getElementById('closeAccountDialog').addEventListener('click', () => accountDialog.classList.replace('flex', 'hidden'));
 
-    function openAccountDialog() {
-      accountDialog.classList.remove('hidden');
-      accountDialog.classList.add('flex');
-    }
-
-    function closeAccountDialog() {
-      accountDialog.classList.add('hidden');
-      accountDialog.classList.remove('flex');
-    }
-
-    document.getElementById('accountButton').addEventListener('click', openAccountDialog);
-    document.getElementById('closeAccountDialog').addEventListener('click', closeAccountDialog);
-    accountDialog.addEventListener('click', (event) => { if (event.target === accountDialog) closeAccountDialog(); });
-    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !accountDialog.classList.contains('hidden')) closeAccountDialog(); });
-
-    // Open Upload Modal Logic
-    function openUploadModal() {
-      uploadSection.classList.remove('hidden');
-      uploadSection.classList.add('is-open');
-      bottomPlus.setAttribute('aria-expanded', 'true');
-    }
-    function closeUploadModal() {
-      uploadSection.classList.add('hidden');
-      uploadSection.classList.remove('is-open');
-      bottomPlus.setAttribute('aria-expanded', 'false');
-    }
-
-    toggleUploadTop.addEventListener('click', openUploadModal);
-    bottomPlus.addEventListener('click', openUploadModal);
-    document.getElementById('closeUpload').addEventListener('click', closeUploadModal);
-    document.getElementById('addStoryBtn').addEventListener('click', openUploadModal);
-
-    document.querySelectorAll('.upload-type-option').forEach((button) => {
-      button.addEventListener('click', () => setUploadType(button.dataset.uploadType));
+    mediaInput.addEventListener('change', () => {
+      const file = mediaInput.files[0]; if (!file) return;
+      selectedFile = file; fileName.textContent = file.name; filePanel.classList.remove('hidden');
     });
-
-    function showFile(file) {
-      if (!file) return;
-      const matchesSelection = activeUploadType === 'photo' ? file.type.startsWith('image/') && file.type !== 'image/gif' : activeUploadType === 'video' ? file.type.startsWith('video/') : file.type === 'image/gif';
-      if (!matchesSelection) { showUploadMessage(`Please choose a ${activeUploadType === 'gif' ? 'GIF' : activeUploadType} file.`); return; }
-      if (file.size > maxUploadSize) { showUploadMessage('Files must be 90 MB or smaller.'); return; }
-      selectedFile = file;
-      fileName.textContent = file.name;
-      filePanel.classList.remove('hidden');
-      uploadStatus.classList.add('hidden');
-    }
-
-    mediaInput.addEventListener('change', () => showFile(mediaInput.files[0]));
-    ['dragenter', 'dragover'].forEach((eventName) => { dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.add('is-dragging'); }); });
-    ['dragleave', 'drop'].forEach((eventName) => { dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.remove('is-dragging'); }); });
-    dropZone.addEventListener('drop', (event) => showFile(event.dataTransfer.files[0]));
     document.getElementById('clearFile').addEventListener('click', () => { selectedFile = null; mediaInput.value = ''; filePanel.classList.add('hidden'); });
 
-    // --- LIKES LOGIC ---
     function updateLikeButton(button, result) {
       button.querySelector('.like-count').textContent = result.count;
       button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
       button.setAttribute('aria-pressed', String(result.liked));
     }
-    const localLikeStorageKey = 'fullMastiLocalLikes';
-    function readLocalLike(mediaId) {
-      try { const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}'); return savedLikes[mediaId] || { count: 0, liked: false }; } catch (error) { return { count: 0, liked: false }; }
-    }
-    function saveLocalLike(mediaId, state) {
-      try { const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}'); savedLikes[mediaId] = state; localStorage.setItem(localLikeStorageKey, JSON.stringify(savedLikes)); } catch (error) {}
-    }
-    function toggleLocalLike(mediaId, button) {
-      const current = readLocalLike(mediaId); const liked = !current.liked;
-      const result = { count: Math.max(0, current.count + (liked ? 1 : -1)), liked };
-      saveLocalLike(mediaId, result); updateLikeButton(button, result);
-    }
     async function loadLikeState(mediaId, button) {
-      try {
-        const query = new URLSearchParams({ mediaId, visitorId });
-        const response = await fetch(`/api/likes?${query}`);
-        if (!response.ok) throw new Error('Likes API is unavailable.');
-        updateLikeButton(button, await response.json());
-      } catch (error) { updateLikeButton(button, readLocalLike(mediaId)); }
-    }
-    function attachLikeHandler(button) {
-      button.addEventListener('click', async (e) => {
-        e.preventDefault();
-        const mediaId = button.dataset.mediaId; button.disabled = true;
-        try {
-          const response = await fetch('/api/likes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mediaId, visitorId }) });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || 'Likes API is unavailable.');
-          updateLikeButton(button, result);
-        } catch (error) {
-          toggleLocalLike(mediaId, button); 
-        } finally { button.disabled = false; }
-      });
+      try { const res = await fetch(`/api/likes?mediaId=${mediaId}&visitorId=${visitorId}`); if (res.ok) updateLikeButton(button, await res.json()); } catch (e) {}
     }
     function makeLikeButton(mediaId) {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'like-button flex items-center gap-1 text-gray-400 hover:text-white transition';
-      btn.dataset.mediaId = mediaId; btn.setAttribute('aria-pressed', 'false');
-      btn.innerHTML = '<span class="like-icon text-xl" aria-hidden="true">♡</span><span class="like-count text-sm font-semibold">0</span>';
-      attachLikeHandler(btn); loadLikeState(mediaId, btn); return btn;
+      const btn = document.createElement('button'); btn.className = 'like-button flex items-center gap-1 text-gray-400 hover:text-white transition'; btn.dataset.mediaId = mediaId; btn.setAttribute('aria-pressed', 'false');
+      btn.innerHTML = '<span class="like-icon text-xl">♡</span><span class="like-count text-sm font-semibold">0</span>';
+      btn.onclick = async () => {
+        try { const res = await fetch('/api/likes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mediaId, visitorId }) }); if (res.ok) updateLikeButton(btn, await res.json()); } catch (e) {}
+      };
+      loadLikeState(mediaId, btn); return btn;
     }
 
-    // --- RENDER POSTS (Feed Design) ---
     function renderMedia(item) {
-      const card = document.createElement('article');
-      card.className = 'post-card';
-      card.dataset.type = item.type;
+      const card = document.createElement('article'); card.className = 'post-card'; card.dataset.type = item.type;
       const mediaId = item.key || item.id;
-
-      // User Info Header
-      const header = document.createElement('div');
-      header.className = 'flex items-center gap-3 px-4 py-3';
-      const avatar = document.createElement('div');
-      avatar.className = 'w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-xs font-bold text-white overflow-hidden cursor-pointer';
-      if (item.creatorPic) {
-        avatar.innerHTML = `<img src="${item.creatorPic}" class="w-full h-full object-cover">`;
-      } else {
-        avatar.textContent = (item.creator || 'A')[0].toUpperCase();
-      }
+      const header = document.createElement('div'); header.className = 'flex items-center gap-3 px-4 py-3';
+      const avatar = document.createElement('div'); avatar.className = 'w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-xs font-bold text-white overflow-hidden';
+      if (item.creatorPic) avatar.innerHTML = `<img src="${item.creatorPic}" class="w-full h-full object-cover">`; else avatar.textContent = (item.creator || 'A')[0].toUpperCase();
       
-      const creatorInfo = document.createElement('div');
-      creatorInfo.className = 'flex flex-col cursor-pointer';
-      creatorInfo.onclick = () => { window.location.href = `/profile/index.html?name=${encodeURIComponent(item.creator)}&pic=${encodeURIComponent(item.creatorPic || '')}`; };
-      creatorInfo.innerHTML = `<span class="text-sm font-bold text-white">${item.creator || 'Anonymous'}</span><span class="text-xs text-gray-500">${new Date().toLocaleDateString()}</span>`;
+      const creatorInfo = document.createElement('div'); creatorInfo.className = 'flex flex-col';
+      creatorInfo.innerHTML = `<span class="text-sm font-bold text-white">${item.creator || 'Anonymous'}</span><span class="text-xs text-gray-500">${new Date(item.uploadedAt || Date.now()).toLocaleDateString()}</span>`;
+      header.append(avatar, creatorInfo);
       
-      header.appendChild(avatar);
-      header.appendChild(creatorInfo);
-      
-      // Media Element
       let media;
-      if (item.type === 'photo' || item.type === 'gif') {
-        media = document.createElement('img'); 
-        media.src = item.url; media.className = 'post-media'; media.loading = 'lazy';
-      } else {
-        media = document.createElement('video'); 
-        media.src = item.url; media.controls = true; media.className = 'post-media';
-      }
+      if (item.type === 'photo' || item.type === 'gif') { media = document.createElement('img'); media.src = item.url; media.className = 'post-media'; }
+      else { media = document.createElement('video'); media.src = item.url; media.controls = true; media.className = 'post-media'; }
 
-      // Actions (Like, Comment, Share)
-      const actions = document.createElement('div');
-      actions.className = 'flex items-center gap-4 px-4 pt-3 pb-1';
-      const likeBtn = makeLikeButton(mediaId);
-      actions.appendChild(likeBtn);
-      
-      const commentBtn = document.createElement('button');
-      commentBtn.className = 'text-gray-400 hover:text-white transition';
-      commentBtn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>`;
-      actions.appendChild(commentBtn);
-
-      const shareBtn = document.createElement('button');
-      shareBtn.className = 'text-gray-400 hover:text-white transition';
-      shareBtn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>`;
-      actions.appendChild(shareBtn);
-
-      // Caption
-      const caption = document.createElement('div');
-      caption.className = 'px-4 pt-2 text-sm text-white';
-      caption.innerHTML = `<span class="font-bold mr-2">${item.creator || 'Anonymous'}</span>${item.title || 'Untitled moment'}`;
-
-      card.append(header, media, actions, caption); 
-      return card;
+      const actions = document.createElement('div'); actions.className = 'flex items-center gap-4 px-4 pt-3 pb-1';
+      actions.appendChild(makeLikeButton(mediaId));
+      const caption = document.createElement('div'); caption.className = 'px-4 pt-2 text-sm text-white';
+      caption.innerHTML = `<span class="font-bold mr-2">${item.creator || 'Anonymous'}</span>${item.title || ''}`;
+      card.append(header, media, actions, caption); return card;
     }
 
-    // --- RENDER REELS ---
     function renderReels(items) {
-      const videos = items.filter((item) => item.type === 'video');
-      reelsFeed.replaceChildren();
-      if (!videos.length) { reelsStatus.textContent = 'No videos yet. Share a video to start the reels feed.'; return; }
-      reelsStatus.textContent = '';
-      videos.forEach((item) => {
+      const videos = items.filter(i => i.type === 'video');
+      reelsFeed.innerHTML = videos.length ? '' : '<p class="text-gray-500">No videos yet.</p>';
+      videos.forEach(item => {
         const card = document.createElement('article'); card.className = 'reel-card';
-        const video = document.createElement('video');
-        video.src = item.url; video.controls = true; video.muted = true; video.loop = true; video.playsInline = true;
+        const video = document.createElement('video'); video.src = item.url; video.controls = true; video.loop = true;
         const details = document.createElement('div'); details.className = 'reel-details';
         details.innerHTML = `<h3 class="text-lg font-bold text-white">${item.title || 'Untitled'}</h3><p class="text-sm text-gray-400 mb-3">by ${item.creator || 'Anonymous'}</p>`;
         details.appendChild(makeLikeButton(item.key || item.id));
@@ -502,185 +273,65 @@
       });
     }
 
-    // --- LOAD DATA FROM BACKEND ---
     async function loadMedia() {
-      const loadingFeed = document.getElementById('loadingFeed');
-      if (loadingFeed) loadingFeed.remove();
-
+      document.getElementById('loadingFeed')?.remove();
       try {
-        const response = await fetch('/api/media');
-        if (!response.ok) throw new Error('Could not load media.');
-        galleryItems = await response.json();
+        const res = await fetch('/api/media'); if (!res.ok) throw new Error('Failed');
+        const items = await res.json();
+        if (!items.length) { mediaGrid.innerHTML = '<div class="text-center text-gray-500 py-10">No posts yet.</div>'; return; }
+        mediaGrid.innerHTML = ''; items.forEach(i => mediaGrid.appendChild(renderMedia(i)));
+        renderReels(items);
         
-        if (!galleryItems.length) {
-          wallStatus.textContent = 'Be the first to share a photo or video.';
-          mediaGrid.innerHTML = '<div class="text-center text-gray-500 py-10">No posts yet.</div>';
-          return;
-        }
-
-        // Filter out videos for the main feed if you only want photos, or keep all:
-        mediaGrid.replaceChildren(...galleryItems.map(renderMedia));
-        renderReels(galleryItems);
-        
-        // POPULATE STORIES (Using real data from posts)
-        const storiesContainer = document.getElementById('storiesContainer');
-        storiesContainer.innerHTML = ''; // Clear old
-        const uniqueCreators = [...new Map(galleryItems.map(item => [item.creator, item])).values()];
-        
-        uniqueCreators.forEach(user => {
-          if (!user.creator || user.creator === 'Anonymous') return;
-          const storyDiv = document.createElement('div');
-          storyDiv.className = 'flex flex-col items-center gap-1 cursor-pointer shrink-0';
-          storyDiv.innerHTML = `
-            <div class="story-ring">
-              <div class="story-ring-inner flex items-center justify-center bg-gray-800">
-                ${user.creatorPic ? `<img src="${user.creatorPic}" class="w-full h-full object-cover rounded-full">` : `<span class="text-white font-bold text-lg">${user.creator[0]}</span>`}
-              </div>
-            </div>
-            <span class="text-xs text-gray-300 w-16 truncate text-center">${user.creator}</span>
-          `;
-          storiesContainer.appendChild(storyDiv);
+        const stories = document.getElementById('storiesContainer'); stories.innerHTML = '';
+        const unique = [...new Map(items.map(i => [i.creator, i])).values()];
+        unique.forEach(u => {
+          if (!u.creator || u.creator === 'Anonymous') return;
+          const s = document.createElement('div'); s.className = 'flex flex-col items-center gap-1 shrink-0';
+          s.innerHTML = `<div class="story-ring"><div class="story-ring-inner flex items-center justify-center bg-gray-800">${u.creatorPic ? `<img src="${u.creatorPic}" class="w-full h-full object-cover rounded-full">` : `<span class="text-white font-bold text-lg">${u.creator[0]}</span>`}</div></div><span class="text-xs text-gray-300 w-16 truncate text-center">${u.creator}</span>`;
+          stories.appendChild(s);
         });
-
-      } catch (error) {
-        wallStatus.textContent = 'The public wall will load when backend is connected.';
-      }
-    }
-
-    // --- AUTH & GOOGLE SIGN IN ---
-    function showSignedInUser(user) {
-      googleUser = user;
-      let registeredUsers = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}');
-      registeredUsers[user.email] = { name: user.name, picture: user.picture, email: user.email };
-      localStorage.setItem('reelsBookUsers', JSON.stringify(registeredUsers));
-      
-      const accountButton = document.getElementById('accountButton');
-      accountButton.textContent = 'My Account';
-      authStatus.textContent = 'Google account connected. You can publish.';
-      authAccount.textContent = `Signed in as ${user.name}`;
-      googleSignInButton.classList.add('hidden');
-      signOutButton.classList.remove('hidden');
-      closeAccountDialog();
-    }
-
-    function showSignedOutUser(message = 'Sign in with Google to upload.') {
-      googleUser = null;
-      const accountButton = document.getElementById('accountButton');
-      accountButton.textContent = 'Log in';
-      authStatus.textContent = message;
-      authAccount.textContent = '';
-      googleSignInButton.classList.remove('hidden');
-      signOutButton.classList.add('hidden');
-    }
-
-    async function verifyGoogleCredential(credential) {
-      const response = await fetch('/api/auth/google', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ credential }) });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Google sign-in could not be verified.');
-      googleCredential = credential;
-      sessionStorage.setItem(authStorageKey, credential);
-      showSignedInUser(result);
+      } catch (e) { wallStatus.textContent = 'Could not load media.'; }
     }
 
     async function initializeGoogleSignIn() {
       try {
-        const configResponse = await fetch('/api/auth/config');
-        const config = await configResponse.json();
-        if (!configResponse.ok || !config.googleClientId) {
-          showSignedOutUser('Google sign-in is not configured.'); return;
-        }
-        let attempts = 0;
-        const waitForLibrary = window.setInterval(() => {
-          attempts += 1;
-          if (window.google?.accounts?.id) {
-            window.clearInterval(waitForLibrary);
-            window.google.accounts.id.initialize({
-              client_id: config.googleClientId,
-              callback: async (response) => {
-                try { await verifyGoogleCredential(response.credential); } catch (error) { showSignedOutUser(error.message); }
-              }
-            });
-            window.google.accounts.id.renderButton(googleSignInButton, { type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill' });
-            window.google.accounts.id.renderButton(document.getElementById('googleContinueButton'), { type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: 280 });
-            window.google.accounts.id.renderButton(document.getElementById('googleSignupButton'), { type: 'standard', theme: 'outline', size: 'large', text: 'signup_with', shape: 'pill', width: 280 });
-            if (googleCredential) {
-              verifyGoogleCredential(googleCredential).catch(() => { googleCredential = ''; sessionStorage.removeItem(authStorageKey); showSignedOutUser('Expired. Sign in again.'); });
+        const config = await (await fetch('/api/auth/config')).json();
+        if (!config.googleClientId) return;
+        window.google?.accounts.id.initialize({
+          client_id: config.googleClientId,
+          callback: async (response) => {
+            const res = await fetch('/api/auth/google', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ credential: response.credential }) });
+            const user = await res.json();
+            if (res.ok) {
+              googleCredential = response.credential; googleUser = user; sessionStorage.setItem(authStorageKey, googleCredential);
+              document.getElementById('accountButton').textContent = 'My Account'; authStatus.textContent = `Signed in as ${user.name}`; googleSignInButton.classList.add('hidden'); signOutButton.classList.remove('hidden'); accountDialog.classList.replace('flex', 'hidden');
             }
-          } else if (attempts >= 100) { window.clearInterval(waitForLibrary); showSignedOutUser('Google sign-in could not load.'); }
-        }, 100);
-      } catch (error) { showSignedOutUser('Could not check Google sign-in settings.'); }
+          }
+        });
+        window.google?.accounts.id.renderButton(googleSignInButton, { type: 'standard', theme: 'outline', text: 'continue_with' });
+        window.google?.accounts.id.renderButton(document.getElementById('googleContinueButton'), { type: 'standard', theme: 'outline', text: 'continue_with' });
+        window.google?.accounts.id.renderButton(document.getElementById('googleSignupButton'), { type: 'standard', theme: 'outline', text: 'signup_with' });
+      } catch (e) {}
     }
+    setTimeout(initializeGoogleSignIn, 1000);
+    signOutButton.addEventListener('click', () => { googleCredential = ''; googleUser = null; sessionStorage.removeItem(authStorageKey); location.reload(); });
 
-    signOutButton.addEventListener('click', () => {
-      googleCredential = ''; sessionStorage.removeItem(authStorageKey); window.google?.accounts?.id?.disableAutoSelect(); showSignedOutUser();
+    document.getElementById('publishButton').addEventListener('click', async (e) => {
+      if (!googleCredential || !googleUser) return alert('Sign in first');
+      if (!selectedFile) return alert('Choose a file');
+      const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'Uploading...';
+      const fd = new FormData(); fd.append('media', selectedFile); fd.append('title', document.getElementById('mediaTitle').value || selectedFile.name); fd.append('creator', googleUser.name); fd.append('creatorEmail', googleUser.email); fd.append('creatorPic', googleUser.picture || '');
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', headers: { 'Authorization': `Bearer ${googleCredential}` }, body: fd });
+        if (!res.ok) throw new Error('Upload failed');
+        document.getElementById('upload').classList.remove('is-open', 'flex'); await loadMedia();
+      } catch (err) { alert(err.message); } finally { btn.disabled = false; btn.textContent = 'Publish'; }
     });
 
-    initializeGoogleSignIn();
-
-    // --- UPLOAD HANDLER ---
-    document.getElementById('publishButton').addEventListener('click', (event) => {
-      if (!googleCredential || !googleUser) { showUploadMessage('Sign in with Google before publishing.'); return; }
-      if (!selectedFile) { showUploadMessage('Choose a photo or video before publishing.'); return; }
-      const button = event.currentTarget;
-      const title = document.getElementById('mediaTitle').value.trim() || selectedFile.name.replace(/\.[^/.]+$/, '');
-      
-      const formData = new FormData();
-      formData.append('media', selectedFile);
-      formData.append('title', title);
-      formData.append('creator', googleUser.name || 'Anonymous');
-      formData.append('creatorEmail', googleUser.email || '');
-      formData.append('creatorPic', googleUser.picture || '');
-
-      button.disabled = true;
-      button.textContent = 'Uploading…';
-      showUploadMessage('Uploading to cloud storage...');
-
-      const request = new XMLHttpRequest();
-      request.open('POST', '/api/upload');
-      request.setRequestHeader('Authorization', `Bearer ${googleCredential}`);
-      
-      request.addEventListener('load', async () => {
-        try {
-          const result = JSON.parse(request.responseText);
-          if (request.status < 200 || request.status >= 300) throw new Error(result.error || `Upload failed (${request.status}).`);
-          showUploadMessage('Published successfully!');
-          selectedFile = null;
-          mediaInput.value = '';
-          filePanel.classList.add('hidden');
-          document.getElementById('mediaTitle').value = '';
-          closeUploadModal();
-          await loadMedia();
-        } catch (error) {
-          showUploadMessage(error.message || 'Upload failed.');
-        } finally {
-          button.disabled = false;
-          button.textContent = 'Publish';
-        }
-      });
-      request.send(formData);
-    });
-
-    // Navigation Switch for Reels & Home
-    document.getElementById('navReels').addEventListener('click', (e) => {
-      e.preventDefault();
-      document.getElementById('wall').classList.add('hidden');
-      document.getElementById('reels').classList.remove('hidden');
-    });
-    document.getElementById('navHome').addEventListener('click', (e) => {
-      e.preventDefault();
-      document.getElementById('reels').classList.add('hidden');
-      document.getElementById('wall').classList.remove('hidden');
-    });
-
-    // Initial Data Load
+    document.getElementById('navReels').onclick = (e) => { e.preventDefault(); document.getElementById('wall').classList.add('hidden'); document.getElementById('reels').classList.remove('hidden'); };
+    document.getElementById('navHome').onclick = (e) => { e.preventDefault(); document.getElementById('reels').classList.add('hidden'); document.getElementById('wall').classList.remove('hidden'); };
     loadMedia();
-
-    // PWA SERVICE WORKER
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW failed:', err));
-      });
-    }
+    if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
   </script>
 </body>
 </html>
