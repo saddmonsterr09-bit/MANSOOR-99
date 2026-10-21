@@ -5,7 +5,7 @@
   <meta name="google-site-verification" content="DYeiTw87ZycZvB0GuDitM6o21FIz2b1f_7hce86Smls" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="var(--color-bg)">
+  <meta name="theme-color" content="#000000">
   
   <!-- PWA SETUP START -->
   <link rel="manifest" href="/manifest.json">
@@ -14,204 +14,258 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <!-- PWA SETUP END -->
 
-  <title>REELS BOOK 😎 — A public video &amp; photo wall</title>
-  <link rel="stylesheet" href="/theme.css">
+  <title>ReelsBook — Modern Social Platform</title>
+  
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  
+  <!-- Google Fonts for beautiful logo font -->
+  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  
   <style>
-    .token-border { border-color: color-mix(in srgb, var(--color-text) 12%, transparent); }
-    .token-border-soft { border-color: color-mix(in srgb, var(--color-text) 8%, transparent); }
-    .token-panel { background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
-    .token-overlay { background: color-mix(in srgb, var(--color-bg) 78%, transparent); }
-    .media-card img, .media-card video { background: var(--color-bg); }
-    .like-button[aria-pressed="true"] { color: var(--color-primary); border-color: var(--color-primary); }
-    .upload-zone.is-dragging { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 9%, transparent); }
-    #upload { display: none; position: fixed; z-index: 45; right: 1rem; bottom: 6rem; left: 1rem; max-height: calc(100svh - 8rem); overflow-y: auto; box-shadow: 0 24px 80px rgba(var(--color-bg-rgb), .7); }
-    #upload.is-open { display: block; }
-    .reels-feed { display: grid; gap: 1rem; max-height: min(78svh, 52rem); overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; scrollbar-width: thin; scrollbar-color: var(--color-primary) var(--color-surface); }
-    .reel-card { position: relative; min-height: 32rem; height: min(78svh, 52rem); overflow: hidden; scroll-snap-align: start; background: var(--color-surface); }
-    .reel-card video { width: 100%; height: 100%; object-fit: cover; background: var(--color-bg); }
-    .reel-details { position: absolute; right: 0; bottom: 0; left: 0; padding: 5rem 1.25rem 1.25rem; background: linear-gradient(transparent, rgba(var(--color-bg-rgb), .88)); }
-    .bottom-dock { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
-    @media (max-width: 640px) { .reels-feed { max-height: 72svh; } .reel-card { min-height: 28rem; height: 72svh; } }
+    :root {
+      --bg: #000000;
+      --surface: #121212;
+      --surface-hover: #1e1e1e;
+      --text: #ffffff;
+      --text-muted: #a1a1aa;
+      --border: #27272a;
+      --primary: #ef4444;
+      --primary-contrast: #ffffff;
+      --radius: 12px;
+      --color-bg-rgb: 0, 0, 0;
+      --color-bg: var(--bg);
+      --color-surface: var(--surface);
+      --color-text: var(--text);
+      --color-muted: var(--text-muted);
+      --color-primary: var(--primary);
+      --color-primary-contrast: var(--primary-contrast);
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      padding-bottom: 70px; /* Space for bottom nav */
+    }
+
+    .font-logo {
+      font-family: 'Pacifico', cursive;
+      letter-spacing: 0.5px;
+    }
+
+    /* Hide scrollbar for stories */
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Story Ring Gradient */
+    .story-ring {
+      background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+      padding: 3px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .story-ring-inner {
+      border: 3px solid var(--bg);
+      border-radius: 50%;
+      padding: 2px;
+      background: var(--bg);
+      overflow: hidden;
+      width: 64px;
+      height: 64px;
+    }
+
+    /* Post Feed Styling */
+    .post-card {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+    
+    .post-media {
+      width: 100%;
+      max-height: 600px;
+      object-fit: cover;
+      background: #000;
+    }
+
+    /* Upload Modal */
+    #upload {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(5px);
+      align-items: center;
+      justify-content: center;
+    }
+    #upload.is-open {
+      display: flex;
+    }
+
+    /* Reels Section */
+    .reels-feed { display: grid; gap: 1rem; max-height: min(78svh, 52rem); overflow-y: auto; scroll-snap-type: y mandatory; }
+    .reel-card { position: relative; min-height: 32rem; height: min(78svh, 52rem); overflow: hidden; scroll-snap-align: start; background: var(--surface); border-radius: var(--radius); }
+    .reel-card video { width: 100%; height: 100%; object-fit: cover; }
+    .reel-details { position: absolute; right: 0; bottom: 0; left: 0; padding: 5rem 1.25rem 1.25rem; background: linear-gradient(transparent, rgba(0,0,0,0.9)); }
+    
+    .token-border { border-color: var(--border); }
+    .token-panel { background: var(--surface); }
+    .upload-zone.is-dragging { border-color: var(--primary); background: rgba(239, 68, 68, 0.1); }
+    .like-button[aria-pressed="true"] { color: var(--primary); }
+    .like-button[aria-pressed="true"] .like-icon { color: var(--primary); }
   </style>
 </head>
 
-<body>
-  <div class="noise fixed inset-0 z-50"></div>
+<body class="antialiased">
 
-  <header class="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-8 lg:px-10">
-    <a href="/" class="flex items-center gap-3" aria-label="REELS BOOK home">
-      <span class="flex h-10 w-10 items-center justify-center rounded-[var(--radius)] bg-[var(--color-primary)] text-xl font-black text-[var(--color-primary-contrast)]">🔥</span>
-      <span class="text-sm font-black tracking-[.12em]">REELS BOOK 😎</span>
+  <!-- HEADER -->
+  <header class="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b token-border px-4 py-3 flex items-center justify-between">
+    <a href="/" class="text-2xl font-logo text-white" aria-label="ReelsBook home">
+      ReelsBook
     </a>
-    <nav class="hidden items-center gap-8 text-sm text-[var(--color-muted)] md:flex" aria-label="Main navigation">
-      <a class="transition hover:text-[var(--color-text)]" href="#wall">The wall</a>
-      <a class="transition hover:text-[var(--color-text)]" href="#upload">Share photos &amp; videos</a>
-      <a class="transition hover:text-[var(--color-text)]" href="/profile/index.html">My Profile</a>
-    </nav>
-    <button id="accountButton" type="button" class="rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Log in / Sign up</button>
+    <div class="flex items-center gap-5">
+      <button id="toggleUploadTop" class="text-white hover:text-[var(--primary)] transition" aria-label="Create Post">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+      </button>
+      <button class="text-white hover:text-[var(--primary)] transition" aria-label="Notifications">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+      </button>
+      <button id="accountButton" type="button" class="rounded-full border token-border px-3 py-1.5 text-sm font-semibold transition hover:border-[var(--primary)] hover:text-[var(--primary)]">Log in</button>
+    </div>
   </header>
 
-  <div id="accountDialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-[var(--color-bg)]/80 px-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="accountDialogTitle">
-    <section class="relative w-full max-w-md rounded-[var(--radius)] border token-border token-panel p-6 shadow-2xl sm:p-8">
-      <button id="closeAccountDialog" type="button" class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border token-border text-xl text-[var(--color-muted)] transition hover:text-[var(--color-text)]" aria-label="Close login dialog">×</button>
-      <p class="mb-3 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">Your account</p>
-      <h2 id="accountDialogTitle" class="pr-8 text-2xl font-black tracking-tight">Welcome to the wall</h2>
-      <p class="mt-3 text-sm leading-6 text-[var(--color-muted)]">Log in or create an account with Google. You can browse photos and watch reels without signing in; Google sign-in is needed to upload.</p>
-      <div class="mt-7 grid gap-3">
-        <div id="googleContinueButton" class="flex justify-center"></div>
-        <div id="googleSignupButton" class="flex justify-center"></div>
-      </div>
-      <p id="accountDialogStatus" class="mt-4 text-center text-sm text-[var(--color-muted)]" aria-live="polite"></p>
-    </section>
-  </div>
+  <!-- MAIN CONTENT -->
+  <main class="max-w-xl mx-auto pt-2">
 
-  <main class="relative z-10 mx-auto max-w-7xl px-5 pb-20 sm:px-8 lg:px-10">
-    <section class="grid items-center gap-12 pb-20 pt-8 lg:grid-cols-[1.05fr_.95fr] lg:pb-28 lg:pt-14">
-      <div class="float-in">
-        <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">
-          <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]"></span>
-          Open to everyone
-        </div>
-        <h1 class="max-w-3xl font-[var(--font-heading)] text-5xl leading-[.94] tracking-[-.055em] sm:text-7xl lg:text-8xl">YOU WILL EARN<br><span class="text-[var(--color-primary)]">ON REELS BOOK.</span></h1>
-        <p class="mt-7 max-w-xl text-lg leading-8 text-[var(--color-muted)]">A living gallery of shared moments. Upload a photo or video, add your name, and leave a little piece of your world behind.</p>
-        <div class="mt-9 flex flex-wrap items-center gap-4">
-          <a href="#upload" class="rounded-full bg-[var(--color-primary)] px-6 py-3.5 font-bold text-[var(--color-primary-contrast)] shadow-lg transition hover:-translate-y-0.5 hover:brightness-110">Share a moment <span class="ml-2">↓</span></a>
-          <a href="#wall" class="rounded-full border token-border px-6 py-3.5 font-bold transition hover:border-[var(--color-primary)]">Explore the wall</a>
-        </div>
-        <p class="mt-8 text-sm font-semibold text-[var(--color-muted)]">Created by <span class="text-[var(--color-primary)]">MANSOOR OF TALASH MACHO</span></p>
-      </div>
-
-      <div class="relative mx-auto w-full max-w-xl float-in [animation-delay:120ms]">
-        <div class="absolute -inset-5 rounded-[2rem] bg-[var(--color-primary)]/10 blur-3xl"></div>
-        <figure class="relative overflow-hidden rounded-[2rem] border token-border token-panel p-3 glow">
-          <img src="/SAD.jpg" alt="Featured REELS BOOK photo" class="aspect-[4/5] w-full rounded-[1.5rem] object-cover" fetchpriority="high">
-        </figure>
-        <div class="mt-4 flex justify-end">
-          <button class="like-button like-hero inline-flex items-center gap-2 rounded-full border token-border token-panel px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)]" data-media-id="featured-sad-image" type="button" aria-pressed="false"><span class="like-icon" aria-hidden="true">♡</span><span class="like-count">0</span><span>Likes</span></button>
-        </div>
-      </div>
-    </section>
-
-    <section id="upload" class="scroll-mt-8 rounded-[var(--radius)] border token-border bg-[var(--color-surface)] p-3 sm:p-4">
-      <button id="toggleUpload" type="button" class="flex w-full items-center justify-center gap-3 rounded-[var(--radius)] px-4 py-3 text-sm font-bold transition hover:bg-[var(--color-primary)]/10" aria-expanded="false" aria-controls="uploadOptions">
-        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl leading-none text-[var(--color-primary-contrast)]" aria-hidden="true">+</span>
-        <span>Share a moment</span>
-      </button>
-      <div id="uploadOptions" class="mt-5 hidden">
-      <div class="mb-6 flex flex-col gap-3 rounded-[var(--radius)] border token-border-soft bg-[var(--color-bg)] p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p id="authStatus" class="font-semibold">Sign in with Google to upload. Browsing and watching videos stay open to everyone.</p>
-          <p id="authAccount" class="mt-1 text-sm text-[var(--color-muted)]" aria-live="polite"></p>
-        </div>
-        <div class="flex shrink-0 items-center gap-3">
-          <div id="googleSignInButton"></div>
-          <button id="signOutButton" type="button" class="hidden rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)]">Sign out</button>
-        </div>
-      </div>
-      <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">01 / Add to the wall</p>
-          <h2 class="text-3xl font-black tracking-tight sm:text-4xl">Drop something real.</h2>
-        </div>
-        <p class="max-w-sm text-sm leading-6 text-[var(--color-muted)]">Choose photo, video, or GIF, then upload it to the public wall. No account needed.</p>
-        <button id="closeUpload" type="button" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border token-border text-xl text-[var(--color-muted)] transition hover:border-[var(--color-primary)] hover:text-[var(--color-text)]" aria-label="Close upload panel">×</button>
-      </div>
-      <div class="mb-4 grid grid-cols-3 gap-3" role="group" aria-label="Choose upload type">
-        <button type="button" class="upload-type-option rounded-[var(--radius)] border token-border bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-[var(--color-primary-contrast)] transition" data-upload-type="photo" aria-pressed="true">📷 Photo</button>
-        <button type="button" class="upload-type-option rounded-[var(--radius)] border token-border token-panel px-4 py-3 text-sm font-bold text-[var(--color-text)] transition hover:border-[var(--color-primary)]" data-upload-type="video" aria-pressed="false">▶ Video</button>
-        <button type="button" class="upload-type-option rounded-[var(--radius)] border token-border token-panel px-4 py-3 text-sm font-bold text-[var(--color-text)] transition hover:border-[var(--color-primary)]" data-upload-type="gif" aria-pressed="false">✨ GIF</button>
-      </div>
-      <label id="dropZone" class="upload-zone group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-[var(--radius)] border border-dashed token-border px-6 text-center transition hover:border-[var(--color-primary)] hover:bg-[var(--color-bg)]">
-        <input id="mediaInput" type="file" accept="image/jpeg,image/png,image/webp,image/avif" class="sr-only">
-        <span class="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-primary)] text-3xl text-[var(--color-primary-contrast)] transition group-hover:scale-105">↑</span>
-        <span id="dropTitle" class="text-lg font-bold">Drag &amp; drop a photo here</span>
-        <span id="dropHint" class="mt-2 text-sm text-[var(--color-muted)]">or click to browse · JPG, PNG, WEBP, AVIF · up to 90 MB</span>
-      </label>
-
-      <div id="filePanel" class="mt-5 hidden rounded-[var(--radius)] border token-border-soft bg-[var(--color-bg)] p-5">
-        <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div class="flex min-w-0 items-center gap-4">
-            <div id="fileTypeIcon" class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)]/15 text-xl">✦</div>
-            <div class="min-w-0">
-              <p id="fileName" class="truncate font-bold"></p>
-              <p id="fileSize" class="mt-1 text-sm text-[var(--color-muted)]"></p>
+    <!-- STORIES SECTION -->
+    <section class="mb-4 border-b token-border pb-4 px-4">
+      <div class="flex gap-4 overflow-x-auto hide-scrollbar">
+        <!-- Current User Add Story -->
+        <div class="flex flex-col items-center gap-1 cursor-pointer shrink-0" id="addStoryBtn">
+          <div class="relative w-16 h-16 rounded-full border border-gray-700 bg-[var(--surface)] flex items-center justify-center">
+            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            <div class="absolute bottom-0 right-0 bg-blue-500 rounded-full p-0.5 border-2 border-black">
+              <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             </div>
           </div>
-          <button id="clearFile" type="button" class="text-sm text-[var(--color-muted)] underline underline-offset-4 hover:text-[var(--color-text)]">Remove</button>
+          <span class="text-xs text-gray-400">Your Story</span>
         </div>
-        <div class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
-          <input id="mediaTitle" class="rounded-xl border token-border-soft bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-muted)] focus:border-[var(--color-primary)]" placeholder="Give it a title">
-          <button id="publishButton" type="button" class="rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold text-[var(--color-primary-contrast)] transition hover:brightness-110">Publish</button>
+
+        <!-- Real Stories Container -->
+        <div id="storiesContainer" class="flex gap-4">
+          <!-- Real stories from DB will be injected here by JS -->
         </div>
-        <p id="uploadStatus" class="mt-4 hidden text-sm text-[var(--color-primary)]" role="status" aria-live="polite"></p>
-      </div>
       </div>
     </section>
 
-    <section id="wall" class="scroll-mt-8 pt-24">
-      <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">02 / The public wall</p>
-          <h2 class="text-3xl font-black tracking-tight sm:text-4xl">Latest arrivals</h2>
-        </div>
-        <div class="flex items-center gap-3">
-          <label for="mediaFilter" class="sr-only">Filter gallery</label>
-          <select id="mediaFilter" class="rounded-full border token-border-soft bg-[var(--color-surface)] px-4 py-2 text-sm text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]">
-            <option value="all">All media</option>
-            <option value="photo">Photos</option>
-            <option value="video">Videos</option>
-          </select>
-          <span id="countLabel" class="pill rounded-full px-3 py-1.5 text-xs text-[var(--color-muted)]">Loading</span>
-        </div>
+    <!-- POSTS FEED (Wall) -->
+    <section id="wall" class="space-y-0">
+      <div id="mediaGrid" class="space-y-4">
+        <!-- Real posts from API will be injected here by JS -->
+        <div id="loadingFeed" class="text-center py-10 text-gray-500">Loading posts...</div>
       </div>
-      <div id="mediaGrid" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3"></div>
-      <p id="wallStatus" class="mt-5 text-sm text-[var(--color-muted)]" role="status" aria-live="polite"></p>
+      <p id="wallStatus" class="text-center text-sm text-gray-500 py-4" role="status" aria-live="polite"></p>
     </section>
 
-    <section id="reels" class="scroll-mt-8 pt-24">
-      <div class="mb-8">
-        <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">03 / Video feed</p>
-        <h2 class="text-3xl font-black tracking-tight sm:text-4xl">Watch the reels</h2>
-        <p class="mt-3 max-w-xl text-sm leading-6 text-[var(--color-muted)]">Scroll vertically to move through community videos.</p>
-      </div>
-      <div id="reelsFeed" class="reels-feed mx-auto max-w-md" aria-label="Video reels"></div>
-      <p id="reelsStatus" class="mt-5 text-center text-sm text-[var(--color-muted)]" role="status" aria-live="polite"></p>
+    <!-- REELS SECTION (Hidden by default, accessible via nav) -->
+    <section id="reels" class="pt-4 pb-10 px-4 hidden">
+      <h2 class="text-xl font-bold mb-4">Reels</h2>
+      <div id="reelsFeed" class="reels-feed"></div>
+      <p id="reelsStatus" class="mt-4 text-center text-sm text-gray-500" role="status" aria-live="polite"></p>
     </section>
+
   </main>
 
-  <nav class="bottom-dock fixed inset-x-0 bottom-0 z-40 flex w-full items-center justify-center gap-8 border-t token-border-soft token-overlay px-5 pt-1 backdrop-blur-xl" aria-label="Quick navigation">
-    <a href="#wall" class="flex min-w-16 flex-col items-center gap-1 text-xs font-semibold text-[var(--color-muted)] transition hover:text-[var(--color-text)]">
-      <span class="text-xl" aria-hidden="true">⌂</span>
-      <span>Wall</span>
+  <!-- BOTTOM NAVIGATION (Mobile First) -->
+  <nav class="fixed bottom-0 inset-x-0 z-40 bg-black border-t token-border flex justify-around items-center py-2 pb-safe">
+    <a href="#wall" class="text-white flex flex-col items-center gap-1" id="navHome">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+      <span class="text-[10px]">Home</span>
     </a>
-    <button id="bottomPlus" type="button" class="flex h-11 w-11 -translate-y-1 items-center justify-center rounded-[var(--radius)] bg-[var(--color-primary)] text-3xl font-light leading-none text-[var(--color-primary-contrast)] shadow-lg transition hover:scale-105" aria-label="Open upload options" aria-expanded="false" aria-controls="uploadOptions">+</button>
-    <a href="/reels" class="flex min-w-16 flex-col items-center gap-1 text-xs font-semibold text-[var(--color-muted)] transition hover:text-[var(--color-text)]">
-      <span class="text-xl" aria-hidden="true">▶</span>
-      <span>Reels</span>
+    <button class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+      <span class="text-[10px]">Search</span>
+    </button>
+    <button id="bottomPlus" class="bg-[var(--primary)] text-white rounded-lg p-2 hover:brightness-110 transition" aria-label="Create Post" aria-expanded="false">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+    </button>
+    <a href="#reels" class="text-gray-400 hover:text-white flex flex-col items-center gap-1" id="navReels">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <span class="text-[10px]">Reels</span>
+    </a>
+    <a href="/profile/index.html" class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+      <span class="text-[10px]">Profile</span>
     </a>
   </nav>
 
-  <footer class="relative z-10 border-t token-border-soft">
-    <div class="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-[var(--color-muted)] sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10">
-      <p><strong class="font-black">REELS BOOK 😎</strong> <span class="mx-2">/</span> Created by <span class="text-[var(--color-primary)]">MANSOOR OF TALASH MACHO</span></p>
-      <p>Photos &amp; videos, shared with everyone <span class="ml-2 text-[var(--color-primary)]">●</span></p>
+  <!-- UPLOAD MODAL (Modified IDs to match JS) -->
+  <div id="upload" class="hidden">
+    <div class="bg-[var(--surface)] w-full max-w-md p-6 rounded-xl border token-border relative max-h-[90vh] overflow-y-auto">
+      <button id="closeUpload" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">✕</button>
+      <h2 class="text-xl font-bold mb-4 text-white">Create New Post</h2>
+      
+      <div class="mb-4">
+        <p id="authStatus" class="text-sm text-gray-400">Sign in to upload.</p>
+        <p id="authAccount" class="text-xs text-gray-500 mt-1" aria-live="polite"></p>
+        <div class="flex items-center gap-3 mt-3">
+          <div id="googleSignInButton"></div>
+          <button id="signOutButton" type="button" class="hidden rounded-full border token-border px-4 py-2 text-xs font-semibold transition hover:border-[var(--primary)] text-white">Sign out</button>
+        </div>
+      </div>
+
+      <div class="mb-4 grid grid-cols-3 gap-2" role="group" aria-label="Choose upload type">
+        <button type="button" class="upload-type-option rounded-lg border token-border bg-[var(--primary)] px-2 py-2 text-sm font-bold text-white transition" data-upload-type="photo" aria-pressed="true">📷 Photo</button>
+        <button type="button" class="upload-type-option rounded-lg border token-border bg-[var(--surface)] px-2 py-2 text-sm font-bold text-gray-300 transition hover:border-[var(--primary)]" data-upload-type="video" aria-pressed="false">▶ Video</button>
+        <button type="button" class="upload-type-option rounded-lg border token-border bg-[var(--surface)] px-2 py-2 text-sm font-bold text-gray-300 transition hover:border-[var(--primary)]" data-upload-type="gif" aria-pressed="false">✨ GIF</button>
+      </div>
+
+      <label id="dropZone" class="upload-zone flex flex-col items-center justify-center border-2 border-dashed token-border rounded-lg p-8 cursor-pointer hover:border-[var(--primary)] transition">
+        <input id="mediaInput" type="file" accept="image/*" class="hidden">
+        <span class="text-[var(--primary)] text-3xl mb-2">↑</span>
+        <span id="dropTitle" class="text-white font-bold mb-1 text-center">Drag & drop a photo here</span>
+        <span id="dropHint" class="text-xs text-gray-500 text-center">or click to browse · up to 90 MB</span>
+      </label>
+
+      <div id="filePanel" class="mt-4 hidden bg-black rounded-lg p-4 border token-border">
+        <div class="flex justify-between items-center mb-3">
+          <p id="fileName" class="truncate font-bold text-white text-sm"></p>
+          <button id="clearFile" class="text-xs text-gray-400 underline ml-2">Remove</button>
+        </div>
+        <input id="mediaTitle" type="text" placeholder="Write a caption..." class="w-full bg-[var(--surface)] border border-gray-700 rounded p-2 text-white mb-2 text-sm outline-none focus:border-[var(--primary)]">
+        <button id="publishButton" class="w-full bg-[var(--primary)] text-white font-bold py-2 rounded hover:brightness-110 transition">Publish</button>
+        <p id="uploadStatus" class="mt-2 text-sm text-green-500 text-center hidden" role="status" aria-live="polite"></p>
+      </div>
     </div>
-  </footer>
+  </div>
+
+  <!-- ACCOUNT DIALOG -->
+  <div id="accountDialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-5 backdrop-blur-sm" role="dialog" aria-modal="true">
+    <section class="relative w-full max-w-sm bg-[var(--surface)] p-6 rounded-xl border token-border shadow-2xl">
+      <button id="closeAccountDialog" class="absolute right-4 top-4 text-gray-400 hover:text-white text-xl">✕</button>
+      <h2 class="text-xl font-bold text-white mb-2">Welcome to ReelsBook</h2>
+      <p class="text-sm text-gray-400 mb-4">Sign in with Google to upload and interact.</p>
+      <div class="grid gap-3">
+        <div id="googleContinueButton" class="flex justify-center"></div>
+        <div id="googleSignupButton" class="flex justify-center"></div>
+      </div>
+      <p id="accountDialogStatus" class="mt-4 text-center text-sm text-gray-400" aria-live="polite"></p>
+    </section>
+  </div>
 
   <script>
+    // --- PURANA JAVASCRIPT LOGIC (Bina kisi backend change ke) ---
     const mediaInput = document.getElementById('mediaInput');
     const dropZone = document.getElementById('dropZone');
     const filePanel = document.getElementById('filePanel');
     const fileName = document.getElementById('fileName');
-    const fileSize = document.getElementById('fileSize');
     const uploadStatus = document.getElementById('uploadStatus');
     const wallStatus = document.getElementById('wallStatus');
     const mediaGrid = document.getElementById('mediaGrid');
     const reelsFeed = document.getElementById('reelsFeed');
     const reelsStatus = document.getElementById('reelsStatus');
-    const countLabel = document.getElementById('countLabel');
     const authStatus = document.getElementById('authStatus');
     const authAccount = document.getElementById('authAccount');
     const googleSignInButton = document.getElementById('googleSignInButton');
@@ -239,11 +293,6 @@
     }
     const visitorId = getVisitorId();
 
-    function readableSize(bytes) {
-      if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    }
-
     function showUploadMessage(message) {
       uploadStatus.textContent = message;
       uploadStatus.classList.remove('hidden');
@@ -258,10 +307,10 @@
       document.querySelectorAll('.upload-type-option').forEach((button) => {
         const isActive = button.dataset.uploadType === type;
         button.setAttribute('aria-pressed', String(isActive));
-        button.classList.toggle('bg-[var(--color-primary)]', isActive);
-        button.classList.toggle('text-[var(--color-primary-contrast)]', isActive);
-        button.classList.toggle('token-panel', !isActive);
-        button.classList.toggle('text-[var(--color-text)]', !isActive);
+        button.classList.toggle('bg-[var(--primary)]', isActive);
+        button.classList.toggle('text-white', isActive);
+        button.classList.toggle('bg-[var(--surface)]', !isActive);
+        button.classList.toggle('text-gray-300', !isActive);
       });
       selectedFile = null;
       mediaInput.value = '';
@@ -269,21 +318,18 @@
       uploadStatus.classList.add('hidden');
     }
 
-    const toggleUpload = document.getElementById('toggleUpload');
-    const uploadOptions = document.getElementById('uploadOptions');
-    const bottomPlus = document.getElementById('bottomPlus');
     const uploadSection = document.getElementById('upload');
+    const bottomPlus = document.getElementById('bottomPlus');
+    const toggleUploadTop = document.getElementById('toggleUploadTop');
 
     function openAccountDialog() {
       accountDialog.classList.remove('hidden');
       accountDialog.classList.add('flex');
-      document.getElementById('closeAccountDialog').focus();
     }
 
     function closeAccountDialog() {
       accountDialog.classList.add('hidden');
       accountDialog.classList.remove('flex');
-      document.getElementById('accountButton').focus();
     }
 
     document.getElementById('accountButton').addEventListener('click', openAccountDialog);
@@ -291,29 +337,22 @@
     accountDialog.addEventListener('click', (event) => { if (event.target === accountDialog) closeAccountDialog(); });
     document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !accountDialog.classList.contains('hidden')) closeAccountDialog(); });
 
-    toggleUpload.addEventListener('click', () => {
-      const isExpanded = toggleUpload.getAttribute('aria-expanded') === 'true';
-      toggleUpload.setAttribute('aria-expanded', String(!isExpanded));
-      bottomPlus.setAttribute('aria-expanded', String(!isExpanded));
-      uploadSection.classList.toggle('is-open', !isExpanded);
-      uploadOptions.classList.toggle('hidden', isExpanded);
-    });
-
-    bottomPlus.addEventListener('click', () => toggleUpload.click());
-
-    document.getElementById('closeUpload').addEventListener('click', () => {
-      toggleUpload.setAttribute('aria-expanded', 'false');
-      bottomPlus.setAttribute('aria-expanded', 'false');
+    // Open Upload Modal Logic
+    function openUploadModal() {
+      uploadSection.classList.remove('hidden');
+      uploadSection.classList.add('is-open');
+      bottomPlus.setAttribute('aria-expanded', 'true');
+    }
+    function closeUploadModal() {
+      uploadSection.classList.add('hidden');
       uploadSection.classList.remove('is-open');
-      uploadOptions.classList.add('hidden');
-    });
+      bottomPlus.setAttribute('aria-expanded', 'false');
+    }
 
-    document.querySelectorAll('a[href="#upload"]').forEach((link) => {
-      link.addEventListener('click', (event) => {
-        event.preventDefault();
-        if (!uploadSection.classList.contains('is-open')) toggleUpload.click();
-      });
-    });
+    toggleUploadTop.addEventListener('click', openUploadModal);
+    bottomPlus.addEventListener('click', openUploadModal);
+    document.getElementById('closeUpload').addEventListener('click', closeUploadModal);
+    document.getElementById('addStoryBtn').addEventListener('click', openUploadModal);
 
     document.querySelectorAll('.upload-type-option').forEach((button) => {
       button.addEventListener('click', () => setUploadType(button.dataset.uploadType));
@@ -322,13 +361,10 @@
     function showFile(file) {
       if (!file) return;
       const matchesSelection = activeUploadType === 'photo' ? file.type.startsWith('image/') && file.type !== 'image/gif' : activeUploadType === 'video' ? file.type.startsWith('video/') : file.type === 'image/gif';
-      if (!matchesSelection) { showUploadMessage(`Please choose a ${activeUploadType === 'gif' ? 'GIF' : activeUploadType} file for the selected option.`); return; }
-      const isPhoto = activeUploadType === 'photo' || activeUploadType === 'gif';
-      if (file.size > maxUploadSize) { showUploadMessage('Files must be 90 MB or smaller. Please choose a smaller file.'); return; }
+      if (!matchesSelection) { showUploadMessage(`Please choose a ${activeUploadType === 'gif' ? 'GIF' : activeUploadType} file.`); return; }
+      if (file.size > maxUploadSize) { showUploadMessage('Files must be 90 MB or smaller.'); return; }
       selectedFile = file;
       fileName.textContent = file.name;
-      fileSize.textContent = `${readableSize(file.size)} · ${isPhoto ? 'photo' : 'video'} · ready to upload`;
-      document.getElementById('fileTypeIcon').textContent = isPhoto ? '▧' : '▶';
       filePanel.classList.remove('hidden');
       uploadStatus.classList.add('hidden');
     }
@@ -337,30 +373,26 @@
     ['dragenter', 'dragover'].forEach((eventName) => { dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.add('is-dragging'); }); });
     ['dragleave', 'drop'].forEach((eventName) => { dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.remove('is-dragging'); }); });
     dropZone.addEventListener('drop', (event) => showFile(event.dataTransfer.files[0]));
+    document.getElementById('clearFile').addEventListener('click', () => { selectedFile = null; mediaInput.value = ''; filePanel.classList.add('hidden'); });
 
-    document.getElementById('clearFile').addEventListener('click', () => {
-      selectedFile = null; mediaInput.value = ''; filePanel.classList.add('hidden'); uploadStatus.classList.add('hidden');
-    });
-
+    // --- LIKES LOGIC ---
     function updateLikeButton(button, result) {
       button.querySelector('.like-count').textContent = result.count;
       button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
       button.setAttribute('aria-pressed', String(result.liked));
     }
-
     const localLikeStorageKey = 'fullMastiLocalLikes';
     function readLocalLike(mediaId) {
       try { const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}'); return savedLikes[mediaId] || { count: 0, liked: false }; } catch (error) { return { count: 0, liked: false }; }
     }
     function saveLocalLike(mediaId, state) {
-      try { const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}'); savedLikes[mediaId] = state; localStorage.setItem(localLikeStorageKey, JSON.stringify(savedLikes)); } catch (error) { console.info('This browser could not save the local like state.'); }
+      try { const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}'); savedLikes[mediaId] = state; localStorage.setItem(localLikeStorageKey, JSON.stringify(savedLikes)); } catch (error) {}
     }
     function toggleLocalLike(mediaId, button) {
       const current = readLocalLike(mediaId); const liked = !current.liked;
       const result = { count: Math.max(0, current.count + (liked ? 1 : -1)), liked };
       saveLocalLike(mediaId, result); updateLikeButton(button, result);
     }
-
     async function loadLikeState(mediaId, button) {
       try {
         const query = new URLSearchParams({ mediaId, visitorId });
@@ -369,9 +401,9 @@
         updateLikeButton(button, await response.json());
       } catch (error) { updateLikeButton(button, readLocalLike(mediaId)); }
     }
-
     function attachLikeHandler(button) {
-      button.addEventListener('click', async () => {
+      button.addEventListener('click', async (e) => {
+        e.preventDefault();
         const mediaId = button.dataset.mediaId; button.disabled = true;
         try {
           const response = await fetch('/api/likes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mediaId, visitorId }) });
@@ -379,140 +411,170 @@
           if (!response.ok) throw new Error(result.error || 'Likes API is unavailable.');
           updateLikeButton(button, result);
         } catch (error) {
-          toggleLocalLike(mediaId, button); wallStatus.textContent = 'Like saved in this browser. Connect the likes API to share counts with everyone.';
+          toggleLocalLike(mediaId, button); 
         } finally { button.disabled = false; }
       });
     }
-
-    function makeLikeButton(mediaId, hero = false) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = `like-button inline-flex items-center gap-2 rounded-full border token-border px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] ${hero ? 'like-hero absolute bottom-6 right-6 token-overlay backdrop-blur' : 'mt-4'}`;
-      button.dataset.mediaId = mediaId; button.setAttribute('aria-pressed', 'false');
-      button.innerHTML = '<span class="like-icon" aria-hidden="true">♡</span><span class="like-count">0</span><span>Likes</span>';
-      attachLikeHandler(button); loadLikeState(mediaId, button); return button;
+    function makeLikeButton(mediaId) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'like-button flex items-center gap-1 text-gray-400 hover:text-white transition';
+      btn.dataset.mediaId = mediaId; btn.setAttribute('aria-pressed', 'false');
+      btn.innerHTML = '<span class="like-icon text-xl" aria-hidden="true">♡</span><span class="like-count text-sm font-semibold">0</span>';
+      attachLikeHandler(btn); loadLikeState(mediaId, btn); return btn;
     }
 
+    // --- RENDER POSTS (Feed Design) ---
     function renderMedia(item) {
       const card = document.createElement('article');
-      card.className = 'media-card overflow-hidden rounded-[var(--radius)] border token-border-soft bg-[var(--color-surface)]';
+      card.className = 'post-card';
       card.dataset.type = item.type;
       const mediaId = item.key || item.id;
-      let media;
-      if (item.type === 'photo') {
-        media = document.createElement('img'); media.src = item.url; media.alt = item.title || 'Community photo'; media.loading = 'lazy'; media.className = 'aspect-video w-full object-cover';
+
+      // User Info Header
+      const header = document.createElement('div');
+      header.className = 'flex items-center gap-3 px-4 py-3';
+      const avatar = document.createElement('div');
+      avatar.className = 'w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-xs font-bold text-white overflow-hidden cursor-pointer';
+      if (item.creatorPic) {
+        avatar.innerHTML = `<img src="${item.creatorPic}" class="w-full h-full object-cover">`;
       } else {
-        media = document.createElement('video'); media.src = item.url; media.controls = true; media.preload = 'metadata'; media.className = 'aspect-video w-full object-cover';
+        avatar.textContent = (item.creator || 'A')[0].toUpperCase();
       }
-      const details = document.createElement('div'); details.className = 'p-5';
-      const title = document.createElement('h3'); title.className = 'font-bold'; title.textContent = item.title || 'Untitled moment';
-      const creator = document.createElement('p'); creator.className = 'mt-2 text-sm text-[var(--color-muted)]';
-      creator.textContent = `by ${item.creator || 'Anonymous creator'} · ${item.type === 'photo' ? 'Photo' : 'Video'}`;
-      details.append(title, creator, makeLikeButton(mediaId)); card.append(media, details); return card;
+      
+      const creatorInfo = document.createElement('div');
+      creatorInfo.className = 'flex flex-col cursor-pointer';
+      creatorInfo.onclick = () => { window.location.href = `/profile/index.html?name=${encodeURIComponent(item.creator)}&pic=${encodeURIComponent(item.creatorPic || '')}`; };
+      creatorInfo.innerHTML = `<span class="text-sm font-bold text-white">${item.creator || 'Anonymous'}</span><span class="text-xs text-gray-500">${new Date().toLocaleDateString()}</span>`;
+      
+      header.appendChild(avatar);
+      header.appendChild(creatorInfo);
+      
+      // Media Element
+      let media;
+      if (item.type === 'photo' || item.type === 'gif') {
+        media = document.createElement('img'); 
+        media.src = item.url; media.className = 'post-media'; media.loading = 'lazy';
+      } else {
+        media = document.createElement('video'); 
+        media.src = item.url; media.controls = true; media.className = 'post-media';
+      }
+
+      // Actions (Like, Comment, Share)
+      const actions = document.createElement('div');
+      actions.className = 'flex items-center gap-4 px-4 pt-3 pb-1';
+      const likeBtn = makeLikeButton(mediaId);
+      actions.appendChild(likeBtn);
+      
+      const commentBtn = document.createElement('button');
+      commentBtn.className = 'text-gray-400 hover:text-white transition';
+      commentBtn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>`;
+      actions.appendChild(commentBtn);
+
+      const shareBtn = document.createElement('button');
+      shareBtn.className = 'text-gray-400 hover:text-white transition';
+      shareBtn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>`;
+      actions.appendChild(shareBtn);
+
+      // Caption
+      const caption = document.createElement('div');
+      caption.className = 'px-4 pt-2 text-sm text-white';
+      caption.innerHTML = `<span class="font-bold mr-2">${item.creator || 'Anonymous'}</span>${item.title || 'Untitled moment'}`;
+
+      card.append(header, media, actions, caption); 
+      return card;
     }
 
+    // --- RENDER REELS ---
     function renderReels(items) {
       const videos = items.filter((item) => item.type === 'video');
       reelsFeed.replaceChildren();
       if (!videos.length) { reelsStatus.textContent = 'No videos yet. Share a video to start the reels feed.'; return; }
       reelsStatus.textContent = '';
       videos.forEach((item) => {
-        const card = document.createElement('article'); card.className = 'reel-card rounded-[var(--radius)]';
+        const card = document.createElement('article'); card.className = 'reel-card';
         const video = document.createElement('video');
-        video.src = item.url; video.controls = true; video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'metadata';
-        video.setAttribute('aria-label', item.title || 'Community video');
+        video.src = item.url; video.controls = true; video.muted = true; video.loop = true; video.playsInline = true;
         const details = document.createElement('div'); details.className = 'reel-details';
-        const title = document.createElement('h3'); title.className = 'text-lg font-bold'; title.textContent = item.title || 'Untitled moment';
-        
-        const creator = document.createElement('p'); creator.className = 'mt-1 text-sm text-[var(--color-muted)] cursor-pointer hover:underline pointer-events-auto';
-        creator.textContent = `by ${item.creator || 'Anonymous creator'}`;
-        creator.onclick = (e) => {
-          e.stopPropagation();
-          window.location.href = `/profile/index.html?name=${encodeURIComponent(item.creator)}&pic=${encodeURIComponent(item.creatorPic || '')}`;
-        };
-
-        details.append(title, creator, makeLikeButton(item.key || item.id)); card.append(video, details); reelsFeed.append(card);
+        details.innerHTML = `<h3 class="text-lg font-bold text-white">${item.title || 'Untitled'}</h3><p class="text-sm text-gray-400 mb-3">by ${item.creator || 'Anonymous'}</p>`;
+        details.appendChild(makeLikeButton(item.key || item.id));
+        card.append(video, details); reelsFeed.append(card);
       });
-      if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
-          entries.forEach((entry) => {
-            const video = entry.target.querySelector('video');
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.65) { video.play().catch(() => {}); }
-            else { video.pause(); }
-          });
-        }, { root: reelsFeed, threshold: [0, 0.65, 1] });
-        reelsFeed.querySelectorAll('.reel-card').forEach((card) => observer.observe(card));
-      }
     }
 
-    function applyFilter() {
-      const filter = document.getElementById('mediaFilter').value;
-      const cards = [...mediaGrid.children];
-      let visibleCount = 0;
-      cards.forEach((card) => {
-        const isVisible = filter === 'all' || card.dataset.type === filter;
-        card.classList.toggle('hidden', !isVisible);
-        if (isVisible) visibleCount += 1;
-      });
-      countLabel.textContent = `${visibleCount} ${visibleCount === 1 ? 'post' : 'posts'}`;
-    }
-
-    document.getElementById('mediaFilter').addEventListener('change', applyFilter);
-
+    // --- LOAD DATA FROM BACKEND ---
     async function loadMedia() {
+      const loadingFeed = document.getElementById('loadingFeed');
+      if (loadingFeed) loadingFeed.remove();
+
       try {
         const response = await fetch('/api/media');
         if (!response.ok) throw new Error('Could not load media.');
         galleryItems = await response.json();
+        
+        if (!galleryItems.length) {
+          wallStatus.textContent = 'Be the first to share a photo or video.';
+          mediaGrid.innerHTML = '<div class="text-center text-gray-500 py-10">No posts yet.</div>';
+          return;
+        }
+
+        // Filter out videos for the main feed if you only want photos, or keep all:
         mediaGrid.replaceChildren(...galleryItems.map(renderMedia));
         renderReels(galleryItems);
-        applyFilter();
-        if (!galleryItems.length) wallStatus.textContent = 'Be the first to share a photo or video.';
+        
+        // POPULATE STORIES (Using real data from posts)
+        const storiesContainer = document.getElementById('storiesContainer');
+        storiesContainer.innerHTML = ''; // Clear old
+        const uniqueCreators = [...new Map(galleryItems.map(item => [item.creator, item])).values()];
+        
+        uniqueCreators.forEach(user => {
+          if (!user.creator || user.creator === 'Anonymous') return;
+          const storyDiv = document.createElement('div');
+          storyDiv.className = 'flex flex-col items-center gap-1 cursor-pointer shrink-0';
+          storyDiv.innerHTML = `
+            <div class="story-ring">
+              <div class="story-ring-inner flex items-center justify-center bg-gray-800">
+                ${user.creatorPic ? `<img src="${user.creatorPic}" class="w-full h-full object-cover rounded-full">` : `<span class="text-white font-bold text-lg">${user.creator[0]}</span>`}
+              </div>
+            </div>
+            <span class="text-xs text-gray-300 w-16 truncate text-center">${user.creator}</span>
+          `;
+          storiesContainer.appendChild(storyDiv);
+        });
+
       } catch (error) {
-        countLabel.textContent = 'Wall offline';
-        wallStatus.textContent = 'The public wall will load when the Node.js backend and storage are connected.';
+        wallStatus.textContent = 'The public wall will load when backend is connected.';
       }
     }
 
+    // --- AUTH & GOOGLE SIGN IN ---
     function showSignedInUser(user) {
       googleUser = user;
-      
       let registeredUsers = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}');
       registeredUsers[user.email] = { name: user.name, picture: user.picture, email: user.email };
       localStorage.setItem('reelsBookUsers', JSON.stringify(registeredUsers));
-      localStorage.setItem('currentReelsUser', JSON.stringify(registeredUsers[user.email]));
-
-      const accountButton = document.getElementById('accountButton');
-      accountButton.textContent = '✓ My Account';
-      accountButton.setAttribute('aria-label', user?.name ? `Signed in as ${user.name}` : 'Signed in');
       
+      const accountButton = document.getElementById('accountButton');
+      accountButton.textContent = 'My Account';
       authStatus.textContent = 'Google account connected. You can publish.';
       authAccount.textContent = `Signed in as ${user.name}`;
-      
       googleSignInButton.classList.add('hidden');
       signOutButton.classList.remove('hidden');
-      accountDialogStatus.textContent = 'Google account connected.';
       closeAccountDialog();
     }
 
-    function showSignedOutUser(message = 'Sign in with Google to upload. Browsing and watching videos stay open to everyone.') {
+    function showSignedOutUser(message = 'Sign in with Google to upload.') {
       googleUser = null;
       const accountButton = document.getElementById('accountButton');
-      accountButton.textContent = 'Log in / Sign up';
-      accountButton.setAttribute('aria-label', 'Log in or sign up');
+      accountButton.textContent = 'Log in';
       authStatus.textContent = message;
-      accountDialogStatus.textContent = message;
       authAccount.textContent = '';
       googleSignInButton.classList.remove('hidden');
       signOutButton.classList.add('hidden');
     }
 
     async function verifyGoogleCredential(credential) {
-      const response = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ credential })
-      });
+      const response = await fetch('/api/auth/google', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ credential }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Google sign-in could not be verified.');
       googleCredential = credential;
@@ -525,11 +587,8 @@
         const configResponse = await fetch('/api/auth/config');
         const config = await configResponse.json();
         if (!configResponse.ok || !config.googleClientId) {
-          showSignedOutUser('Google sign-in is not configured yet. The site owner needs to add GOOGLE_CLIENT_ID.');
-          googleSignInButton.textContent = '';
-          return;
+          showSignedOutUser('Google sign-in is not configured.'); return;
         }
-
         let attempts = 0;
         const waitForLibrary = window.setInterval(() => {
           attempts += 1;
@@ -538,58 +597,30 @@
             window.google.accounts.id.initialize({
               client_id: config.googleClientId,
               callback: async (response) => {
-                try {
-                  await verifyGoogleCredential(response.credential);
-                } catch (error) {
-                  showSignedOutUser(error.message);
-                }
+                try { await verifyGoogleCredential(response.credential); } catch (error) { showSignedOutUser(error.message); }
               }
             });
-            window.google.accounts.id.renderButton(googleSignInButton, {
-              type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill'
-            });
-            window.google.accounts.id.renderButton(document.getElementById('googleContinueButton'), {
-              type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: 280
-            });
-            window.google.accounts.id.renderButton(document.getElementById('googleSignupButton'), {
-              type: 'standard', theme: 'outline', size: 'large', text: 'signup_with', shape: 'pill', width: 280
-            });
+            window.google.accounts.id.renderButton(googleSignInButton, { type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill' });
+            window.google.accounts.id.renderButton(document.getElementById('googleContinueButton'), { type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: 280 });
+            window.google.accounts.id.renderButton(document.getElementById('googleSignupButton'), { type: 'standard', theme: 'outline', size: 'large', text: 'signup_with', shape: 'pill', width: 280 });
             if (googleCredential) {
-              verifyGoogleCredential(googleCredential).catch(() => {
-                googleCredential = '';
-                sessionStorage.removeItem(authStorageKey);
-                showSignedOutUser('Your Google sign-in expired. Sign in again to upload.');
-              });
+              verifyGoogleCredential(googleCredential).catch(() => { googleCredential = ''; sessionStorage.removeItem(authStorageKey); showSignedOutUser('Expired. Sign in again.'); });
             }
-          } else if (attempts >= 100) {
-            window.clearInterval(waitForLibrary);
-            showSignedOutUser('Google sign-in could not load. Check your connection and reload the page.');
-          }
+          } else if (attempts >= 100) { window.clearInterval(waitForLibrary); showSignedOutUser('Google sign-in could not load.'); }
         }, 100);
-      } catch (error) {
-        showSignedOutUser('Could not check Google sign-in settings. Please reload the page.');
-      }
+      } catch (error) { showSignedOutUser('Could not check Google sign-in settings.'); }
     }
 
     signOutButton.addEventListener('click', () => {
-      googleCredential = '';
-      sessionStorage.removeItem(authStorageKey);
-      window.google?.accounts?.id?.disableAutoSelect();
-      showSignedOutUser();
+      googleCredential = ''; sessionStorage.removeItem(authStorageKey); window.google?.accounts?.id?.disableAutoSelect(); showSignedOutUser();
     });
 
     initializeGoogleSignIn();
 
+    // --- UPLOAD HANDLER ---
     document.getElementById('publishButton').addEventListener('click', (event) => {
-      if (!googleCredential || !googleUser) {
-        showUploadMessage('Sign in with Google before publishing. You can still browse THE RB and watch videos without an account.');
-        return;
-      }
-
-      if (!selectedFile) {
-        showUploadMessage('Choose a photo or video before publishing.');
-        return;
-      }
+      if (!googleCredential || !googleUser) { showUploadMessage('Sign in with Google before publishing.'); return; }
+      if (!selectedFile) { showUploadMessage('Choose a photo or video before publishing.'); return; }
       const button = event.currentTarget;
       const title = document.getElementById('mediaTitle').value.trim() || selectedFile.name.replace(/\.[^/.]+$/, '');
       
@@ -601,64 +632,55 @@
       formData.append('creatorPic', googleUser.picture || '');
 
       button.disabled = true;
-      button.textContent = 'Uploading… 0%';
-      showUploadMessage('Uploading to cloud storage. Please keep this tab open.');
+      button.textContent = 'Uploading…';
+      showUploadMessage('Uploading to cloud storage...');
 
       const request = new XMLHttpRequest();
       request.open('POST', '/api/upload');
       request.setRequestHeader('Authorization', `Bearer ${googleCredential}`);
-      request.timeout = 30 * 60 * 1000;
-      request.upload.addEventListener('progress', (progressEvent) => {
-        if (!progressEvent.lengthComputable) return;
-        const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-        button.textContent = `Uploading… ${percent}%`;
-        showUploadMessage(`Uploading your ${selectedFile.type.startsWith('image/') ? 'photo' : 'video'}… ${percent}%`);
-      });
+      
       request.addEventListener('load', async () => {
         try {
           const result = JSON.parse(request.responseText);
           if (request.status < 200 || request.status >= 300) throw new Error(result.error || `Upload failed (${request.status}).`);
-          showUploadMessage('Published successfully to the public wall.');
+          showUploadMessage('Published successfully!');
           selectedFile = null;
           mediaInput.value = '';
           filePanel.classList.add('hidden');
           document.getElementById('mediaTitle').value = '';
+          closeUploadModal();
           await loadMedia();
         } catch (error) {
-          showUploadMessage(error.message || 'Upload failed. Please try again.');
+          showUploadMessage(error.message || 'Upload failed.');
         } finally {
           button.disabled = false;
           button.textContent = 'Publish';
         }
       });
-      request.addEventListener('error', () => {
-        showUploadMessage('Network error. Check that the backend is running and try again.');
-        button.disabled = false;
-        button.textContent = 'Publish';
-      });
-      request.addEventListener('timeout', () => {
-        showUploadMessage('The upload timed out. Try a smaller file or a faster connection.');
-        button.disabled = false;
-        button.textContent = 'Publish';
-      });
       request.send(formData);
     });
 
-    const featuredLikeButton = document.querySelector('.like-hero');
-    attachLikeHandler(featuredLikeButton);
-    loadLikeState('featured-sad-image', featuredLikeButton);
+    // Navigation Switch for Reels & Home
+    document.getElementById('navReels').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('wall').classList.add('hidden');
+      document.getElementById('reels').classList.remove('hidden');
+    });
+    document.getElementById('navHome').addEventListener('click', (e) => {
+      e.preventDefault();
+      document.getElementById('reels').classList.add('hidden');
+      document.getElementById('wall').classList.remove('hidden');
+    });
+
+    // Initial Data Load
     loadMedia();
 
-    // PWA SERVICE WORKER REGISTER (Updated for PWABuilder)
+    // PWA SERVICE WORKER
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(registration => console.log('Service Worker registered!', registration.scope))
-          .catch(err => console.log('Service Worker registration failed:', err));
+        navigator.serviceWorker.register('/sw.js').catch(err => console.log('SW failed:', err));
       });
     }
-
   </script>
 </body>
-
 </html>
