@@ -434,6 +434,6 @@ app.use((error, request, response, next) => {
 });
 
 app.listen(port, () => {
-  console.log(`Chaddi Gram is running on port ${port}`);
+  console.log(`Reels Book is running on port ${port}`);
   console.log(`Likes database: ${databasePath}`);
 });
