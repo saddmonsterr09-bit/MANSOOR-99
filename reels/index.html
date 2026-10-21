@@ -93,9 +93,9 @@
     
     // Generate Visitor ID for likes
     function getVisitorId() {
-      let visitorId = localStorage.getItem('chaddiGramVisitorId');
+      let visitorId = localStorage.getItem('reelsbookVisitorId');
       if (!visitorId) visitorId = crypto.randomUUID();
-      localStorage.setItem('chaddiGramVisitorId', visitorId);
+      localStorage.setItem('reelsbookVisitorId', visitorId);
       return visitorId;
     }
     const visitorId = getVisitorId();
