@@ -166,7 +166,8 @@ app.post("/api/auth/google", async (request, response) => {
 
     response.json({
       name: payload.name || payload.email || "Google user",
-      email: payload.email || ""
+      email: payload.email || "",
+      picture: payload.picture || "" // FIXED: Ab backend profile picture bhi return karega
     });
   } catch (error) {
     response.status(401).json({
@@ -280,6 +281,8 @@ async function listMedia(prefix) {
       type: metadata.kind || (prefix === "photos" ? "photo" : "video"),
       title: metadata.title || object.Key.split("/").pop(),
       creator: metadata.creator || "Anonymous creator",
+      creatorEmail: metadata.creatoremail || "",
+      creatorPic: metadata.creatorpic || "", // FIXED: Metadata se Profile Pic fetch karega
       uploadedAt: metadata.uploadedat || object.LastModified?.toISOString() || new Date().toISOString(),
       url: `/media/${encodeURIComponent(object.Key)}`
     };
@@ -341,6 +344,11 @@ app.post("/api/upload", requireGoogleAuth, upload.fields([{
     const key = `${folder}/${id}.${extensionFor(file.mimetype, file.originalname)}`;
     const title = safeText(request.body.title, file.originalname.replace(/\.[^/.]+$/, ""), 120);
     const creator = safeText(request.body.creator, "Anonymous creator", 80);
+    
+    // FIXED: Frontend se email aur profile pic receive kar raha hai
+    const creatorEmail = safeText(request.body.creatorEmail, "", 120);
+    const creatorPic = safeText(request.body.creatorPic, "", 500);
+    
     const uploadedAt = new Date().toISOString();
 
     await r2.send(new PutObjectCommand({
@@ -352,6 +360,8 @@ app.post("/api/upload", requireGoogleAuth, upload.fields([{
         kind: isPhoto ? "photo" : "video",
         title,
         creator,
+        creatoremail: creatorEmail, // FIXED: Cloudflare R2 mein save kar raha hai
+        creatorpic: creatorPic,     // FIXED: Cloudflare R2 mein save kar raha hai
         uploadedat: uploadedAt
       }
     }));
@@ -361,6 +371,7 @@ app.post("/api/upload", requireGoogleAuth, upload.fields([{
       type: isPhoto ? "photo" : "video",
       title,
       creator,
+      creatorPic, // FIXED: Response mein wapas bhej raha hai
       uploadedAt,
       url: `/media/${encodeURIComponent(key)}`
     });
