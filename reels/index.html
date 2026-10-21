@@ -37,7 +37,7 @@
     .reel-card video {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
     }
     .reel-details {
       position: absolute;
@@ -56,21 +56,64 @@
       border-color: var(--color-primary);
     }
 
-    /* Loading Spinner */
-    .loader {
+    /* Naya: Speed Control Buttons */
+    .speed-controls {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 40px;
-      height: 40px;
-      border: 4px solid rgba(255, 255, 255, 0.3);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      z-index: 10;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 5px;
+      z-index: 20;
     }
-    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+    .speed-btn {
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .speed-btn.active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+
+    /* Naya: Loading Percentage Overlay */
+    .loading-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 15;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .loading-overlay.hidden {
+      opacity: 0;
+    }
+    .loading-text {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .loading-bar-container {
+      width: 200px;
+      height: 4px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .loading-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--color-primary);
+      transition: width 0.1s;
+    }
   </style>
 </head>
 
@@ -93,7 +136,6 @@
     const reelsFeed = document.getElementById('reelsFeed');
     const reelsStatus = document.getElementById('reelsStatus');
     
-    // Generate Visitor ID for likes (Matched with main page)
     function getVisitorId() {
       let visitorId = localStorage.getItem('ReelsbookVisitorId') || localStorage.getItem('openframeVisitorId');
       if (!visitorId) visitorId = crypto.randomUUID();
@@ -102,7 +144,7 @@
     }
     const visitorId = getVisitorId();
 
-    // Like button logic
+    // Like Logic
     function updateLikeButton(button, result) {
       button.querySelector('.like-count').textContent = result.count;
       button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
@@ -172,10 +214,18 @@
         card.className = 'reel-card';
         if (index !== 0) card.style.display = 'none'; 
 
-        const loader = document.createElement('div');
-        loader.className = 'loader';
-        card.appendChild(loader);
+        // Naya: Loading Percentage Overlay
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'loading-overlay';
+        loadingOverlay.innerHTML = `
+          <div class="loading-text">Loading 0%</div>
+          <div class="loading-bar-container">
+            <div class="loading-bar"></div>
+          </div>
+        `;
+        card.appendChild(loadingOverlay);
 
+        // Video Element
         const video = document.createElement('video');
         video.dataset.src = item.url; 
         video.controls = false;
@@ -184,16 +234,48 @@
         video.playsInline = true;
         video.setAttribute('preload', 'none'); 
         
-        video.addEventListener('playing', () => {
-          if (loader.parentNode) loader.remove();
+        // Naya: Progress Event se percentage nikaalna
+        video.addEventListener('progress', () => {
+          if (video.buffered.length > 0 && video.duration > 0) {
+            const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+            const percent = Math.round((bufferedEnd / video.duration) * 100);
+            
+            // Update text and bar
+            loadingOverlay.querySelector('.loading-text').textContent = `Loading ${percent}%`;
+            loadingOverlay.querySelector('.loading-bar').style.width = `${percent}%`;
+
+            if (percent >= 99) {
+              loadingOverlay.classList.add('hidden');
+            }
+          }
         });
+
         video.addEventListener('loadeddata', () => {
-           if (loader.parentNode) loader.remove();
+           // Agar video jaldi load ho jaye toh overlay hata do
+           loadingOverlay.classList.add('hidden');
         });
 
         video.addEventListener('click', () => {
           if (video.paused) video.play();
           else video.pause();
+        });
+
+        // --- NAYA: SPEED CONTROL BUTTONS ---
+        const speedContainer = document.createElement('div');
+        speedContainer.className = 'speed-controls';
+        
+        const speeds = [1, 1.5, 2];
+        speeds.forEach((speed, i) => {
+          const btn = document.createElement('button');
+          btn.className = `speed-btn ${i === 0 ? 'active' : ''}`;
+          btn.textContent = speed + 'x';
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            video.playbackRate = speed;
+            speedContainer.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+          };
+          speedContainer.appendChild(btn);
         });
 
         const details = document.createElement('div');
@@ -208,7 +290,7 @@
         creator.textContent = `by ${item.creator || 'Anonymous creator'}`;
 
         details.append(title, creator, makeLikeButton(item.key || item.id));
-        card.append(video, details);
+        card.append(video, details, speedContainer); 
         reelsFeed.append(card);
       });
 
@@ -236,7 +318,7 @@
               video.play().then(() => {
                 video.muted = false; 
               }).catch((error) => {
-                console.log("Autoplay block hua, video mute rahegi", error);
+                console.log("Autoplay block hua", error);
               });
 
               const nextCard = cards[cardIndex + 1];
