@@ -7,16 +7,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#000000">
   
-  <!-- PWA SETUP START -->
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="/icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <!-- PWA SETUP END -->
 
   <title>ReelsBook — Modern Social Platform</title>
   
-  <!-- ReelsBook Logo Font -->
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   
   <link rel="stylesheet" href="/theme.css">
@@ -24,7 +21,6 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   
   <style>
-    /* --- AAPKE ORIGINAL STYLES (Waisa hi hai) --- */
     .token-border { border-color: color-mix(in srgb, var(--color-text) 12%, transparent); }
     .token-border-soft { border-color: color-mix(in srgb, var(--color-text) 8%, transparent); }
     .token-panel { background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
@@ -41,7 +37,6 @@
     .bottom-dock { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
     @media (max-width: 640px) { .reels-feed { max-height: 72svh; } .reel-card { min-height: 28rem; height: 72svh; } }
 
-    /* --- NAYE DESIGN KE STYLES --- */
     body { background-color: #000000; color: #ffffff; font-family: 'Inter', sans-serif; padding-bottom: 75px; }
     .font-logo { font-family: 'Pacifico', cursive; letter-spacing: 0.5px; }
     .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -56,24 +51,19 @@
 <body class="antialiased">
   <div class="noise fixed inset-0 z-50 pointer-events-none"></div>
 
-  <!-- 1. NAYA HEADER -->
   <header class="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b border-gray-800 px-4 py-3 flex items-center justify-between">
     <a href="/" class="text-2xl font-logo text-white" aria-label="ReelsBook home">ReelsBook</a>
     <div class="flex items-center gap-5">
-      <!-- Create Post Icon -->
       <button id="toggleUploadTop" class="text-white hover:text-[var(--color-primary)] transition" aria-label="Create Post">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
       </button>
-      <!-- Notifications Icon -->
       <button class="text-white hover:text-[var(--color-primary)] transition" aria-label="Notifications">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
       </button>
-      <!-- Account Button -->
       <button id="accountButton" type="button" class="rounded-full border border-gray-700 px-3 py-1.5 text-sm font-semibold transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Log in</button>
     </div>
   </header>
 
-  <!-- Account Dialog (Aapka Original) -->
   <div id="accountDialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="accountDialogTitle">
     <section class="relative w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-2xl sm:p-8">
       <button id="closeAccountDialog" type="button" class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-gray-700 text-xl text-gray-400 transition hover:text-white" aria-label="Close login dialog">×</button>
@@ -90,7 +80,6 @@
 
   <main class="relative z-10 mx-auto max-w-xl px-0 sm:px-5 pb-20">
     
-    <!-- 2. STORIES SECTION (Naya) -->
     <section class="mb-2 border-b border-gray-800 pb-4 pt-4 px-4 sm:px-0">
       <div class="flex gap-4 overflow-x-auto hide-scrollbar">
         <div class="flex flex-col items-center gap-1 cursor-pointer shrink-0" id="addStoryBtn">
@@ -102,13 +91,10 @@
           </div>
           <span class="text-xs text-gray-400">Your Story</span>
         </div>
-        <div id="storiesContainer" class="flex gap-4">
-          <!-- Real stories yahan aayengi -->
-        </div>
+        <div id="storiesContainer" class="flex gap-4"></div>
       </div>
     </section>
 
-    <!-- AAPKA HERO SECTION (Bilkul waisa hi) -->
     <section class="grid items-center gap-12 pb-10 pt-4 lg:grid-cols-[1.05fr_.95fr] lg:pb-16 lg:pt-8">
       <div class="float-in px-4 sm:px-0">
         <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">
@@ -135,7 +121,6 @@
       </div>
     </section>
 
-    <!-- Upload Section (Aapka Original, bas thoda black theme mein) -->
     <section id="upload" class="scroll-mt-8 rounded-2xl border border-gray-800 bg-gray-900 p-3 sm:p-4 mx-4 sm:mx-0 mt-4">
       <button id="toggleUpload" type="button" class="flex w-full items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition hover:bg-[var(--color-primary)]/10" aria-expanded="false" aria-controls="uploadOptions">
         <span class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl leading-none text-white" aria-hidden="true">+</span>
@@ -191,7 +176,6 @@
       </div>
     </section>
 
-    <!-- 3. POSTS FEED (Modern Grid/Feed) -->
     <section id="wall" class="scroll-mt-8 pt-12">
       <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between px-4 sm:px-0">
         <div>
@@ -208,12 +192,10 @@
         </div>
       </div>
       
-      <!-- Ye aapka mediaGrid hai, ab isme Instagram style posts aayenge -->
       <div id="mediaGrid" class="flex flex-col px-0 sm:px-0"></div>
       <p id="wallStatus" class="mt-5 text-center text-sm text-gray-400" role="status" aria-live="polite"></p>
     </section>
 
-    <!-- Reels Section (Aapka Original) -->
     <section id="reels" class="scroll-mt-8 pt-24 pb-10">
       <div class="mb-8 px-4 sm:px-0">
         <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">03 / Video feed</p>
@@ -225,7 +207,6 @@
     </section>
   </main>
 
-  <!-- 4. NAYA BOTTOM NAVIGATION -->
   <nav class="fixed bottom-0 inset-x-0 z-40 bg-black border-t border-gray-800 flex justify-around items-center py-2 pb-safe">
     <a href="#wall" id="navHome" class="text-white flex flex-col items-center gap-1">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
@@ -256,9 +237,6 @@
   </footer>
 
   <script>
-    // ==========================================
-    // AAPKA PURA ORIGINAL JAVASCRIPT CODE
-    // ==========================================
     const mediaInput = document.getElementById('mediaInput');
     const dropZone = document.getElementById('dropZone');
     const filePanel = document.getElementById('filePanel');
@@ -333,7 +311,6 @@
     const uploadSection = document.getElementById('upload');
     const toggleUploadTop = document.getElementById('toggleUploadTop');
 
-    // Bottom Nav Switch Logic
     document.getElementById('navReels').addEventListener('click', (e) => {
       e.preventDefault();
       document.getElementById('wall').classList.add('hidden');
@@ -381,7 +358,6 @@
       if (isExpanded) closeUploadPanel(); else openUploadPanel();
     });
 
-    // NAYE BUTTONS CONNECTED
     toggleUploadTop.addEventListener('click', openUploadPanel);
     bottomPlus.addEventListener('click', openUploadPanel);
     document.getElementById('addStoryBtn').addEventListener('click', openUploadPanel);
@@ -421,45 +397,45 @@
       selectedFile = null; mediaInput.value = ''; filePanel.classList.add('hidden'); uploadStatus.classList.add('hidden');
     });
 
+    // ==========================================
+    // NAYA LIKES LOGIC (Connected to D1 Database)
+    // ==========================================
     function updateLikeButton(button, result) {
       button.querySelector('.like-count').textContent = result.count;
       button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
+      button.querySelector('.like-icon').style.color = result.liked ? '#ec4899' : 'inherit';
       button.setAttribute('aria-pressed', String(result.liked));
-    }
-
-    const localLikeStorageKey = 'fullMastiLocalLikes';
-    function readLocalLike(mediaId) {
-      try { const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}'); return savedLikes[mediaId] || { count: 0, liked: false }; } catch (error) { return { count: 0, liked: false }; }
-    }
-    function saveLocalLike(mediaId, state) {
-      try { const savedLikes = JSON.parse(localStorage.getItem(localLikeStorageKey) || '{}'); savedLikes[mediaId] = state; localStorage.setItem(localLikeStorageKey, JSON.stringify(savedLikes)); } catch (error) { console.info('This browser could not save the local like state.'); }
-    }
-    function toggleLocalLike(mediaId, button) {
-      const current = readLocalLike(mediaId); const liked = !current.liked;
-      const result = { count: Math.max(0, current.count + (liked ? 1 : -1)), liked };
-      saveLocalLike(mediaId, result); updateLikeButton(button, result);
     }
 
     async function loadLikeState(mediaId, button) {
       try {
-        const query = new URLSearchParams({ mediaId, visitorId });
-        const response = await fetch(`/api/likes?${query}`);
+        // Cache Buster (?t=Date.now()) taake purana data load na ho
+        const response = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}&t=${Date.now()}`);
         if (!response.ok) throw new Error('Likes API is unavailable.');
         updateLikeButton(button, await response.json());
-      } catch (error) { updateLikeButton(button, readLocalLike(mediaId)); }
+      } catch (error) { 
+        console.error("Error loading likes:", error);
+      }
     }
 
     function attachLikeHandler(button) {
       button.addEventListener('click', async () => {
-        const mediaId = button.dataset.mediaId; button.disabled = true;
+        const mediaId = button.dataset.mediaId; 
+        button.disabled = true;
         try {
-          const response = await fetch('/api/likes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mediaId, visitorId }) });
+          const response = await fetch('/api/likes', { 
+            method: 'POST', 
+            headers: { 'content-type': 'application/json' }, 
+            body: JSON.stringify({ mediaId, visitorId }) 
+          });
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || 'Likes API is unavailable.');
           updateLikeButton(button, result);
         } catch (error) {
-          toggleLocalLike(mediaId, button); wallStatus.textContent = 'Like saved in this browser. Connect the likes API to share counts with everyone.';
-        } finally { button.disabled = false; }
+          console.error("Error posting like:", error);
+        } finally { 
+          button.disabled = false; 
+        }
       });
     }
 
@@ -467,19 +443,20 @@
       const button = document.createElement('button');
       button.type = 'button';
       button.className = `like-button flex items-center gap-1 text-gray-400 hover:text-white transition`;
-      button.dataset.mediaId = mediaId; button.setAttribute('aria-pressed', 'false');
+      button.dataset.mediaId = mediaId; 
+      button.setAttribute('aria-pressed', 'false');
       button.innerHTML = '<span class="like-icon text-xl" aria-hidden="true">♡</span><span class="like-count text-sm font-semibold">0</span>';
-      attachLikeHandler(button); loadLikeState(mediaId, button); return button;
+      attachLikeHandler(button); 
+      loadLikeState(mediaId, button); 
+      return button;
     }
 
-    // --- NAYA RENDER MEDIA (Instagram Feed Style) ---
     function renderMedia(item) {
       const card = document.createElement('article');
       card.className = 'post-card';
       card.dataset.type = item.type;
       const mediaId = item.key || item.id;
 
-      // 1. Author Header (Avatar + Name)
       const header = document.createElement('div');
       header.className = 'flex items-center gap-3 px-4 py-3';
       
@@ -499,7 +476,6 @@
       
       header.append(avatar, creatorInfo);
 
-      // 2. Media (Photo ya Video)
       let media;
       if (item.type === 'photo' || item.type === 'gif') {
         media = document.createElement('img'); media.src = item.url; media.loading = 'lazy'; media.className = 'post-media';
@@ -507,7 +483,6 @@
         media = document.createElement('video'); media.src = item.url; media.controls = true; media.className = 'post-media';
       }
 
-      // 3. Actions (Like, Comment, Share)
       const actions = document.createElement('div');
       actions.className = 'flex items-center gap-4 px-4 pt-3 pb-1';
       actions.appendChild(makeLikeButton(mediaId));
@@ -517,7 +492,6 @@
       commentBtn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>`;
       actions.appendChild(commentBtn);
 
-      // 4. Caption
       const caption = document.createElement('div');
       caption.className = 'px-4 pt-2 text-sm text-white';
       caption.innerHTML = `<span class="font-bold mr-2">${item.creator || 'Anonymous'}</span>${item.title || ''}`;
@@ -576,7 +550,7 @@
 
     async function loadMedia() {
       try {
-        const response = await fetch('/api/media');
+        const response = await fetch('/api/media?t=' + Date.now()); // Cache Buster
         if (!response.ok) throw new Error('Could not load media.');
         galleryItems = await response.json();
         
@@ -590,7 +564,6 @@
         renderReels(galleryItems);
         applyFilter();
 
-        // --- REAL STORIES POPULATE LOGIC (From Real Data) ---
         const storiesContainer = document.getElementById('storiesContainer');
         storiesContainer.innerHTML = ''; 
         const uniqueCreators = [...new Map(galleryItems.map(item => [item.creator, item])).values()];
@@ -765,7 +738,7 @@
           mediaInput.value = '';
           filePanel.classList.add('hidden');
           document.getElementById('mediaTitle').value = '';
-          closeUploadPanel(); // Close on success
+          closeUploadPanel(); 
           await loadMedia();
         } catch (error) {
           showUploadMessage(error.message || 'Upload failed. Please try again.');
@@ -788,8 +761,11 @@
     });
 
     const featuredLikeButton = document.querySelector('.like-hero');
-    attachLikeHandler(featuredLikeButton);
-    loadLikeState('featured-sad-image', featuredLikeButton);
+    if(featuredLikeButton) {
+      attachLikeHandler(featuredLikeButton);
+      loadLikeState('featured-sad-image', featuredLikeButton);
+    }
+    
     loadMedia();
 
     if ('serviceWorker' in navigator) {
@@ -802,5 +778,4 @@
 
   </script>
 </body>
-
 </html>
