@@ -93,7 +93,7 @@
     const reelsFeed = document.getElementById('reelsFeed');
     const reelsStatus = document.getElementById('reelsStatus');
     
-    // Generate Visitor ID for likes
+    // Generate Visitor ID for likes (Matched with main page)
     function getVisitorId() {
       let visitorId = localStorage.getItem('ReelsbookVisitorId') || localStorage.getItem('openframeVisitorId');
       if (!visitorId) visitorId = crypto.randomUUID();
@@ -112,7 +112,6 @@
 
     async function loadLikeState(mediaId, button) {
       try {
-        // Added Cache Buster to force latest count
         const query = new URLSearchParams({ mediaId, visitorId, t: Date.now() });
         const response = await fetch(`/api/likes?${query}`);
         if (!response.ok) throw new Error('Likes API is unavailable.');
@@ -258,7 +257,7 @@
     async function loadMedia() {
       try {
         reelsStatus.textContent = 'Loading videos...';
-        const response = await fetch('/api/media?t=' + Date.now()); // Cache Buster
+        const response = await fetch('/api/media?t=' + Date.now());
         if (!response.ok) throw new Error('Could not load media.');
         const galleryItems = await response.json();
         renderReels(galleryItems);
