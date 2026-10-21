@@ -1,4 +1,4 @@
-# Chaddi Gram 🔥
+# Reels Book 🔥
 
 A public photo and video wall with uploads stored in Cloudflare R2 and shared likes stored in SQLite.
 
