@@ -232,9 +232,9 @@
     let galleryItems = [];
 
     function getVisitorId() {
-      let visitorId = localStorage.getItem('chaddiGramVisitorId') || localStorage.getItem('openframeVisitorId');
+      let visitorId = localStorage.getItem('ReelsbookVisitorId') || localStorage.getItem('openframeVisitorId');
       if (!visitorId) visitorId = crypto.randomUUID();
-      localStorage.setItem('chaddiGramVisitorId', visitorId);
+      localStorage.setItem('ReelsbookVisitorId', visitorId);
       return visitorId;
     }
     const visitorId = getVisitorId();
