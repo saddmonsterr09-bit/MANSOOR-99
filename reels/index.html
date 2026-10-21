@@ -56,7 +56,7 @@
       border-color: var(--color-primary);
     }
 
-    /* Naya: Speed Control Buttons */
+    /* Speed Control Buttons */
     .speed-controls {
       position: absolute;
       top: 20px;
@@ -80,7 +80,7 @@
       border-color: var(--color-primary);
     }
 
-    /* Naya: Loading Percentage Overlay */
+    /* Loading Percentage Overlay */
     .loading-overlay {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -197,7 +197,6 @@
       return button;
     }
 
-    // RENDER REELS 
     function renderReels(items) {
       const videos = items.filter((item) => item.type === 'video');
       reelsFeed.replaceChildren();
@@ -209,12 +208,11 @@
 
       reelsStatus.textContent = '';
       
-      videos.forEach((item, index) => {
+      videos.forEach((item) => {
         const card = document.createElement('article');
         card.className = 'reel-card';
-        if (index !== 0) card.style.display = 'none'; 
 
-        // Naya: Loading Percentage Overlay
+        // Loading Percentage Overlay
         const loadingOverlay = document.createElement('div');
         loadingOverlay.className = 'loading-overlay';
         loadingOverlay.innerHTML = `
@@ -225,7 +223,6 @@
         `;
         card.appendChild(loadingOverlay);
 
-        // Video Element
         const video = document.createElement('video');
         video.dataset.src = item.url; 
         video.controls = false;
@@ -234,13 +231,11 @@
         video.playsInline = true;
         video.setAttribute('preload', 'none'); 
         
-        // Naya: Progress Event se percentage nikaalna
         video.addEventListener('progress', () => {
           if (video.buffered.length > 0 && video.duration > 0) {
             const bufferedEnd = video.buffered.end(video.buffered.length - 1);
             const percent = Math.round((bufferedEnd / video.duration) * 100);
             
-            // Update text and bar
             loadingOverlay.querySelector('.loading-text').textContent = `Loading ${percent}%`;
             loadingOverlay.querySelector('.loading-bar').style.width = `${percent}%`;
 
@@ -251,7 +246,6 @@
         });
 
         video.addEventListener('loadeddata', () => {
-           // Agar video jaldi load ho jaye toh overlay hata do
            loadingOverlay.classList.add('hidden');
         });
 
@@ -260,7 +254,7 @@
           else video.pause();
         });
 
-        // --- NAYA: SPEED CONTROL BUTTONS ---
+        // Speed Control Buttons
         const speedContainer = document.createElement('div');
         speedContainer.className = 'speed-controls';
         
@@ -297,6 +291,7 @@
       setupSmartPlayback();
     }
 
+    // FIXED: Smart Playback Logic (Ab sirf 1 video play hogi)
     function setupSmartPlayback() {
       const cards = Array.from(reelsFeed.querySelectorAll('.reel-card'));
       
@@ -304,32 +299,30 @@
         const observer = new IntersectionObserver((entries) => {
           entries.forEach((entry) => {
             const video = entry.target.querySelector('video');
-            const cardIndex = cards.indexOf(entry.target);
 
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+              // 1. Baaki saari videos pause karo
               document.querySelectorAll('video').forEach(v => {
                 if (v !== video) v.pause();
               });
 
-              if (!video.src) {
+              // 2. Sirf current video ka src load karo (agar load nahi hui)
+              if (!video.src || video.src === '') {
                 video.src = video.dataset.src;
               }
               
+              // 3. Play karo
               video.play().then(() => {
                 video.muted = false; 
               }).catch((error) => {
                 console.log("Autoplay block hua", error);
               });
-
-              const nextCard = cards[cardIndex + 1];
-              if (nextCard) {
-                nextCard.style.display = 'block';
-              }
             } else {
+              // Agar video screen se bahar hai, toh pause karo
               video.pause();
             }
           });
-        }, { root: reelsFeed, threshold: [0, 0.5, 1] });
+        }, { root: reelsFeed, threshold: [0, 0.6, 1] });
         
         cards.forEach((card) => observer.observe(card));
       }
