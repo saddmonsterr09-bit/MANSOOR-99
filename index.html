@@ -442,7 +442,7 @@
       return button;
     }
 
-    // RENDER MEDIA
+    // RENDER MEDIA (THUMBNAIL FIX)
     function renderMedia(item) {
       const card = document.createElement('article');
       card.className = 'post-card';
@@ -476,7 +476,9 @@
         media.className = 'post-media';
       } else {
         media = document.createElement('video'); 
+        // THUMBNAIL FIX YAHAN HAI
         media.src = item.url; 
+        media.poster = item.url + '#t=0.1'; 
         media.controls = true; 
         media.className = 'post-media';
         media.preload = 'none'; 
@@ -499,7 +501,7 @@
       return card;
     }
 
-    // RENDER REELS
+    // RENDER REELS (SCROLL FIX + THUMBNAIL)
     function renderReels(items) {
       const videos = items.filter((item) => item.type === 'video');
       reelsFeed.replaceChildren();
@@ -508,8 +510,18 @@
       videos.forEach((item) => {
         const card = document.createElement('article'); card.className = 'reel-card rounded-2xl';
         const video = document.createElement('video');
-        video.src = item.url; video.controls = true; video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'none';
+        
+        // Thumbnail aur preload
+        video.src = item.url; 
+        video.poster = item.url + '#t=0.1'; 
+        
+        video.controls = true; 
+        video.muted = true; 
+        video.loop = true; 
+        video.playsInline = true; 
+        video.preload = 'none';
         video.setAttribute('aria-label', item.title || 'Community video');
+        
         const details = document.createElement('div'); details.className = 'reel-details';
         const title = document.createElement('h3'); title.className = 'text-lg font-bold text-white'; title.textContent = item.title || 'Untitled moment';
         
@@ -522,12 +534,21 @@
 
         details.append(title, creator, makeLikeButton(item.key || item.id)); card.append(video, details); reelsFeed.append(card);
       });
+      
+      // SCROLL HONE PAR PAUSE AUR MUTE
       if ('IntersectionObserver' in window) {
         const observer = new IntersectionObserver((entries) => {
           entries.forEach((entry) => {
             const video = entry.target.querySelector('video');
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.65) { video.play().catch(() => {}); }
-            else { video.pause(); }
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.65) { 
+              // Agar screen par aaye toh play karo
+              video.play().catch(() => {}); 
+            }
+            else { 
+              // Agar screen se bahar jaye toh pause AUR mute karo
+              video.pause(); 
+              video.muted = true; 
+            }
           });
         }, { root: reelsFeed, threshold: [0, 0.65, 1] });
         reelsFeed.querySelectorAll('.reel-card').forEach((card) => observer.observe(card));
