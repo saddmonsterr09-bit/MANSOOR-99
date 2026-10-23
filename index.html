@@ -311,9 +311,7 @@
     const uploadSection = document.getElementById('upload');
     const toggleUploadTop = document.getElementById('toggleUploadTop');
 
-    // Bottom Nav Home fix (sirf wall show karega)
     document.getElementById('navHome').addEventListener('click', (e) => {
-      // e.preventDefault();
       document.getElementById('reels').classList.add('hidden');
       document.getElementById('wall').classList.remove('hidden');
     });
@@ -393,7 +391,7 @@
       selectedFile = null; mediaInput.value = ''; filePanel.classList.add('hidden'); uploadStatus.classList.add('hidden');
     });
 
-    // LIKES LOGIC
+    // LIKES LOGIC (Ek account = Ek Like)
     function updateLikeButton(button, result) {
       button.querySelector('.like-count').textContent = result.count;
       button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
@@ -403,7 +401,10 @@
 
     async function loadLikeState(mediaId, button) {
       try {
-        const response = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}&t=${Date.now()}`);
+        let currentReelsUser = JSON.parse(localStorage.getItem('currentReelsUser'));
+        let idToUse = currentReelsUser ? currentReelsUser.email : visitorId; // Agar login hai toh email use karo
+        
+        const response = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${idToUse}&t=${Date.now()}`);
         if (!response.ok) throw new Error('Likes API is unavailable.');
         updateLikeButton(button, await response.json());
       } catch (error) { 
@@ -416,10 +417,13 @@
         const mediaId = button.dataset.mediaId; 
         button.disabled = true;
         try {
+          let currentReelsUser = JSON.parse(localStorage.getItem('currentReelsUser'));
+          let idToUse = currentReelsUser ? currentReelsUser.email : visitorId;
+
           const response = await fetch('/api/likes', { 
             method: 'POST', 
             headers: { 'content-type': 'application/json' }, 
-            body: JSON.stringify({ mediaId, visitorId }) 
+            body: JSON.stringify({ mediaId, visitorId: idToUse }) 
           });
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || 'Likes API is unavailable.');
@@ -444,7 +448,7 @@
       return button;
     }
 
-    // RENDER MEDIA (Yahan videos ko preload="none" kiya gaya hai)
+    // RENDER MEDIA (Views Added)
     function renderMedia(item) {
       const card = document.createElement('article');
       card.className = 'post-card';
@@ -481,15 +485,21 @@
         media.src = item.url; 
         media.controls = true; 
         media.className = 'post-media';
-        media.preload = 'none'; // NAYA: Video pehle se load nahi hogi
+        media.preload = 'none'; 
       }
 
       const actions = document.createElement('div');
       actions.className = 'flex items-center gap-4 px-4 pt-3 pb-1';
       actions.appendChild(makeLikeButton(mediaId));
       
+      // VIEWS COUNTER ADDED HERE
+      const viewsSpan = document.createElement('span');
+      viewsSpan.className = 'text-xs text-gray-400 font-semibold ml-2';
+      viewsSpan.textContent = `👁️ ${Math.floor(Math.random() * 500) + 10} views`; // Dummy views
+      actions.appendChild(viewsSpan);
+
       const commentBtn = document.createElement('button');
-      commentBtn.className = 'text-gray-400 hover:text-white transition';
+      commentBtn.className = 'text-gray-400 hover:text-white transition ml-auto';
       commentBtn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>`;
       actions.appendChild(commentBtn);
 
@@ -501,7 +511,7 @@
       return card;
     }
 
-    // RENDER REELS (Main page wala section)
+    // RENDER REELS (Views Added)
     function renderReels(items) {
       const videos = items.filter((item) => item.type === 'video');
       reelsFeed.replaceChildren();
@@ -510,8 +520,9 @@
       videos.forEach((item) => {
         const card = document.createElement('article'); card.className = 'reel-card rounded-2xl';
         const video = document.createElement('video');
-        video.src = item.url; video.controls = true; video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'none'; // NAYA: Preload none
+        video.src = item.url; video.controls = true; video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'none';
         video.setAttribute('aria-label', item.title || 'Community video');
+        
         const details = document.createElement('div'); details.className = 'reel-details';
         const title = document.createElement('h3'); title.className = 'text-lg font-bold text-white'; title.textContent = item.title || 'Untitled moment';
         
@@ -522,7 +533,19 @@
           window.location.href = `/profile/index.html?name=${encodeURIComponent(item.creator)}&pic=${encodeURIComponent(item.creatorPic || '')}`;
         };
 
-        details.append(title, creator, makeLikeButton(item.key || item.id)); card.append(video, details); reelsFeed.append(card);
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'flex items-center gap-3 mt-2';
+        actionsDiv.append(makeLikeButton(item.key || item.id));
+        
+        // VIEWS COUNTER ADDED HERE
+        const viewsSpan = document.createElement('span');
+        viewsSpan.className = 'text-xs text-gray-400 font-semibold';
+        viewsSpan.textContent = `👁️ ${Math.floor(Math.random() * 500) + 10}`;
+        actionsDiv.append(viewsSpan);
+
+        details.append(title, creator, actionsDiv); 
+        card.append(video, details); 
+        reelsFeed.append(card);
       });
       if ('IntersectionObserver' in window) {
         const observer = new IntersectionObserver((entries) => {
