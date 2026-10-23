@@ -442,7 +442,7 @@
       return button;
     }
 
-    // RENDER MEDIA (THUMBNAIL FIX)
+    // RENDER MEDIA (Thumbnail Fix in Feed)
     function renderMedia(item) {
       const card = document.createElement('article');
       card.className = 'post-card';
@@ -476,12 +476,12 @@
         media.className = 'post-media';
       } else {
         media = document.createElement('video'); 
-        // THUMBNAIL FIX YAHAN HAI
         media.src = item.url; 
-        media.poster = item.url + '#t=0.1'; 
+        // THUMBNAIL YAHAN LAGAYA HAI
+        media.poster = item.url + '#t=0.1';
         media.controls = true; 
         media.className = 'post-media';
-        media.preload = 'none'; 
+        media.preload = 'metadata'; // Sirf pehla frame load hoga
       }
 
       const actions = document.createElement('div');
@@ -501,7 +501,7 @@
       return card;
     }
 
-    // RENDER REELS (SCROLL FIX + THUMBNAIL)
+    // RENDER REELS (Thumbnail + Scroll Pause/Mute)
     function renderReels(items) {
       const videos = items.filter((item) => item.type === 'video');
       reelsFeed.replaceChildren();
@@ -510,16 +510,14 @@
       videos.forEach((item) => {
         const card = document.createElement('article'); card.className = 'reel-card rounded-2xl';
         const video = document.createElement('video');
-        
-        // Thumbnail aur preload
         video.src = item.url; 
-        video.poster = item.url + '#t=0.1'; 
-        
+        // THUMBNAIL YAHAN LAGAYA HAI
+        video.poster = item.url + '#t=0.1';
         video.controls = true; 
         video.muted = true; 
         video.loop = true; 
         video.playsInline = true; 
-        video.preload = 'none';
+        video.preload = 'metadata';
         video.setAttribute('aria-label', item.title || 'Community video');
         
         const details = document.createElement('div'); details.className = 'reel-details';
@@ -535,19 +533,17 @@
         details.append(title, creator, makeLikeButton(item.key || item.id)); card.append(video, details); reelsFeed.append(card);
       });
       
-      // SCROLL HONE PAR PAUSE AUR MUTE
+      // SCROLL FIX: PAUSE AND MUTE
       if ('IntersectionObserver' in window) {
         const observer = new IntersectionObserver((entries) => {
           entries.forEach((entry) => {
             const video = entry.target.querySelector('video');
             if (entry.isIntersecting && entry.intersectionRatio >= 0.65) { 
-              // Agar screen par aaye toh play karo
               video.play().catch(() => {}); 
             }
             else { 
-              // Agar screen se bahar jaye toh pause AUR mute karo
               video.pause(); 
-              video.muted = true; 
+              video.muted = true; // Aawaz band
             }
           });
         }, { root: reelsFeed, threshold: [0, 0.65, 1] });
@@ -584,6 +580,21 @@
         mediaGrid.replaceChildren(...galleryItems.map(renderMedia));
         renderReels(galleryItems);
         applyFilter();
+
+        // SCROLL PAR PAUSE AUR MUTE (FEED KE LIYE)
+        if ('IntersectionObserver' in window) {
+          const videoObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+              const video = entry.target;
+              if (video.tagName === 'VIDEO') {
+                if (!entry.isIntersecting || entry.intersectionRatio < 0.3) {
+                  if (!video.paused) { video.pause(); video.muted = true; }
+                }
+              }
+            });
+          }, { threshold: [0, 0.3] });
+          mediaGrid.querySelectorAll('video').forEach(vid => videoObserver.observe(vid));
+        }
 
         const storiesContainer = document.getElementById('storiesContainer');
         storiesContainer.innerHTML = ''; 
