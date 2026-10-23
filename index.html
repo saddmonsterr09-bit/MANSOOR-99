@@ -255,7 +255,7 @@
     const accountDialog = document.getElementById('accountDialog');
     const accountDialogStatus = document.getElementById('accountDialogStatus');
     const authStorageKey = 'fullMastiGoogleCredential';
-    let googleCredential = sessionStorage.getItem(authStorageKey) || '';
+    let googleCredential = localStorage.getItem(authStorageKey) || '';
     let googleUser = null;
     const maxUploadSize = 90 * 1024 * 1024;
     const uploadTypes = {
@@ -633,7 +633,7 @@
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Google sign-in could not be verified.');
       googleCredential = credential;
-      sessionStorage.setItem(authStorageKey, credential);
+      localStorage.setItem(authStorageKey, credential);
       showSignedInUser(result);
     }
 
@@ -674,7 +674,7 @@
             if (googleCredential) {
               verifyGoogleCredential(googleCredential).catch(() => {
                 googleCredential = '';
-                sessionStorage.removeItem(authStorageKey);
+                localStorage.removeItem(authStorageKey);
                 showSignedOutUser('Your Google sign-in expired. Sign in again to upload.');
               });
             }
@@ -690,7 +690,7 @@
 
     signOutButton.addEventListener('click', () => {
       googleCredential = '';
-      sessionStorage.removeItem(authStorageKey);
+      localStorage.removeItem(authStorageKey);
       window.google?.accounts?.id?.disableAutoSelect();
       showSignedOutUser();
     });
