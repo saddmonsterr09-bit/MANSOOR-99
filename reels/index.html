@@ -18,7 +18,7 @@ body { background:#000; color:#fff; }
 .speed-controls { position:absolute; top:20px; right:20px; display:flex; gap:5px; z-index:20; }
 .speed-btn { background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.3); color:#fff; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold; cursor:pointer; }
 .speed-btn.active { background:var(--color-primary); border-color:var(--color-primary); }
-.loading-overlay { position:absolute; inset:0; background:rgba(0,0,0,.6); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:15; pointer-events:none; transition:opacity .3s; }
+.loading-overlay { position:absolute; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:15; pointer-events:none; transition:opacity .3s; }
 .loading-overlay.hidden { opacity:0; }
 .like-button[aria-pressed="true"] { color:var(--color-primary); border-color:var(--color-primary); }
 .view-count { position:absolute; top:20px; left:20px; z-index:20; background:rgba(0,0,0,.6); padding:4px 10px; border-radius:12px; font-size:12px; }
@@ -74,6 +74,17 @@ function makeLikeButton(mediaId) {
   return b;
 }
 
+// ⭐ FIX: view is recorded ONLY when the reel actually starts playing (not at render time)
+function recordView(mediaId) {
+  const key = 'viewed:' + mediaId;
+  if (sessionStorage.getItem(key)) return;
+  sessionStorage.setItem(key, '1');
+  fetch('/api/views', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ mediaId, visitorId })
+  }).catch(() => {});
+}
+
 function renderReels(items) {
   reelsFeed.replaceChildren();
   if (!items.length) { reelsStatus.textContent = 'No videos yet.'; return; }
@@ -85,7 +96,7 @@ function renderReels(items) {
 
     const loadingOverlay = document.createElement('div');
     loadingOverlay.className = 'loading-overlay';
-    loadingOverlay.innerHTML = '<div class="text-lg font-bold mb-2">Loading…</div>';
+    loadingOverlay.innerHTML = '<div class="text-lg font-bold">Loading…</div>';
 
     const video = document.createElement('video');
     video.dataset.src = item.url;
@@ -99,6 +110,10 @@ function renderReels(items) {
     video.addEventListener('loadeddata', () => loadingOverlay.classList.add('hidden'));
     video.addEventListener('click', () => { video.paused ? video.play().catch(()=>{}) : video.pause(); });
 
+    // ⭐ Record view ONLY when the video truly starts playing
+    video.addEventListener('play', () => recordView(item.key));
+
+    // Watch-time tracking
     let watchStart = null;
     let watchAccum = 0;
     const sendWatch = () => {
@@ -114,20 +129,14 @@ function renderReels(items) {
     video.addEventListener('ended', () => { if (watchStart) { watchAccum += (Date.now() - watchStart)/1000; watchStart = null; } sendWatch(); });
     setInterval(() => { if (watchStart && watchAccum >= 5) sendWatch(); }, 5000);
 
-    const viewKey = 'viewed:' + item.key;
-    if (!sessionStorage.getItem(viewKey)) {
-      sessionStorage.setItem(viewKey, '1');
-      fetch('/api/views', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mediaId: item.key, visitorId }) }).catch(()=>{});
-    }
-
     const speedBox = document.createElement('div');
     speedBox.className = 'speed-controls';
     [1, 1.5, 2].forEach((s, i) => {
-      const b = document.createElement('button');
-      b.className = 'speed-btn' + (i === 0 ? ' active' : '');
-      b.textContent = s + 'x';
-      b.onclick = (e) => { e.stopPropagation(); video.playbackRate = s; speedBox.querySelectorAll('.speed-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); };
-      speedBox.appendChild(b);
+      const btn = document.createElement('button');
+      btn.className = 'speed-btn' + (i === 0 ? ' active' : '');
+      btn.textContent = s + 'x';
+      btn.onclick = (e) => { e.stopPropagation(); video.playbackRate = s; speedBox.querySelectorAll('.speed-btn').forEach(x => x.classList.remove('active')); btn.classList.add('active'); };
+      speedBox.appendChild(btn);
     });
 
     const viewBadge = document.createElement('div');
@@ -142,7 +151,14 @@ function renderReels(items) {
     const creator = document.createElement('p');
     creator.className = 'mt-1 mb-2 text-sm text-gray-300 cursor-pointer hover:underline';
     creator.textContent = `by ${item.creator || 'Anonymous'}`;
-    creator.onclick = () => { location.href = `/profile/index.html?name=${encodeURIComponent(item.creator)}&pic=${encodeURIComponent(item.creatorPic||'')}&email=${encodeURIComponent(item.creatorEmail||'')}`; };
+    // ⭐ Build profile URL cleanly — only add email param if present
+    creator.onclick = () => {
+      const params = new URLSearchParams();
+      params.set('name', item.creator || '');
+      if (item.creatorPic) params.set('pic', item.creatorPic);
+      if (item.creatorEmail) params.set('email', item.creatorEmail);
+      location.href = `/profile/index.html?${params.toString()}`;
+    };
     details.append(title, creator, makeLikeButton(item.key));
     card.append(loadingOverlay, video, viewBadge, speedBox, details);
     reelsFeed.appendChild(card);
