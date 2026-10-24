@@ -1,203 +1,306 @@
 <!doctype html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="var(--color-bg)">
-  <title>My Profile — REELS BOOK 😎</title>
-  <link rel="stylesheet" href="/theme.css">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .token-border { border-color: color-mix(in srgb, var(--color-text) 12%, transparent); }
-    .token-border-soft { border-color: color-mix(in srgb, var(--color-text) 8%, transparent); }
-    .token-panel { background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
-    
-    .video-card {
-      position: relative;
-      aspect-ratio: 9/16;
-      background: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      cursor: pointer;
-    }
-    .video-card video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      transition: transform 0.3s ease;
-    }
-    .video-card:hover video {
-      transform: scale(1.05);
-    }
-    .play-icon {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 2rem;
-      color: white;
-      opacity: 0.8;
-      pointer-events: none;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<title>Profile — ReelsBook</title>
+<link rel="stylesheet" href="/theme.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
+.video-card { position:relative; aspect-ratio:9/16; background:#121212; border-radius:12px; overflow:hidden; cursor:pointer; }
+.video-card video { width:100%; height:100%; object-fit:cover; }
+.video-card .play-icon { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:2rem; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.7); pointer-events:none; }
+.video-card .badges { position:absolute; left:4px; bottom:4px; display:flex; gap:4px; }
+.video-card .badge { background:rgba(0,0,0,.7); font-size:11px; padding:2px 6px; border-radius:6px; }
+</style>
 </head>
+<body class="min-h-screen">
 
-<body class="bg-[var(--color-bg)] text-[var(--color-text)] min-h-screen">
-  
-  <!-- Top Navigation -->
-  <header class="sticky top-0 z-50 bg-[var(--color-bg)]/90 backdrop-blur-md border-b token-border-soft px-5 py-4 flex items-center justify-between">
-    <a href="/" class="flex items-center gap-3">
-      <span class="text-2xl font-black">←</span>
-      <span class="text-sm font-black tracking-[.12em]">REELS BOOK 😎</span>
-    </a>
-    <h1 class="text-lg font-bold">My Profile</h1>
-    <div class="w-8"></div> <!-- Balance -->
-  </header>
+<header class="sticky top-0 z-30 bg-black/90 backdrop-blur border-b border-gray-800 px-4 py-3 flex justify-between items-center">
+  <a href="/" class="text-2xl font-black">←</a>
+  <h1 class="text-lg font-bold">Profile</h1>
+  <div class="w-8"></div>
+</header>
 
-  <!-- Main Content -->
-  <main class="max-w-3xl mx-auto px-5 py-8">
-    
-    <!-- Profile Info Section -->
-    <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-10 text-center sm:text-left">
-      <div class="relative">
-        <img id="profilePic" src="" alt="Profile Picture" class="w-28 h-28 rounded-full object-cover border-4 border-[var(--color-primary)] shadow-lg bg-gray-800">
+<main class="max-w-3xl mx-auto px-4 py-6">
+
+  <section class="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-8">
+    <img id="profilePic" src="" alt="" class="w-24 h-24 rounded-full object-cover border-4 border-[var(--color-primary)] bg-gray-800">
+    <div class="flex-1 text-center sm:text-left">
+      <h2 id="profileName" class="text-2xl font-black">Loading…</h2>
+      <p id="profileEmail" class="text-sm text-gray-400 mt-1"></p>
+      <div class="flex justify-center sm:justify-start gap-6 mt-3">
+        <div><p id="videoCount" class="text-lg font-bold">0</p><p class="text-xs text-gray-400">Videos</p></div>
+        <div><p id="friendCount" class="text-lg font-bold">0</p><p class="text-xs text-gray-400">Friends</p></div>
       </div>
-      <div class="flex-1">
-        <h2 id="profileName" class="text-3xl font-black mb-2">Loading...</h2>
-        <p id="profileEmail" class="text-[var(--color-muted)] text-sm mb-4">Loading...</p>
-        <div class="flex items-center justify-center sm:justify-start gap-6">
-          <div class="text-center">
-            <p id="videoCount" class="text-xl font-bold">0</p>
-            <p class="text-xs text-[var(--color-muted)] uppercase tracking-wider">Videos</p>
-          </div>
-          <!-- Add more stats here in future (e.g., Followers) -->
-        </div>
-      </div>
-      <div>
-        <a href="/#upload" class="inline-block bg-[var(--color-primary)] text-[var(--color-primary-contrast)] font-bold px-6 py-2.5 rounded-full hover:brightness-110 transition shadow-md">
-          + Upload New
-        </a>
-      </div>
+      <div id="profileActions" class="mt-4 flex flex-wrap justify-center sm:justify-start gap-2"></div>
     </div>
+  </section>
 
-    <!-- Tabs -->
-    <div class="border-b token-border-soft mb-6 flex justify-center gap-8">
-      <button class="pb-3 border-b-2 border-[var(--color-primary)] font-bold text-sm">My Videos</button>
-    </div>
+  <div class="mb-6 border-b border-gray-800 flex gap-6 justify-center">
+    <button id="tabVideos" class="pb-3 border-b-2 border-[var(--color-primary)] font-bold text-sm">Videos</button>
+    <button id="tabFriends" class="pb-3 border-b-2 border-transparent font-bold text-sm text-gray-400">Friends</button>
+  </div>
 
-    <!-- Videos Grid -->
-    <div id="userVideosGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-      <!-- Videos will be injected here via JS -->
-    </div>
-    
-    <!-- Empty State -->
-    <div id="noVideosState" class="hidden text-center py-20 flex-col items-center justify-center">
-      <div class="text-6xl mb-4">🎥</div>
+  <div id="videosTab">
+    <div id="userVideosGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3"></div>
+    <div id="noVideosState" class="hidden text-center py-12">
+      <div class="text-5xl mb-3">🎥</div>
       <h3 class="text-xl font-bold mb-2">No videos yet</h3>
-      <p class="text-[var(--color-muted)] mb-6">You haven't uploaded any videos.</p>
-      <a href="/#upload" class="bg-[var(--color-primary)] text-[var(--color-primary-contrast)] font-bold px-6 py-3 rounded-full hover:brightness-110 transition shadow-md">
-        Share your first video
-      </a>
     </div>
+    <div id="loadingState" class="text-center py-12 text-gray-400">Loading…</div>
+  </div>
 
-    <!-- Loading State -->
-    <div id="loadingState" class="text-center py-20">
-      <p class="text-[var(--color-muted)]">Loading your videos...</p>
+  <div id="friendsTab" class="hidden">
+    <div id="incomingList" class="mb-6"></div>
+    <div id="friendsList"></div>
+  </div>
+
+</main>
+
+<div id="messageDrawer" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/80" onclick="closeMessages()"></div>
+  <div class="absolute inset-y-0 right-0 w-full max-w-md bg-gray-900 border-l border-gray-800 flex flex-col">
+    <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
+      <div>
+        <p id="msgWithName" class="font-bold">Chat</p>
+        <p id="msgWithEmail" class="text-xs text-gray-400"></p>
+      </div>
+      <button onclick="closeMessages()" class="text-2xl text-gray-400">×</button>
     </div>
+    <div id="msgList" class="flex-1 overflow-y-auto p-4 space-y-2 text-sm"></div>
+    <form id="msgForm" class="border-t border-gray-800 p-3 flex gap-2">
+      <input id="msgInput" class="flex-1 rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm" placeholder="Type a message…">
+      <button class="bg-[var(--color-primary)] px-4 py-2 rounded-lg font-bold text-sm">Send</button>
+    </form>
+  </div>
+</div>
 
-  </main>
+<script>
+const urlParams = new URLSearchParams(location.search);
+const viewedEmail = (urlParams.get('email') || '').toLowerCase();
+const viewedName = urlParams.get('name') || '';
+const viewedPic = urlParams.get('pic') || '';
+const me = JSON.parse(localStorage.getItem('currentReelsUser') || 'null');
+const visitorId = (() => {
+  let v = localStorage.getItem('ReelsbookVisitorId');
+  if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); }
+  return v;
+})();
 
-  <script>
-    // 1. Get User Data from Local Storage (Set during login)
-    const currentUser = JSON.parse(localStorage.getItem('currentReelsUser'));
+const isOwnProfile = !viewedEmail || (me && me.email && me.email.toLowerCase() === viewedEmail);
+const targetEmail = isOwnProfile ? (me?.email || '').toLowerCase() : viewedEmail;
+const targetName = isOwnProfile ? (me?.name || 'User') : viewedName;
+const targetPic = isOwnProfile ? (me?.picture || '') : viewedPic;
 
-    if (!currentUser) {
-      // If no user is logged in, redirect to home
-      window.location.href = '/';
-    } else {
-      // Populate Profile UI
-      document.getElementById('profileName').textContent = currentUser.name || 'User';
-      document.getElementById('profileEmail').textContent = currentUser.email || '';
-      
-      // Set Profile Picture (Fallback to initial letter if no picture)
-      const picUrl = currentUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || 'User')}&background=random&color=fff&size=128`;
-      document.getElementById('profilePic').src = picUrl;
-    }
+document.getElementById('profileName').textContent = targetName || 'User';
+document.getElementById('profileEmail').textContent = targetEmail;
+document.getElementById('profilePic').src = targetPic || `https://ui-avatars.com/api/?name=${encodeURIComponent(targetName || 'U')}&background=random&color=fff&size=128`;
 
-    // 2. Load User's Videos
-    async function loadUserVideos() {
-      if (!currentUser) return;
+let currentChatWith = null;
 
-      try {
-        // Fetch all media from backend
-        const response = await fetch('/api/media');
-        if (!response.ok) throw new Error('Failed to fetch media');
-        const allMedia = await response.json();
-        
-        // Filter videos uploaded by THIS specific user
-        // Note: We match by creator name and also check if email matches if backend sends it
-        const userVideos = allMedia.filter(item => 
-          item.type === 'video' && 
-          (item.creator === currentUser.name || item.creatorEmail === currentUser.email)
-        );
+async function loadProfileStats() {
+  try {
+    const [mediaR, friendsR] = await Promise.all([
+      fetch('/api/media?t=' + Date.now()),
+      targetEmail ? fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`) : Promise.resolve({ ok:false })
+    ]);
+    const allMedia = mediaR.ok ? await mediaR.json() : [];
+    const friends = friendsR.ok ? await friendsR.json() : [];
+    document.getElementById('friendCount').textContent = friends.length;
 
-        // Update count
-        document.getElementById('videoCount').textContent = userVideos.length;
-        document.getElementById('loadingState').classList.add('hidden');
+    const userVideos = allMedia.filter(m => m.type === 'video' && (
+      (targetEmail && m.creatorEmail && m.creatorEmail.toLowerCase() === targetEmail) ||
+      (targetName && m.creator === targetName)
+    ));
+    document.getElementById('videoCount').textContent = userVideos.length;
+    document.getElementById('loadingState').classList.add('hidden');
 
-        const grid = document.getElementById('userVideosGrid');
-        const noVideosState = document.getElementById('noVideosState');
+    const grid = document.getElementById('userVideosGrid');
+    const empty = document.getElementById('noVideosState');
+    grid.innerHTML = '';
+    if (!userVideos.length) { empty.classList.remove('hidden'); return; }
 
-        if (userVideos.length === 0) {
-          noVideosState.classList.remove('hidden');
-          noVideosState.classList.add('flex');
-          return;
+    userVideos.forEach(v => {
+      const card = document.createElement('div');
+      card.className = 'video-card';
+      card.onclick = () => { location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
+      const vid = document.createElement('video');
+      vid.src = v.url + '#t=0.1';
+      vid.muted = true; vid.playsInline = true; vid.preload = 'metadata';
+      const play = document.createElement('div'); play.className = 'play-icon'; play.textContent = '▶';
+      const badges = document.createElement('div'); badges.className = 'badges';
+      badges.innerHTML = `<span class="badge">👁 ${v.views || 0}</span><span class="badge">♥ ${v.likes || 0}</span>`;
+      card.append(vid, play, badges);
+      grid.appendChild(card);
+    });
+  } catch (e) { document.getElementById('loadingState').textContent = 'Failed to load.'; }
+}
+
+async function loadFriendsList() {
+  if (!targetEmail) return;
+  const list = document.getElementById('friendsList');
+  const incoming = document.getElementById('incomingList');
+  list.innerHTML = ''; incoming.innerHTML = '';
+
+  if (isOwnProfile) {
+    try {
+      const r = await fetch(`/api/friends/pending?me=${encodeURIComponent(targetEmail)}`);
+      if (r.ok) {
+        const data = await r.json();
+        if (data.incoming?.length) {
+          incoming.innerHTML = `<h3 class="font-bold mb-2">Pending requests</h3>`;
+          data.incoming.forEach(u => {
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-3 py-2 border-b border-gray-800';
+            row.innerHTML = `
+              <img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full">
+              <div class="flex-1"><p class="font-semibold text-sm">${u.name || u.email}</p><p class="text-xs text-gray-400">${u.email}</p></div>
+              <button class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold" data-accept="${u.id}">Accept</button>
+              <button class="text-xs border border-gray-700 px-3 py-1 rounded-full" data-reject="${u.id}">Reject</button>
+            `;
+            incoming.appendChild(row);
+          });
+          incoming.querySelectorAll('[data-accept]').forEach(b => b.onclick = async () => {
+            await fetch('/api/friends/accept', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: targetEmail, requestId: b.dataset.accept }) });
+            loadFriendsList(); loadProfileStats();
+          });
+          incoming.querySelectorAll('[data-reject]').forEach(b => b.onclick = async () => {
+            await fetch('/api/friends/reject', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: targetEmail, requestId: b.dataset.reject }) });
+            loadFriendsList();
+          });
         }
-
-        // Render videos
-        userVideos.forEach(video => {
-          const card = document.createElement('div');
-          card.className = 'video-card group';
-          
-          // Clicking a video takes user to Reels page (you can modify this to open a modal later)
-          card.onclick = () => {
-            window.location.href = '/reels'; 
-          };
-
-          const vid = document.createElement('video');
-          vid.src = video.url;
-          vid.muted = true; // Mute on grid
-          vid.loop = true;
-          vid.playsInline = true;
-          vid.preload = 'metadata';
-
-          // Hover play effect
-          card.onmouseenter = () => vid.play().catch(() => {});
-          card.onmouseleave = () => {
-            vid.pause();
-            vid.currentTime = 0;
-          };
-
-          // Play icon overlay
-          const playIcon = document.createElement('div');
-          playIcon.className = 'play-icon';
-          playIcon.innerHTML = '▶';
-
-          card.appendChild(vid);
-          card.appendChild(playIcon);
-          grid.appendChild(card);
-        });
-
-      } catch (error) {
-        console.error("Error loading videos:", error);
-        document.getElementById('loadingState').innerHTML = '<p class="text-red-500">Failed to load videos. Check backend connection.</p>';
       }
-    }
+    } catch {}
+  }
 
-    // Initialize
-    loadUserVideos();
-  </script>
+  try {
+    const r = await fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`);
+    if (!r.ok) return;
+    const friends = await r.json();
+    if (!friends.length) {
+      if (list.innerHTML === '') list.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">No friends yet.</p>';
+      return;
+    }
+    const header = document.createElement('h3');
+    header.className = 'font-bold mb-2';
+    header.textContent = 'Friends';
+    list.appendChild(header);
+    friends.forEach(f => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-3 py-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 px-2 rounded';
+      row.innerHTML = `
+        <img src="${f.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(f.name || f.email)}" class="w-10 h-10 rounded-full">
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-sm truncate">${f.name || f.email}</p>
+          <p class="text-xs text-gray-400 truncate">${f.lastMessage || ''}</p>
+        </div>
+      `;
+      row.onclick = () => openMessages(f);
+      list.appendChild(row);
+    });
+  } catch {}
+}
+
+async function loadFriendButton() {
+  if (isOwnProfile || !me || !targetEmail) return;
+  const actions = document.getElementById('profileActions');
+  try {
+    const r = await fetch(`/api/friends/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`);
+    const data = await r.json();
+    actions.innerHTML = '';
+    if (data.status === 'friends') {
+      const b = document.createElement('button');
+      b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
+      b.textContent = '💬 Message';
+      b.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
+      actions.appendChild(b);
+    } else if (data.status === 'outgoing') {
+      actions.innerHTML = '<span class="text-sm text-gray-400">Friend request sent</span>';
+    } else if (data.status === 'incoming') {
+      const b = document.createElement('button');
+      b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
+      b.textContent = 'Accept request';
+      b.onclick = async () => {
+        await fetch('/api/friends/accept', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, requestId: data.requestId }) });
+        loadFriendButton(); loadFriendsList();
+      };
+      actions.appendChild(b);
+    } else {
+      const b = document.createElement('button');
+      b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold';
+      b.textContent = '+ Add friend';
+      b.onclick = async () => {
+        b.disabled = true;
+        await fetch('/api/friends/request', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from: me.email, to: targetEmail }) });
+        loadFriendButton();
+      };
+      actions.appendChild(b);
+    }
+  } catch {}
+}
+
+function openMessages(friend) {
+  if (!me) { alert('Sign in first'); return; }
+  currentChatWith = friend;
+  document.getElementById('messageDrawer').classList.remove('hidden');
+  document.getElementById('msgWithName').textContent = friend.name || friend.email;
+  document.getElementById('msgWithEmail').textContent = friend.email;
+  loadMessages();
+}
+function closeMessages() {
+  document.getElementById('messageDrawer').classList.add('hidden');
+  currentChatWith = null;
+}
+async function loadMessages() {
+  if (!currentChatWith || !me) return;
+  const r = await fetch(`/api/messages?me=${encodeURIComponent(me.email)}&with=${encodeURIComponent(currentChatWith.email)}`);
+  if (!r.ok) return;
+  const msgs = await r.json();
+  const list = document.getElementById('msgList');
+  list.innerHTML = '';
+  msgs.forEach(m => {
+    const mine = m.sender === me.email;
+    const div = document.createElement('div');
+    div.className = `max-w-[80%] rounded-2xl px-3 py-2 ${mine ? 'ml-auto bg-[var(--color-primary)]' : 'bg-gray-800'}`;
+    div.textContent = m.body;
+    list.appendChild(div);
+  });
+  list.scrollTop = list.scrollHeight;
+}
+document.getElementById('msgForm').onsubmit = async (e) => {
+  e.preventDefault();
+  if (!currentChatWith || !me) return;
+  const input = document.getElementById('msgInput');
+  const body = input.value.trim();
+  if (!body) return;
+  input.value = '';
+  await fetch('/api/messages', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from: me.email, to: currentChatWith.email, body }) });
+  loadMessages();
+};
+
+document.getElementById('tabVideos').onclick = () => {
+  document.getElementById('videosTab').classList.remove('hidden');
+  document.getElementById('friendsTab').classList.add('hidden');
+  document.getElementById('tabVideos').classList.add('border-[var(--color-primary)]');
+  document.getElementById('tabVideos').classList.remove('border-transparent','text-gray-400');
+  document.getElementById('tabFriends').classList.add('border-transparent','text-gray-400');
+  document.getElementById('tabFriends').classList.remove('border-[var(--color-primary)]');
+};
+document.getElementById('tabFriends').onclick = () => {
+  document.getElementById('friendsTab').classList.remove('hidden');
+  document.getElementById('videosTab').classList.add('hidden');
+  document.getElementById('tabFriends').classList.add('border-[var(--color-primary)]');
+  document.getElementById('tabFriends').classList.remove('border-transparent','text-gray-400');
+  document.getElementById('tabVideos').classList.add('border-transparent','text-gray-400');
+  document.getElementById('tabVideos').classList.remove('border-[var(--color-primary)]');
+};
+
+loadProfileStats();
+loadFriendButton();
+loadFriendsList();
+</script>
 </body>
 </html>
