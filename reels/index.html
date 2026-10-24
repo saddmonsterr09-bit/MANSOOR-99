@@ -1,347 +1,188 @@
 <!doctype html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#000000">
-  <title>Reels Feed — REELS BOOK 😎</title>
-  <link rel="stylesheet" href="/theme.css">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    .token-border { border-color: color-mix(in srgb, var(--color-text) 12%, transparent); }
-    .token-border-soft { border-color: color-mix(in srgb, var(--color-text) 8%, transparent); }
-    .token-panel { background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
-    .token-overlay { background: color-mix(in srgb, var(--color-bg) 78%, transparent); }
-    
-    body { background: #000; color: #fff; }
-    
-    .reels-feed {
-      display: grid;
-      gap: 0; 
-      max-height: 100svh;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      scroll-snap-type: y mandatory;
-      scrollbar-width: none;
-    }
-    .reels-feed::-webkit-scrollbar { display: none; }
-    
-    .reel-card {
-      position: relative;
-      height: 100svh;
-      overflow: hidden;
-      scroll-snap-align: start;
-      background: #000;
-    }
-    .reel-card video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    .reel-details {
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      padding: 5rem 1.25rem 2rem;
-      background: linear-gradient(transparent, rgba(0,0,0,.8));
-      color: white;
-      pointer-events: none;
-    }
-    .like-button { pointer-events: auto; }
-    
-    .like-button[aria-pressed="true"] {
-      color: var(--color-primary);
-      border-color: var(--color-primary);
-    }
-
-    /* Speed Control Buttons */
-    .speed-controls {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      display: flex;
-      gap: 5px;
-      z-index: 20;
-    }
-    .speed-btn {
-      background: rgba(0,0,0,0.6);
-      border: 1px solid rgba(255,255,255,0.3);
-      color: white;
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    .speed-btn.active {
-      background: var(--color-primary);
-      border-color: var(--color-primary);
-    }
-
-    /* Loading Percentage Overlay */
-    .loading-overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.6);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 15;
-      pointer-events: none;
-      transition: opacity 0.3s;
-    }
-    .loading-overlay.hidden {
-      opacity: 0;
-    }
-    .loading-text {
-      font-size: 24px;
-      font-weight: bold;
-      margin-bottom: 10px;
-    }
-    .loading-bar-container {
-      width: 200px;
-      height: 4px;
-      background: rgba(255,255,255,0.3);
-      border-radius: 2px;
-      overflow: hidden;
-    }
-    .loading-bar {
-      height: 100%;
-      width: 0%;
-      background: var(--color-primary);
-      transition: width 0.1s;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<title>Reels — ReelsBook</title>
+<link rel="stylesheet" href="/theme.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { background:#000; color:#fff; }
+.reels-feed { display:grid; gap:0; max-height:100svh; overflow-y:auto; overscroll-behavior:contain; scroll-snap-type:y mandatory; scrollbar-width:none; }
+.reels-feed::-webkit-scrollbar { display:none; }
+.reel-card { position:relative; height:100svh; overflow:hidden; scroll-snap-align:start; background:#000; }
+.reel-card video { width:100%; height:100%; object-fit:contain; background:#000; }
+.reel-details { position:absolute; right:0; bottom:0; left:0; padding:5rem 1.25rem 2rem; background:linear-gradient(transparent, rgba(0,0,0,.85)); pointer-events:none; }
+.reel-details > * { pointer-events:auto; }
+.speed-controls { position:absolute; top:20px; right:20px; display:flex; gap:5px; z-index:20; }
+.speed-btn { background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.3); color:#fff; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold; cursor:pointer; }
+.speed-btn.active { background:var(--color-primary); border-color:var(--color-primary); }
+.loading-overlay { position:absolute; inset:0; background:rgba(0,0,0,.6); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:15; pointer-events:none; transition:opacity .3s; }
+.loading-overlay.hidden { opacity:0; }
+.like-button[aria-pressed="true"] { color:var(--color-primary); border-color:var(--color-primary); }
+.view-count { position:absolute; top:20px; left:20px; z-index:20; background:rgba(0,0,0,.6); padding:4px 10px; border-radius:12px; font-size:12px; }
+</style>
 </head>
+<body>
+<header class="fixed top-0 z-50 w-full flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
+  <a href="/" class="flex items-center gap-2 text-white">
+    <span class="text-2xl font-black">←</span>
+    <span class="text-sm font-black tracking-[.12em]">REELS</span>
+  </a>
+</header>
 
-<body class="bg-black text-white">
-  <!-- Top Bar -->
-  <header class="fixed top-0 z-50 w-full flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
-    <a href="/" class="flex items-center gap-2 text-white pointer-events-auto" aria-label="Go back home">
-      <span class="text-2xl font-black">←</span>
-      <span class="text-sm font-black tracking-[.12em]">REELS</span>
-    </a>
-  </header>
+<main class="h-[100svh] w-full max-w-md mx-auto bg-black relative">
+  <div id="reelsFeed" class="reels-feed"></div>
+  <p id="reelsStatus" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-sm text-gray-400 p-4"></p>
+</main>
 
-  <!-- Reels Container -->
-  <main class="h-[100svh] w-full max-w-md mx-auto bg-black relative">
-    <div id="reelsFeed" class="reels-feed" aria-label="Video reels"></div>
-    <p id="reelsStatus" class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center text-sm text-gray-400 p-4" role="status"></p>
-  </main>
+<script>
+const reelsFeed = document.getElementById('reelsFeed');
+const reelsStatus = document.getElementById('reelsStatus');
+const urlParams = new URLSearchParams(location.search);
+const focusKey = urlParams.get('focus');
+const visitorId = (() => {
+  let v = localStorage.getItem('ReelsbookVisitorId');
+  if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); }
+  return v;
+})();
 
-  <script>
-    const reelsFeed = document.getElementById('reelsFeed');
-    const reelsStatus = document.getElementById('reelsStatus');
-    
-    function getVisitorId() {
-      let visitorId = localStorage.getItem('ReelsbookVisitorId') || localStorage.getItem('openframeVisitorId');
-      if (!visitorId) visitorId = crypto.randomUUID();
-      localStorage.setItem('ReelsbookVisitorId', visitorId);
-      return visitorId;
+function updateLikeButton(button, result) {
+  button.querySelector('.like-count').textContent = result.count;
+  button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
+  button.querySelector('.like-icon').style.color = result.liked ? '#ec4899' : 'inherit';
+  button.setAttribute('aria-pressed', String(result.liked));
+}
+async function loadLikeState(mediaId, button) {
+  try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}&t=${Date.now()}`); if (r.ok) updateLikeButton(button, await r.json()); } catch {}
+}
+function makeLikeButton(mediaId) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'like-button inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/50 px-4 py-2 text-sm font-semibold text-white';
+  b.dataset.mediaId = mediaId;
+  b.setAttribute('aria-pressed', 'false');
+  b.innerHTML = '<span class="like-icon text-xl">♡</span><span class="like-count">0</span>';
+  b.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    b.disabled = true;
+    try { const r = await fetch('/api/likes', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mediaId, visitorId }) }); const result = await r.json(); if (r.ok) updateLikeButton(b, result); } catch {}
+    finally { b.disabled = false; }
+  });
+  loadLikeState(mediaId, b);
+  return b;
+}
+
+function renderReels(items) {
+  reelsFeed.replaceChildren();
+  if (!items.length) { reelsStatus.textContent = 'No videos yet.'; return; }
+  reelsStatus.textContent = '';
+  items.forEach(item => {
+    const card = document.createElement('article');
+    card.className = 'reel-card';
+    card.dataset.mediaId = item.key;
+
+    const loadingOverlay = document.createElement('div');
+    loadingOverlay.className = 'loading-overlay';
+    loadingOverlay.innerHTML = '<div class="text-lg font-bold mb-2">Loading…</div>';
+
+    const video = document.createElement('video');
+    video.dataset.src = item.url;
+    video.poster = item.url + '#t=0.1';
+    video.controls = false;
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.preload = 'none';
+
+    video.addEventListener('loadeddata', () => loadingOverlay.classList.add('hidden'));
+    video.addEventListener('click', () => { video.paused ? video.play().catch(()=>{}) : video.pause(); });
+
+    let watchStart = null;
+    let watchAccum = 0;
+    const sendWatch = () => {
+      if (watchAccum < 1 || !video.duration) return;
+      fetch('/api/watch', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({
+        mediaId: item.key, visitorId, seconds: watchAccum, duration: video.duration,
+        creator: item.creator || '', title: item.title || ''
+      }) }).catch(()=>{});
+      watchAccum = 0;
+    };
+    video.addEventListener('play', () => { watchStart = Date.now(); });
+    video.addEventListener('pause', () => { if (watchStart) { watchAccum += (Date.now() - watchStart)/1000; watchStart = null; } });
+    video.addEventListener('ended', () => { if (watchStart) { watchAccum += (Date.now() - watchStart)/1000; watchStart = null; } sendWatch(); });
+    setInterval(() => { if (watchStart && watchAccum >= 5) sendWatch(); }, 5000);
+
+    const viewKey = 'viewed:' + item.key;
+    if (!sessionStorage.getItem(viewKey)) {
+      sessionStorage.setItem(viewKey, '1');
+      fetch('/api/views', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mediaId: item.key, visitorId }) }).catch(()=>{});
     }
-    const visitorId = getVisitorId();
 
-    // Like Logic
-    function updateLikeButton(button, result) {
-      button.querySelector('.like-count').textContent = result.count;
-      button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
-      button.querySelector('.like-icon').style.color = result.liked ? '#ec4899' : 'inherit';
-      button.setAttribute('aria-pressed', String(result.liked));
-    }
+    const speedBox = document.createElement('div');
+    speedBox.className = 'speed-controls';
+    [1, 1.5, 2].forEach((s, i) => {
+      const b = document.createElement('button');
+      b.className = 'speed-btn' + (i === 0 ? ' active' : '');
+      b.textContent = s + 'x';
+      b.onclick = (e) => { e.stopPropagation(); video.playbackRate = s; speedBox.querySelectorAll('.speed-btn').forEach(x => x.classList.remove('active')); b.classList.add('active'); };
+      speedBox.appendChild(b);
+    });
 
-    async function loadLikeState(mediaId, button) {
-      try {
-        const query = new URLSearchParams({ mediaId, visitorId, t: Date.now() });
-        const response = await fetch(`/api/likes?${query}`);
-        if (!response.ok) throw new Error('Likes API is unavailable.');
-        updateLikeButton(button, await response.json());
-      } catch (error) {
-        button.querySelector('.like-count').textContent = '0';
+    const viewBadge = document.createElement('div');
+    viewBadge.className = 'view-count';
+    viewBadge.textContent = `👁 ${item.views || 0}`;
+
+    const details = document.createElement('div');
+    details.className = 'reel-details';
+    const title = document.createElement('h3');
+    title.className = 'text-lg font-bold';
+    title.textContent = item.title || 'Untitled';
+    const creator = document.createElement('p');
+    creator.className = 'mt-1 mb-2 text-sm text-gray-300 cursor-pointer hover:underline';
+    creator.textContent = `by ${item.creator || 'Anonymous'}`;
+    creator.onclick = () => { location.href = `/profile/index.html?name=${encodeURIComponent(item.creator)}&pic=${encodeURIComponent(item.creatorPic||'')}&email=${encodeURIComponent(item.creatorEmail||'')}`; };
+    details.append(title, creator, makeLikeButton(item.key));
+    card.append(loadingOverlay, video, viewBadge, speedBox, details);
+    reelsFeed.appendChild(card);
+  });
+  setupPlayback();
+}
+
+function setupPlayback() {
+  const cards = Array.from(reelsFeed.querySelectorAll('.reel-card'));
+  if (!('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const video = entry.target.querySelector('video');
+      if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+        document.querySelectorAll('video').forEach(v => { if (v !== video) v.pause(); });
+        if (!video.src) video.src = video.dataset.src;
+        video.play().then(() => { video.muted = false; }).catch(()=>{});
+      } else { video.pause(); }
+    });
+  }, { root: reelsFeed, threshold: [0, 0.6, 1] });
+  cards.forEach(c => io.observe(c));
+}
+
+async function load() {
+  try {
+    reelsStatus.textContent = 'Loading…';
+    const r = await fetch(`/api/recommendations?visitorId=${visitorId}&limit=50&t=${Date.now()}`);
+    if (!r.ok) throw new Error('failed');
+    let items = await r.json();
+    if (focusKey) {
+      const idx = items.findIndex(i => i.key === focusKey);
+      if (idx > 0) { const [f] = items.splice(idx, 1); items.unshift(f); }
+      else if (idx < 0) {
+        try { const all = await (await fetch('/api/media')).json(); const f = all.find(x => x.key === focusKey); if (f) items.unshift(f); } catch {}
       }
     }
-
-    function attachLikeHandler(button) {
-      button.addEventListener('click', async (e) => {
-        e.stopPropagation(); 
-        const mediaId = button.dataset.mediaId;
-        button.disabled = true;
-        try {
-          const response = await fetch('/api/likes', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ mediaId, visitorId })
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error);
-          updateLikeButton(button, result);
-        } catch (error) {
-          console.log('Error liking:', error);
-        } finally {
-          button.disabled = false;
-        }
-      });
-    }
-
-    function makeLikeButton(mediaId) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = `like-button inline-flex items-center gap-2 rounded-full border token-border bg-black/50 px-4 py-2 text-sm font-semibold text-white transition hover:border-[var(--color-primary)]`;
-      button.dataset.mediaId = mediaId;
-      button.setAttribute('aria-pressed', 'false');
-      button.innerHTML = '<span class="like-icon text-xl" aria-hidden="true">♡</span><span class="like-count">0</span>';
-      attachLikeHandler(button);
-      loadLikeState(mediaId, button);
-      return button;
-    }
-
-    function renderReels(items) {
-      const videos = items.filter((item) => item.type === 'video');
-      reelsFeed.replaceChildren();
-      
-      if (!videos.length) {
-        reelsStatus.textContent = 'No videos yet. Go back and share a video!';
-        return;
-      }
-
-      reelsStatus.textContent = '';
-      
-      videos.forEach((item) => {
-        const card = document.createElement('article');
-        card.className = 'reel-card';
-
-        // Loading Percentage Overlay
-        const loadingOverlay = document.createElement('div');
-        loadingOverlay.className = 'loading-overlay';
-        loadingOverlay.innerHTML = `
-          <div class="loading-text">Loading 0%</div>
-          <div class="loading-bar-container">
-            <div class="loading-bar"></div>
-          </div>
-        `;
-        card.appendChild(loadingOverlay);
-
-        const video = document.createElement('video');
-        video.dataset.src = item.url; 
-        video.controls = false;
-        video.muted = true; 
-        video.loop = true;
-        video.playsInline = true;
-        video.setAttribute('preload', 'none'); 
-        
-        video.addEventListener('progress', () => {
-          if (video.buffered.length > 0 && video.duration > 0) {
-            const bufferedEnd = video.buffered.end(video.buffered.length - 1);
-            const percent = Math.round((bufferedEnd / video.duration) * 100);
-            
-            loadingOverlay.querySelector('.loading-text').textContent = `Loading ${percent}%`;
-            loadingOverlay.querySelector('.loading-bar').style.width = `${percent}%`;
-
-            if (percent >= 99) {
-              loadingOverlay.classList.add('hidden');
-            }
-          }
-        });
-
-        video.addEventListener('loadeddata', () => {
-           loadingOverlay.classList.add('hidden');
-        });
-
-        video.addEventListener('click', () => {
-          if (video.paused) video.play();
-          else video.pause();
-        });
-
-        // Speed Control Buttons
-        const speedContainer = document.createElement('div');
-        speedContainer.className = 'speed-controls';
-        
-        const speeds = [1, 1.5, 2];
-        speeds.forEach((speed, i) => {
-          const btn = document.createElement('button');
-          btn.className = `speed-btn ${i === 0 ? 'active' : ''}`;
-          btn.textContent = speed + 'x';
-          btn.onclick = (e) => {
-            e.stopPropagation();
-            video.playbackRate = speed;
-            speedContainer.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-          };
-          speedContainer.appendChild(btn);
-        });
-
-        const details = document.createElement('div');
-        details.className = 'reel-details';
-
-        const title = document.createElement('h3');
-        title.className = 'text-lg font-bold';
-        title.textContent = item.title || 'Untitled moment';
-
-        const creator = document.createElement('p');
-        creator.className = 'mt-1 mb-2 text-sm text-gray-300';
-        creator.textContent = `by ${item.creator || 'Anonymous creator'}`;
-
-        details.append(title, creator, makeLikeButton(item.key || item.id));
-        card.append(video, details, speedContainer); 
-        reelsFeed.append(card);
-      });
-
-      setupSmartPlayback();
-    }
-
-    // FIXED: Smart Playback Logic (Ab sirf 1 video play hogi)
-    function setupSmartPlayback() {
-      const cards = Array.from(reelsFeed.querySelectorAll('.reel-card'));
-      
-      if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
-          entries.forEach((entry) => {
-            const video = entry.target.querySelector('video');
-
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-              // 1. Baaki saari videos pause karo
-              document.querySelectorAll('video').forEach(v => {
-                if (v !== video) v.pause();
-              });
-
-              // 2. Sirf current video ka src load karo (agar load nahi hui)
-              if (!video.src || video.src === '') {
-                video.src = video.dataset.src;
-              }
-              
-              // 3. Play karo
-              video.play().then(() => {
-                video.muted = false; 
-              }).catch((error) => {
-                console.log("Autoplay block hua", error);
-              });
-            } else {
-              // Agar video screen se bahar hai, toh pause karo
-              video.pause();
-            }
-          });
-        }, { root: reelsFeed, threshold: [0, 0.6, 1] });
-        
-        cards.forEach((card) => observer.observe(card));
-      }
-    }
-
-    // Load Data
-    async function loadMedia() {
-      try {
-        reelsStatus.textContent = 'Loading videos...';
-        const response = await fetch('/api/media?t=' + Date.now());
-        if (!response.ok) throw new Error('Could not load media.');
-        const galleryItems = await response.json();
-        renderReels(galleryItems);
-      } catch (error) {
-        reelsStatus.textContent = 'Could not load reels. Make sure the backend is connected.';
-      }
-    }
-
-    loadMedia();
-  </script>
+    renderReels(items);
+  } catch { reelsStatus.textContent = 'Could not load reels.'; }
+}
+load();
+</script>
 </body>
 </html>
