@@ -19,6 +19,10 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
 .clip-tile video, .clip-tile img { width:100%; height:100%; object-fit:cover; }
 .clip-tile .play-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:2rem; text-shadow:0 2px 10px rgba(0,0,0,.7); }
 .clip-tile .view-badge { position:absolute; left:6px; bottom:6px; background:rgba(0,0,0,.7); font-size:11px; padding:2px 6px; border-radius:6px; }
+
+/* ⭐ Skeleton shimmer while clips load */
+.skeleton-tile { position:relative; aspect-ratio:9/16; border-radius:12px; overflow:hidden; background:linear-gradient(90deg,#1a1a1a 0%,#2a2a2a 50%,#1a1a1a 100%); background-size:200% 100%; animation:shimmer 1.2s infinite; }
+@keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
 </style>
 </head>
 <body class="antialiased">
@@ -131,8 +135,17 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
       </div>
       <a href="/reels/index.html" class="text-sm text-[var(--color-primary)] font-bold">See all →</a>
     </div>
-    <div id="clipsGrid" class="grid grid-cols-3 gap-2"></div>
-    <p id="clipsStatus" class="mt-3 text-center text-sm text-gray-400"></p>
+
+    <!-- ⭐ Skeletons appear instantly, replaced when real data arrives -->
+    <div id="clipsGrid" class="grid grid-cols-3 gap-2">
+      <div class="skeleton-tile"></div>
+      <div class="skeleton-tile"></div>
+      <div class="skeleton-tile"></div>
+      <div class="skeleton-tile"></div>
+      <div class="skeleton-tile"></div>
+      <div class="skeleton-tile"></div>
+    </div>
+    <p id="clipsStatus" class="mt-3 text-center text-sm text-gray-400 hidden"></p>
   </section>
 
 </main>
@@ -167,6 +180,51 @@ const visitorId = (() => {
 })();
 const $ = (id) => document.getElementById(id);
 
+// ⭐ Client cache — instant render on repeat visits (60 s)
+const MEDIA_CACHE_KEY = 'reelsbook_media_cache_v1';
+const MEDIA_CACHE_MS = 60 * 1000;
+function getCachedMediaClient() {
+  try {
+    const raw = sessionStorage.getItem(MEDIA_CACHE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.ts || !obj.data) return null;
+    if (Date.now() - obj.ts > MEDIA_CACHE_MS) return null;
+    return obj.data;
+  } catch { return null; }
+}
+function setCachedMediaClient(data) {
+  try { sessionStorage.setItem(MEDIA_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch {}
+}
+
+// ⭐ Lazy-load clip videos only when near viewport
+let clipObserver = null;
+function setupClipObserver() {
+  if (clipObserver) clipObserver.disconnect();
+  if (!('IntersectionObserver' in window)) return;
+  clipObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const vid = entry.target;
+      const src = vid.dataset.src;
+      if (src && !vid.src) {
+        vid.src = src;
+        vid.preload = 'metadata';
+        try { vid.load(); } catch {}
+      }
+      clipObserver.unobserve(vid);
+    });
+  }, { rootMargin: '300px 0px' });
+}
+function observeClipVideo(vid) {
+  if (clipObserver) clipObserver.observe(vid);
+  else {
+    vid.src = vid.dataset.src;
+    vid.preload = 'metadata';
+    try { vid.load(); } catch {}
+  }
+}
+
 const uploadTypes = {
   photo: { accept:'image/jpeg,image/png,image/webp,image/avif', title:'Drag & drop a photo', hint:'JPG, PNG, WEBP, AVIF · up to 90 MB' },
   video: { accept:'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska', title:'Drag & drop a video', hint:'MP4, MOV, WEBM, OGG, MKV · up to 90 MB' },
@@ -183,7 +241,7 @@ function updateLikeButton(button, result) {
   button.setAttribute('aria-pressed', String(result.liked));
 }
 async function loadLikeState(mediaId, button) {
-  try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}&t=${Date.now()}`); if (r.ok) updateLikeButton(button, await r.json()); } catch {}
+  try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}`); if (r.ok) updateLikeButton(button, await r.json()); } catch {}
 }
 function attachLikeHandler(button) {
   button.addEventListener('click', async (e) => {
@@ -194,48 +252,115 @@ function attachLikeHandler(button) {
   });
 }
 
+// ⭐ Render clips — accepts items|null; null keeps skeletons visible
+function renderClips(items) {
+  const grid = $('clipsGrid');
+  const status = $('clipsStatus');
+  grid.innerHTML = '';
+
+  const videos = (items || []).filter(i => i.type === 'video').slice(0, 9);
+
+  if (!videos.length) {
+    if (items) {
+      status.textContent = 'No clips yet — be the first!';
+      status.classList.remove('hidden');
+    } else {
+      for (let i = 0; i < 6; i++) {
+        const sk = document.createElement('div');
+        sk.className = 'skeleton-tile';
+        grid.appendChild(sk);
+      }
+    }
+    return;
+  }
+  status.classList.add('hidden');
+
+  videos.forEach(v => {
+    const tile = document.createElement('div');
+    tile.className = 'clip-tile';
+    tile.onclick = () => { window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
+
+    const vid = document.createElement('video');
+    vid.dataset.src = v.url + '#t=0.1';  // ⭐ load only when near viewport
+    vid.muted = true;
+    vid.playsInline = true;
+    vid.preload = 'none';
+    vid.onerror = () => {
+      const img = document.createElement('img');
+      img.src = '/SAD.jpg';
+      img.alt = '';
+      vid.replaceWith(img);
+    };
+    observeClipVideo(vid);
+
+    const play = document.createElement('div');
+    play.className = 'play-overlay';
+    play.textContent = '▶';
+
+    const views = document.createElement('div');
+    views.className = 'view-badge';
+    views.textContent = `👁 ${v.views || 0}`;
+
+    tile.append(vid, play, views);
+    grid.appendChild(tile);
+  });
+}
+
+function renderStories(items) {
+  const stories = $('storiesContainer');
+  stories.innerHTML = '';
+  if (!items || !items.length) return;
+  const creators = [...new Map(items.map(i => [i.creator, i])).values()];
+  creators.forEach(u => {
+    if (!u.creator || u.creator === 'Anonymous') return;
+    const d = document.createElement('div');
+    d.className = 'flex flex-col items-center gap-1 cursor-pointer shrink-0';
+    d.innerHTML = `
+      <div class="w-[62px] h-[62px] rounded-full p-[2.5px]" style="background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)">
+        <div class="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden border-2 border-black">
+          ${u.creatorPic ? `<img src="${u.creatorPic}" class="w-full h-full object-cover rounded-full" loading="lazy" onerror="this.style.display='none'">` : `<span class="font-bold text-lg">${u.creator[0]}</span>`}
+        </div>
+      </div>
+      <span class="text-xs text-gray-300 w-16 truncate text-center">${u.creator}</span>
+    `;
+    d.onclick = () => {
+      const params = new URLSearchParams();
+      params.set('name', u.creator || '');
+      if (u.creatorPic) params.set('pic', u.creatorPic);
+      if (u.creatorEmail) params.set('email', u.creatorEmail);
+      window.location.href = `/profile/index.html?${params.toString()}`;
+    };
+    stories.appendChild(d);
+  });
+}
+
+// ⭐ Load clips — cache first, then fresh fetch (no cache-buster)
 async function loadClips() {
+  setupClipObserver();
+
+  // 1) instant render from session cache if fresh
+  const cached = getCachedMediaClient();
+  if (cached) {
+    galleryItems = cached;
+    renderClips(galleryItems);
+    renderStories(galleryItems);
+  }
+
+  // 2) fetch fresh
   try {
-    const r = await fetch('/api/media?t=' + Date.now());
+    const r = await fetch('/api/media', { cache: 'default' });
     if (!r.ok) throw new Error('load failed');
     galleryItems = await r.json();
-    const grid = $('clipsGrid');
-    grid.innerHTML = '';
-    const videos = galleryItems.filter(i => i.type === 'video').slice(0, 9);
-    if (!videos.length) { $('clipsStatus').textContent = 'No clips yet — be the first!'; return; }
-    $('clipsStatus').textContent = '';
-    videos.forEach(v => {
-      const tile = document.createElement('div');
-      tile.className = 'clip-tile';
-      tile.onclick = () => { window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
-      const vid = document.createElement('video');
-      vid.src = v.url + '#t=0.1';
-      vid.muted = true; vid.playsInline = true; vid.preload = 'metadata';
-      vid.onerror = () => { const img = document.createElement('img'); img.src = '/SAD.jpg'; img.alt=''; vid.replaceWith(img); };
-      const play = document.createElement('div'); play.className = 'play-overlay'; play.textContent = '▶';
-      const views = document.createElement('div'); views.className = 'view-badge'; views.textContent = `👁 ${v.views || 0}`;
-      tile.append(vid, play, views);
-      grid.appendChild(tile);
-    });
-    const stories = $('storiesContainer');
-    stories.innerHTML = '';
-    const creators = [...new Map(galleryItems.map(i => [i.creator, i])).values()];
-    creators.forEach(u => {
-      if (!u.creator || u.creator === 'Anonymous') return;
-      const d = document.createElement('div');
-      d.className = 'flex flex-col items-center gap-1 cursor-pointer shrink-0';
-      d.innerHTML = `
-        <div class="w-[62px] h-[62px] rounded-full p-[2.5px]" style="background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)">
-          <div class="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden border-2 border-black">
-            ${u.creatorPic ? `<img src="${u.creatorPic}" class="w-full h-full object-cover rounded-full">` : `<span class="font-bold text-lg">${u.creator[0]}</span>`}
-          </div>
-        </div>
-        <span class="text-xs text-gray-300 w-16 truncate text-center">${u.creator}</span>
-      `;
-      d.onclick = () => { location.href = `/profile/index.html?name=${encodeURIComponent(u.creator)}&pic=${encodeURIComponent(u.creatorPic || '')}&email=${encodeURIComponent(u.creatorEmail || '')}`; };
-      stories.appendChild(d);
-    });
-  } catch { $('clipsStatus').textContent = 'Could not load clips.'; }
+    setCachedMediaClient(galleryItems);
+    renderClips(galleryItems);
+    renderStories(galleryItems);
+  } catch {
+    if (!cached) {
+      $('clipsStatus').textContent = 'Could not load clips.';
+      $('clipsStatus').classList.remove('hidden');
+      renderClips([]);
+    }
+  }
 }
 
 function openUploadPanel() { $('uploadOptions').classList.remove('hidden'); $('upload').scrollIntoView({ behavior:'smooth', block:'start' }); }
@@ -373,6 +498,8 @@ $('publishButton').onclick = (ev) => {
       showUploadMessage('Published!');
       selectedFile = null; $('mediaInput').value=''; $('filePanel').classList.add('hidden'); $('mediaTitle').value='';
       closeUploadPanel();
+      // ⭐ Bust client cache so new video shows immediately
+      sessionStorage.removeItem(MEDIA_CACHE_KEY);
       await loadClips();
     } catch (e) { showUploadMessage(e.message); }
     finally { btn.disabled = false; btn.textContent = 'Publish'; }
