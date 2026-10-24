@@ -124,4 +124,250 @@ async function resolveTarget() {
         }
       }
     } catch {}
-    return
+    return;
+  }
+  // No params — own profile
+  isOwnProfile = true;
+  targetEmail = (me?.email || '').toLowerCase();
+  targetName = me?.name || 'User';
+  targetPic = me?.picture || '';
+}
+
+document.getElementById('profileName').textContent = 'Loading…';
+
+async function loadProfileStats() {
+  try {
+    const [mediaR, friendsR] = await Promise.all([
+      fetch('/api/media?t=' + Date.now()),
+      targetEmail ? fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`) : Promise.resolve({ ok:false })
+    ]);
+    const allMedia = mediaR.ok ? await mediaR.json() : [];
+    const friends = friendsR.ok ? await friendsR.json() : [];
+    document.getElementById('friendCount').textContent = friends.length;
+
+    const userVideos = allMedia.filter(m => m.type === 'video' && (
+      (targetEmail && m.creatorEmail && m.creatorEmail.toLowerCase() === targetEmail) ||
+      (targetName && m.creator && m.creator.toLowerCase() === targetName.toLowerCase())
+    ));
+    document.getElementById('videoCount').textContent = userVideos.length;
+    document.getElementById('loadingState').classList.add('hidden');
+
+    const grid = document.getElementById('userVideosGrid');
+    const empty = document.getElementById('noVideosState');
+    grid.innerHTML = '';
+    if (!userVideos.length) { empty.classList.remove('hidden'); return; }
+
+    userVideos.forEach(v => {
+      const card = document.createElement('div');
+      card.className = 'video-card';
+      card.onclick = () => { location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
+      const vid = document.createElement('video');
+      vid.src = v.url + '#t=0.1';
+      vid.muted = true; vid.playsInline = true; vid.preload = 'metadata';
+      const play = document.createElement('div'); play.className = 'play-icon'; play.textContent = '▶';
+      const badges = document.createElement('div'); badges.className = 'badges';
+      badges.innerHTML = `<span class="badge">👁 ${v.views || 0}</span><span class="badge">♥ ${v.likes || 0}</span>`;
+      card.append(vid, play, badges);
+      grid.appendChild(card);
+    });
+  } catch (e) { document.getElementById('loadingState').textContent = 'Failed to load.'; }
+}
+
+async function loadFriendsList() {
+  if (!targetEmail) return;
+  const list = document.getElementById('friendsList');
+  const incoming = document.getElementById('incomingList');
+  list.innerHTML = ''; incoming.innerHTML = '';
+
+  if (isOwnProfile) {
+    try {
+      const r = await fetch(`/api/friends/pending?me=${encodeURIComponent(targetEmail)}`);
+      if (r.ok) {
+        const data = await r.json();
+        if (data.incoming?.length) {
+          incoming.innerHTML = `<h3 class="font-bold mb-2">Pending requests</h3>`;
+          data.incoming.forEach(u => {
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-3 py-2 border-b border-gray-800';
+            row.innerHTML = `
+              <img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full">
+              <div class="flex-1"><p class="font-semibold text-sm">${u.name || u.email}</p><p class="text-xs text-gray-400">${u.email}</p></div>
+              <button class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold" data-accept="${u.id}">Accept</button>
+              <button class="text-xs border border-gray-700 px-3 py-1 rounded-full" data-reject="${u.id}">Reject</button>
+            `;
+            incoming.appendChild(row);
+          });
+          incoming.querySelectorAll('[data-accept]').forEach(b => b.onclick = async () => {
+            await fetch('/api/friends/accept', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: targetEmail, requestId: b.dataset.accept }) });
+            loadFriendsList(); loadProfileStats();
+          });
+          incoming.querySelectorAll('[data-reject]').forEach(b => b.onclick = async () => {
+            await fetch('/api/friends/reject', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: targetEmail, requestId: b.dataset.reject }) });
+            loadFriendsList();
+          });
+        }
+      }
+    } catch {}
+  }
+
+  try {
+    const r = await fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`);
+    if (!r.ok) return;
+    const friends = await r.json();
+    if (!friends.length) {
+      if (list.innerHTML === '') list.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">No friends yet.</p>';
+      return;
+    }
+    const header = document.createElement('h3');
+    header.className = 'font-bold mb-2';
+    header.textContent = 'Friends';
+    list.appendChild(header);
+    friends.forEach(f => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-3 py-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 px-2 rounded';
+      row.innerHTML = `
+        <img src="${f.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(f.name || f.email)}" class="w-10 h-10 rounded-full">
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-sm truncate">${f.name || f.email}</p>
+          <p class="text-xs text-gray-400 truncate">${f.lastMessage || ''}</p>
+        </div>
+      `;
+      row.onclick = () => openMessages(f);
+      list.appendChild(row);
+    });
+  } catch {}
+}
+
+// ⭐ Friend button logic — now also handles missing email gracefully
+async function loadFriendButton() {
+  const actions = document.getElementById('profileActions');
+  actions.innerHTML = '';
+
+  if (isOwnProfile) return;
+
+  if (!me) {
+    actions.innerHTML = '<span class="text-sm text-gray-400">Sign in to add friends</span>';
+    return;
+  }
+  if (!targetEmail) {
+    actions.innerHTML = '<span class="text-sm text-gray-400">Cannot find this user — they may not have signed in yet</span>';
+    return;
+  }
+
+  try {
+    const r = await fetch(`/api/friends/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`);
+    const data = await r.json();
+    actions.innerHTML = '';
+    if (data.status === 'friends') {
+      const b = document.createElement('button');
+      b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
+      b.textContent = '💬 Message';
+      b.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
+      actions.appendChild(b);
+    } else if (data.status === 'outgoing') {
+      actions.innerHTML = '<span class="text-sm text-gray-400">Friend request sent</span>';
+    } else if (data.status === 'incoming') {
+      const b = document.createElement('button');
+      b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
+      b.textContent = 'Accept request';
+      b.onclick = async () => {
+        await fetch('/api/friends/accept', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, requestId: data.requestId }) });
+        loadFriendButton(); loadFriendsList();
+      };
+      actions.appendChild(b);
+    } else {
+      const b = document.createElement('button');
+      b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold';
+      b.textContent = '+ Add friend';
+      b.onclick = async () => {
+        b.disabled = true; b.textContent = 'Sending…';
+        try {
+          const resp = await fetch('/api/friends/request', {
+            method:'POST', headers:{'content-type':'application/json'},
+            body: JSON.stringify({ from: me.email, to: targetEmail })
+          });
+          const respData = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            alert('Could not send friend request: ' + (respData.error || `HTTP ${resp.status}`));
+          }
+        } catch (err) {
+          alert('Network error: ' + err.message);
+        }
+        loadFriendButton();
+      };
+      actions.appendChild(b);
+    }
+  } catch (err) {
+    actions.innerHTML = '<span class="text-sm text-red-400">Could not check friend status</span>';
+  }
+}
+
+function openMessages(friend) {
+  if (!me) { alert('Sign in first'); return; }
+  currentChatWith = friend;
+  document.getElementById('messageDrawer').classList.remove('hidden');
+  document.getElementById('msgWithName').textContent = friend.name || friend.email;
+  document.getElementById('msgWithEmail').textContent = friend.email;
+  loadMessages();
+}
+function closeMessages() {
+  document.getElementById('messageDrawer').classList.add('hidden');
+  currentChatWith = null;
+}
+async function loadMessages() {
+  if (!currentChatWith || !me) return;
+  const r = await fetch(`/api/messages?me=${encodeURIComponent(me.email)}&with=${encodeURIComponent(currentChatWith.email)}`);
+  if (!r.ok) return;
+  const msgs = await r.json();
+  const list = document.getElementById('msgList');
+  list.innerHTML = '';
+  msgs.forEach(m => {
+    const mine = m.sender === me.email;
+    const div = document.createElement('div');
+    div.className = `max-w-[80%] rounded-2xl px-3 py-2 ${mine ? 'ml-auto bg-[var(--color-primary)]' : 'bg-gray-800'}`;
+    div.textContent = m.body;
+    list.appendChild(div);
+  });
+  list.scrollTop = list.scrollHeight;
+}
+document.getElementById('msgForm').onsubmit = async (e) => {
+  e.preventDefault();
+  if (!currentChatWith || !me) return;
+  const input = document.getElementById('msgInput');
+  const body = input.value.trim();
+  if (!body) return;
+  input.value = '';
+  await fetch('/api/messages', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from: me.email, to: currentChatWith.email, body }) });
+  loadMessages();
+};
+
+document.getElementById('tabVideos').onclick = () => {
+  document.getElementById('videosTab').classList.remove('hidden');
+  document.getElementById('friendsTab').classList.add('hidden');
+  document.getElementById('tabVideos').classList.add('border-[var(--color-primary)]');
+  document.getElementById('tabVideos').classList.remove('border-transparent','text-gray-400');
+  document.getElementById('tabFriends').classList.add('border-transparent','text-gray-400');
+  document.getElementById('tabFriends').classList.remove('border-[var(--color-primary)]');
+};
+document.getElementById('tabFriends').onclick = () => {
+  document.getElementById('friendsTab').classList.remove('hidden');
+  document.getElementById('videosTab').classList.add('hidden');
+  document.getElementById('tabFriends').classList.add('border-[var(--color-primary)]');
+  document.getElementById('tabFriends').classList.remove('border-transparent','text-gray-400');
+  document.getElementById('tabVideos').classList.add('border-transparent','text-gray-400');
+  document.getElementById('tabVideos').classList.remove('border-[var(--color-primary)]');
+};
+
+// ⭐ Initialize AFTER resolving target
+(async () => {
+  await resolveTarget();
+  document.getElementById('profileName').textContent = targetName || 'User';
+  document.getElementById('profileEmail').textContent = targetEmail || (isOwnProfile ? 'Sign in to see your account' : '');
+  document.getElementById('profilePic').src = targetPic || `https://ui-avatars.com/api/?name=${encodeURIComponent(targetName || 'U')}&background=random&color=fff&size=128`;
+  loadProfileStats();
+  loadFriendButton();
+  loadFriendsList();
+})();
+</script>
+</body>
+</html>
