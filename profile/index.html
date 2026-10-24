@@ -42,6 +42,7 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
   <div class="mb-6 border-b border-gray-800 flex gap-6 justify-center">
     <button id="tabVideos" class="pb-3 border-b-2 border-[var(--color-primary)] font-bold text-sm">Videos</button>
     <button id="tabFriends" class="pb-3 border-b-2 border-transparent font-bold text-sm text-gray-400">Friends</button>
+    <button id="tabFindPeople" class="pb-3 border-b-2 border-transparent font-bold text-sm text-gray-400 hidden">Find People</button>
   </div>
 
   <div id="videosTab">
@@ -56,6 +57,15 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
   <div id="friendsTab" class="hidden">
     <div id="incomingList" class="mb-6"></div>
     <div id="friendsList"></div>
+  </div>
+
+  <div id="findPeopleTab" class="hidden">
+    <div class="mb-4">
+      <input id="findSearchInput" type="text" placeholder="Search by name or email…" class="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]">
+    </div>
+    <p class="text-xs text-gray-500 mb-4">💡 Only users who have signed in at least once appear here.</p>
+    <div id="findResultsList" class="space-y-1"></div>
+    <div id="findStatus" class="text-center text-sm text-gray-400 py-4 hidden"></div>
   </div>
 
 </main>
@@ -91,10 +101,8 @@ let targetPic = '';
 let isOwnProfile = false;
 let currentChatWith = null;
 
-// ⭐ Resolve who this profile belongs to, with fallbacks
 async function resolveTarget() {
   if (viewedEmail) {
-    // Have email — compare against me
     targetEmail = viewedEmail;
     targetName = viewedName || viewedEmail;
     targetPic = viewedPic;
@@ -102,7 +110,6 @@ async function resolveTarget() {
     return;
   }
   if (viewedName) {
-    // No email — check if this is me by name
     if (me && me.name && me.name.toLowerCase() === viewedName.toLowerCase()) {
       isOwnProfile = true;
       targetEmail = (me.email || '').toLowerCase();
@@ -110,7 +117,6 @@ async function resolveTarget() {
       targetPic = me.picture || viewedPic;
       return;
     }
-    // Not me — try to look up email by name
     isOwnProfile = false;
     targetName = viewedName;
     targetPic = viewedPic;
@@ -126,14 +132,11 @@ async function resolveTarget() {
     } catch {}
     return;
   }
-  // No params — own profile
   isOwnProfile = true;
   targetEmail = (me?.email || '').toLowerCase();
   targetName = me?.name || 'User';
   targetPic = me?.picture || '';
 }
-
-document.getElementById('profileName').textContent = 'Loading…';
 
 async function loadProfileStats() {
   try {
@@ -170,7 +173,7 @@ async function loadProfileStats() {
       card.append(vid, play, badges);
       grid.appendChild(card);
     });
-  } catch (e) { document.getElementById('loadingState').textContent = 'Failed to load.'; }
+  } catch { document.getElementById('loadingState').textContent = 'Failed to load.'; }
 }
 
 async function loadFriendsList() {
@@ -238,7 +241,60 @@ async function loadFriendsList() {
   } catch {}
 }
 
-// ⭐ Friend button logic — now also handles missing email gracefully
+// ⭐ Find People tab logic
+async function loadFindPeople() {
+  if (!me || !me.email) return;
+  const search = document.getElementById('findSearchInput').value.trim();
+  const statusEl = document.getElementById('findStatus');
+  const listEl = document.getElementById('findResultsList');
+  statusEl.textContent = 'Loading…'; statusEl.classList.remove('hidden');
+  listEl.innerHTML = '';
+  try {
+    const r = await fetch(`/api/users/list?me=${encodeURIComponent(me.email)}&q=${encodeURIComponent(search)}`);
+    if (!r.ok) throw new Error('failed');
+    const users = await r.json();
+    statusEl.classList.add('hidden');
+    if (!users.length) {
+      statusEl.textContent = 'No users found. Only users who have signed in at least once appear here.';
+      statusEl.classList.remove('hidden');
+      return;
+    }
+    users.forEach(u => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-3 py-2 border-b border-gray-800';
+      let actionHtml = '';
+      if (u.status === 'friends') actionHtml = '<span class="text-xs text-[var(--color-primary)] font-bold">✓ Friends</span>';
+      else if (u.status === 'outgoing') actionHtml = '<span class="text-xs text-gray-400">Request sent</span>';
+      else if (u.status === 'incoming') actionHtml = `<button data-accept="${u.requestId}" class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">Accept</button>`;
+      else actionHtml = `<button data-add="${u.email}" class="text-xs border border-gray-700 px-3 py-1 rounded-full hover:border-[var(--color-primary)]">+ Add</button>`;
+      row.innerHTML = `
+        <img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full">
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-sm truncate">${u.name || u.email}</p>
+          <p class="text-xs text-gray-400 truncate">${u.email}</p>
+        </div>
+        ${actionHtml}
+      `;
+      listEl.appendChild(row);
+    });
+    listEl.querySelectorAll('[data-add]').forEach(b => b.onclick = async () => {
+      b.disabled = true; b.textContent = 'Sending…';
+      try {
+        const r = await fetch('/api/friends/request', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from: me.email, to: b.dataset.add }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) alert('Could not send: ' + (d.error || `HTTP ${r.status}`));
+      } catch (e) { alert('Network error: ' + e.message); }
+      loadFindPeople();
+    });
+    listEl.querySelectorAll('[data-accept]').forEach(b => b.onclick = async () => {
+      await fetch('/api/friends/accept', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, requestId: b.dataset.accept }) });
+      loadFindPeople(); loadFriendsList();
+    });
+  } catch {
+    statusEl.textContent = 'Could not load users.'; statusEl.classList.remove('hidden');
+  }
+}
+
 async function loadFriendButton() {
   const actions = document.getElementById('profileActions');
   actions.innerHTML = '';
@@ -246,11 +302,17 @@ async function loadFriendButton() {
   if (isOwnProfile) return;
 
   if (!me) {
-    actions.innerHTML = '<span class="text-sm text-gray-400">Sign in to add friends</span>';
+    actions.innerHTML = '<a href="/" class="text-sm text-[var(--color-primary)] underline">Sign in to add friends →</a>';
     return;
   }
   if (!targetEmail) {
-    actions.innerHTML = '<span class="text-sm text-gray-400">Cannot find this user — they may not have signed in yet</span>';
+    actions.innerHTML = `
+      <div class="text-sm text-gray-400 text-center sm:text-left">
+        <p>⚠️ Could not find <strong>${targetName || 'this user'}</strong> in the user database.</p>
+        <p class="text-xs mt-1">They may not have signed in yet.</p>
+        <button onclick="switchToFindPeople()" class="text-[var(--color-primary)] underline mt-2 text-xs font-bold">Find people manually →</button>
+      </div>
+    `;
     return;
   }
 
@@ -265,7 +327,7 @@ async function loadFriendButton() {
       b.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
       actions.appendChild(b);
     } else if (data.status === 'outgoing') {
-      actions.innerHTML = '<span class="text-sm text-gray-400">Friend request sent</span>';
+      actions.innerHTML = '<span class="text-sm text-gray-400">Friend request sent ✓</span>';
     } else if (data.status === 'incoming') {
       const b = document.createElement('button');
       b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
@@ -287,19 +349,19 @@ async function loadFriendButton() {
             body: JSON.stringify({ from: me.email, to: targetEmail })
           });
           const respData = await resp.json().catch(() => ({}));
-          if (!resp.ok) {
-            alert('Could not send friend request: ' + (respData.error || `HTTP ${resp.status}`));
-          }
-        } catch (err) {
-          alert('Network error: ' + err.message);
-        }
+          if (!resp.ok) alert('Could not send friend request: ' + (respData.error || `HTTP ${resp.status}`));
+        } catch (err) { alert('Network error: ' + err.message); }
         loadFriendButton();
       };
       actions.appendChild(b);
     }
-  } catch (err) {
+  } catch {
     actions.innerHTML = '<span class="text-sm text-red-400">Could not check friend status</span>';
   }
+}
+
+function switchToFindPeople() {
+  document.getElementById('tabFindPeople')?.click();
 }
 
 function openMessages(friend) {
@@ -341,29 +403,43 @@ document.getElementById('msgForm').onsubmit = async (e) => {
   loadMessages();
 };
 
-document.getElementById('tabVideos').onclick = () => {
-  document.getElementById('videosTab').classList.remove('hidden');
-  document.getElementById('friendsTab').classList.add('hidden');
-  document.getElementById('tabVideos').classList.add('border-[var(--color-primary)]');
-  document.getElementById('tabVideos').classList.remove('border-transparent','text-gray-400');
-  document.getElementById('tabFriends').classList.add('border-transparent','text-gray-400');
-  document.getElementById('tabFriends').classList.remove('border-[var(--color-primary)]');
-};
-document.getElementById('tabFriends').onclick = () => {
-  document.getElementById('friendsTab').classList.remove('hidden');
-  document.getElementById('videosTab').classList.add('hidden');
-  document.getElementById('tabFriends').classList.add('border-[var(--color-primary)]');
-  document.getElementById('tabFriends').classList.remove('border-transparent','text-gray-400');
-  document.getElementById('tabVideos').classList.add('border-transparent','text-gray-400');
-  document.getElementById('tabVideos').classList.remove('border-[var(--color-primary)]');
-};
+function setTab(name) {
+  ['videos', 'friends', 'findPeople'].forEach(t => {
+    const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    const content = document.getElementById(t + 'Tab');
+    if (!el || !content) return;
+    if (t === name) {
+      content.classList.remove('hidden');
+      el.classList.add('border-[var(--color-primary)]');
+      el.classList.remove('border-transparent', 'text-gray-400');
+    } else {
+      content.classList.add('hidden');
+      el.classList.add('border-transparent', 'text-gray-400');
+      el.classList.remove('border-[var(--color-primary)]');
+    }
+  });
+  if (name === 'findPeople') loadFindPeople();
+}
 
-// ⭐ Initialize AFTER resolving target
+document.getElementById('tabVideos').onclick = () => setTab('videos');
+document.getElementById('tabFriends').onclick = () => setTab('friends');
+document.getElementById('tabFindPeople').onclick = () => setTab('findPeople');
+
+let searchTimeout;
+document.getElementById('findSearchInput').addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(loadFindPeople, 300);
+});
+
 (async () => {
   await resolveTarget();
   document.getElementById('profileName').textContent = targetName || 'User';
   document.getElementById('profileEmail').textContent = targetEmail || (isOwnProfile ? 'Sign in to see your account' : '');
   document.getElementById('profilePic').src = targetPic || `https://ui-avatars.com/api/?name=${encodeURIComponent(targetName || 'U')}&background=random&color=fff&size=128`;
+
+  // Show Find People tab only on own profile
+  if (isOwnProfile && me) document.getElementById('tabFindPeople').classList.remove('hidden');
+
   loadProfileStats();
   loadFriendButton();
   loadFriendsList();
