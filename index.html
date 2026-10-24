@@ -1,813 +1,392 @@
 <!doctype html>
 <html lang="en">
-
 <head>
-  <meta name="google-site-verification" content="DYeiTw87ZycZvB0GuDitM6o21FIz2b1f_7hce86Smls" />
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#000000">
-  
-  <link rel="manifest" href="/manifest.json">
-  <link rel="apple-touch-icon" href="/icon.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-  <title>ReelsBook — Modern Social Platform</title>
-  
-  <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  
-  <link rel="stylesheet" href="/theme.css">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  
-  <style>
-    .token-border { border-color: color-mix(in srgb, var(--color-text) 12%, transparent); }
-    .token-border-soft { border-color: color-mix(in srgb, var(--color-text) 8%, transparent); }
-    .token-panel { background: color-mix(in srgb, var(--color-surface) 92%, transparent); }
-    .token-overlay { background: color-mix(in srgb, var(--color-bg) 78%, transparent); }
-    .media-card img, .media-card video { background: var(--color-bg); }
-    .like-button[aria-pressed="true"] { color: var(--color-primary); border-color: var(--color-primary); }
-    .upload-zone.is-dragging { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 9%, transparent); }
-    #upload { display: none; position: fixed; z-index: 45; right: 1rem; bottom: 6rem; left: 1rem; max-height: calc(100svh - 8rem); overflow-y: auto; box-shadow: 0 24px 80px rgba(var(--color-bg-rgb), .7); }
-    #upload.is-open { display: block; }
-    .reels-feed { display: grid; gap: 1rem; max-height: min(78svh, 52rem); overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y mandatory; scrollbar-width: thin; scrollbar-color: var(--color-primary) var(--color-surface); }
-    .reel-card { position: relative; min-height: 32rem; height: min(78svh, 52rem); overflow: hidden; scroll-snap-align: start; background: var(--color-surface); }
-    .reel-card video { width: 100%; height: 100%; object-fit: cover; background: var(--color-bg); }
-    .reel-details { position: absolute; right: 0; bottom: 0; left: 0; padding: 5rem 1.25rem 1.25rem; background: linear-gradient(transparent, rgba(var(--color-bg-rgb), .88)); }
-    .bottom-dock { padding-bottom: max(.75rem, env(safe-area-inset-bottom)); }
-    @media (max-width: 640px) { .reels-feed { max-height: 72svh; } .reel-card { min-height: 28rem; height: 72svh; } }
-
-    body { background-color: #000000; color: #ffffff; font-family: 'Inter', sans-serif; padding-bottom: 75px; }
-    .font-logo { font-family: 'Pacifico', cursive; letter-spacing: 0.5px; }
-    .hide-scrollbar::-webkit-scrollbar { display: none; }
-    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    .story-ring { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); padding: 2.5px; border-radius: 50%; display: inline-block; }
-    .story-ring-inner { border: 2.5px solid #000; border-radius: 50%; padding: 2px; background: #000; overflow: hidden; width: 62px; height: 62px; }
-    .post-card { background: #000; border-bottom: 1px solid #27272a; padding-bottom: 1rem; margin-bottom: 0.5rem; }
-    .post-media { width: 100%; max-height: 600px; object-fit: cover; background: #000; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon.png">
+<title>ReelsBook — Modern Social Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bottom:75px; }
+.font-logo { font-family:'Pacifico',cursive; }
+.hide-scrollbar::-webkit-scrollbar { display:none; }
+.clip-tile { position:relative; aspect-ratio:9/16; background:#121212; border-radius:12px; overflow:hidden; cursor:pointer; }
+.clip-tile video, .clip-tile img { width:100%; height:100%; object-fit:cover; }
+.clip-tile .play-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:2rem; text-shadow:0 2px 10px rgba(0,0,0,.7); }
+.clip-tile .view-badge { position:absolute; left:6px; bottom:6px; background:rgba(0,0,0,.7); font-size:11px; padding:2px 6px; border-radius:6px; }
+</style>
 </head>
-
 <body class="antialiased">
-  <div class="noise fixed inset-0 z-50 pointer-events-none"></div>
 
-  <header class="sticky top-0 z-40 bg-black/90 backdrop-blur-md border-b border-gray-800 px-4 py-3 flex items-center justify-between">
-    <a href="/" class="text-2xl font-logo text-white" aria-label="ReelsBook home">ReelsBook</a>
-    <div class="flex items-center gap-5">
-      <button id="toggleUploadTop" class="text-white hover:text-[var(--color-primary)] transition" aria-label="Create Post">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-      </button>
-      <button class="text-white hover:text-[var(--color-primary)] transition" aria-label="Notifications">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-      </button>
-      <button id="accountButton" type="button" class="rounded-full border border-gray-700 px-3 py-1.5 text-sm font-semibold transition hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Log in</button>
-    </div>
-  </header>
-
-  <div id="accountDialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="accountDialogTitle">
-    <section class="relative w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-2xl sm:p-8">
-      <button id="closeAccountDialog" type="button" class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-gray-700 text-xl text-gray-400 transition hover:text-white" aria-label="Close login dialog">×</button>
-      <p class="mb-3 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">Your account</p>
-      <h2 id="accountDialogTitle" class="pr-8 text-2xl font-black tracking-tight text-white">Welcome to the wall</h2>
-      <p class="mt-3 text-sm leading-6 text-gray-400">Log in or create an account with Google. You can browse photos and watch reels without signing in; Google sign-in is needed to upload.</p>
-      <div class="mt-7 grid gap-3">
-        <div id="googleContinueButton" class="flex justify-center"></div>
-        <div id="googleSignupButton" class="flex justify-center"></div>
-      </div>
-      <p id="accountDialogStatus" class="mt-4 text-center text-sm text-gray-400" aria-live="polite"></p>
-    </section>
+<header class="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-gray-800 px-4 py-3 flex justify-between items-center">
+  <a href="/" class="text-2xl font-logo">ReelsBook</a>
+  <div class="flex items-center gap-5">
+    <button id="toggleUploadTop" class="text-white hover:text-[var(--color-primary)]"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></button>
+    <button id="accountButton" class="rounded-full border border-gray-700 px-3 py-1.5 text-sm font-semibold hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Log in</button>
   </div>
+</header>
 
-  <main class="relative z-10 mx-auto max-w-xl px-0 sm:px-5 pb-20">
-    
-    <section class="mb-2 border-b border-gray-800 pb-4 pt-4 px-4 sm:px-0">
-      <div class="flex gap-4 overflow-x-auto hide-scrollbar">
-        <div class="flex flex-col items-center gap-1 cursor-pointer shrink-0" id="addStoryBtn">
-          <div class="relative w-[62px] h-[62px] rounded-full border border-gray-700 bg-gray-800 flex items-center justify-center">
-            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-            <div class="absolute bottom-0 right-0 bg-blue-500 rounded-full p-0.5 border-2 border-black">
-              <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-            </div>
-          </div>
-          <span class="text-xs text-gray-400">Your Story</span>
+<div id="accountDialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-5 backdrop-blur-sm">
+  <section class="relative w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6">
+    <button id="closeAccountDialog" class="absolute right-4 top-4 w-9 h-9 rounded-full border border-gray-700 text-xl text-gray-400">×</button>
+    <p class="mb-3 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">Your account</p>
+    <h2 class="text-2xl font-black">Welcome to the wall</h2>
+    <p class="mt-3 text-sm text-gray-400">Sign in with Google to upload, add friends, and send messages.</p>
+    <div class="mt-7 grid gap-3"><div id="googleContinueButton" class="flex justify-center"></div><div id="googleSignupButton" class="flex justify-center"></div></div>
+    <p id="accountDialogStatus" class="mt-4 text-center text-sm text-gray-400"></p>
+  </section>
+</div>
+
+<main class="relative z-10 mx-auto max-w-xl px-4 pb-20">
+
+  <section class="mb-6 border-b border-gray-800 pb-4 pt-4">
+    <div class="flex gap-4 overflow-x-auto hide-scrollbar">
+      <div id="addStoryBtn" class="flex flex-col items-center gap-1 cursor-pointer shrink-0">
+        <div class="relative w-[62px] h-[62px] rounded-full border border-gray-700 bg-gray-800 flex items-center justify-center">
+          <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         </div>
-        <div id="storiesContainer" class="flex gap-4"></div>
+        <span class="text-xs text-gray-400">Your Story</span>
       </div>
-    </section>
+      <div id="storiesContainer" class="flex gap-4"></div>
+    </div>
+  </section>
 
-    <section class="grid items-center gap-12 pb-10 pt-4 lg:grid-cols-[1.05fr_.95fr] lg:pb-16 lg:pt-8">
-      <div class="float-in px-4 sm:px-0">
-        <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">
-          <span class="h-2 w-2 animate-pulse rounded-full bg-[var(--color-primary)]"></span>
-          Open to everyone
-        </div>
-        <h1 class="max-w-3xl font-[var(--font-heading)] text-5xl leading-[.94] tracking-[-.055em] sm:text-6xl">YOU WILL EARN<br><span class="text-[var(--color-primary)]">ON REELS BOOK.</span></h1>
-        <p class="mt-7 max-w-xl text-lg leading-8 text-gray-400">A living gallery of shared moments. Upload a photo or video, add your name, and leave a little piece of your world behind.</p>
-        <div class="mt-9 flex flex-wrap items-center gap-4">
-          <a href="#upload" class="rounded-full bg-[var(--color-primary)] px-6 py-3.5 font-bold text-white shadow-lg transition hover:-translate-y-0.5 hover:brightness-110">Share a moment <span class="ml-2">↓</span></a>
-          <a href="#wall" class="rounded-full border border-gray-700 px-6 py-3.5 font-bold transition hover:border-[var(--color-primary)]">Explore the wall</a>
-        </div>
-        <p class="mt-8 text-sm font-semibold text-gray-400">Created by <span class="text-[var(--color-primary)]">MANSOOR OF TALASH MACHO</span></p>
-      </div>
+  <section class="mb-8">
+    <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">
+      <span class="h-2 w-2 rounded-full bg-[var(--color-primary)]"></span> Open to everyone
+    </div>
+    <h1 class="text-5xl leading-[.94] tracking-[-.055em] sm:text-6xl">YOU WILL EARN<br><span class="text-[var(--color-primary)]">ON REELS BOOK.</span></h1>
+    <p class="mt-5 text-lg text-gray-400">A living gallery of shared moments. Upload a photo or video, add your name, and leave a little piece of your world behind.</p>
+    <div class="mt-7 flex flex-wrap gap-4">
+      <a href="#upload" class="rounded-full bg-[var(--color-primary)] px-6 py-3.5 font-bold shadow-lg hover:brightness-110">Share a moment</a>
+      <a href="/reels/index.html" class="rounded-full border border-gray-700 px-6 py-3.5 font-bold hover:border-[var(--color-primary)]">Watch reels</a>
+    </div>
+    <div class="mt-8">
+      <figure class="overflow-hidden rounded-[1.5rem] border border-gray-800 bg-gray-900 p-2">
+        <img src="/SAD.jpg" alt="Featured" class="aspect-[4/5] w-full rounded-[1.2rem] object-cover" onerror="this.style.display='none'">
+      </figure>
+    </div>
+  </section>
 
-      <div class="relative mx-auto w-full max-w-xl float-in [animation-delay:120ms] px-4 sm:px-0">
-        <div class="absolute -inset-5 rounded-[2rem] bg-[var(--color-primary)]/10 blur-3xl"></div>
-        <figure class="relative overflow-hidden rounded-[2rem] border border-gray-800 bg-gray-900 p-3 glow">
-          <img src="/SAD.jpg" alt="Featured REELS BOOK photo" class="aspect-[4/5] w-full rounded-[1.5rem] object-cover" fetchpriority="high">
-        </figure>
-        <div class="mt-4 flex justify-end">
-          <button class="like-button like-hero inline-flex items-center gap-2 rounded-full border border-gray-700 bg-gray-900 px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)]" data-media-id="featured-sad-image" type="button" aria-pressed="false"><span class="like-icon" aria-hidden="true">♡</span><span class="like-count">0</span><span>Likes</span></button>
-        </div>
-      </div>
-    </section>
-
-    <section id="upload" class="scroll-mt-8 rounded-2xl border border-gray-800 bg-gray-900 p-3 sm:p-4 mx-4 sm:mx-0 mt-4">
-      <button id="toggleUpload" type="button" class="flex w-full items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition hover:bg-[var(--color-primary)]/10" aria-expanded="false" aria-controls="uploadOptions">
-        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl leading-none text-white" aria-hidden="true">+</span>
-        <span>Share a moment</span>
-      </button>
-      <div id="uploadOptions" class="mt-5 hidden">
-      <div class="mb-6 flex flex-col gap-3 rounded-2xl border border-gray-800 bg-black p-4 sm:flex-row sm:items-center sm:justify-between">
+  <section id="upload" class="mb-10 rounded-2xl border border-gray-800 bg-gray-900 p-3">
+    <button id="toggleUpload" class="flex w-full items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold hover:bg-[var(--color-primary)]/10">
+      <span class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl text-white">+</span> Share a moment
+    </button>
+    <div id="uploadOptions" class="mt-5 hidden">
+      <div class="mb-4 flex justify-between items-center rounded-2xl border border-gray-800 bg-black p-4">
         <div>
-          <p id="authStatus" class="font-semibold text-white">Sign in with Google to upload.</p>
-          <p id="authAccount" class="mt-1 text-sm text-gray-400" aria-live="polite"></p>
+          <p id="authStatus" class="font-semibold">Sign in to upload.</p>
+          <p id="authAccount" class="mt-1 text-sm text-gray-400"></p>
         </div>
-        <div class="flex shrink-0 items-center gap-3">
+        <div class="flex gap-2">
           <div id="googleSignInButton"></div>
-          <button id="signOutButton" type="button" class="hidden rounded-full border border-gray-700 px-4 py-2 text-sm font-semibold transition hover:border-[var(--color-primary)] text-white">Sign out</button>
+          <button id="signOutButton" class="hidden rounded-full border border-gray-700 px-4 py-2 text-sm">Sign out</button>
         </div>
       </div>
-      <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">01 / Add to the wall</p>
-          <h2 class="text-3xl font-black tracking-tight text-white sm:text-4xl">Drop something real.</h2>
-        </div>
-        <button id="closeUpload" type="button" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gray-700 text-xl text-gray-400 transition hover:border-[var(--color-primary)] hover:text-white" aria-label="Close upload panel">×</button>
+      <div class="mb-4 flex justify-between">
+        <h2 class="text-2xl font-black">Drop something real.</h2>
+        <button id="closeUpload" class="w-9 h-9 rounded-full border border-gray-700 text-xl text-gray-400">×</button>
       </div>
-      <div class="mb-4 grid grid-cols-3 gap-3" role="group" aria-label="Choose upload type">
-        <button type="button" class="upload-type-option rounded-xl border border-gray-700 bg-[var(--color-primary)] px-4 py-3 text-sm font-bold text-white transition" data-upload-type="photo" aria-pressed="true">📷 Photo</button>
-        <button type="button" class="upload-type-option rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 text-sm font-bold text-white transition hover:border-[var(--color-primary)]" data-upload-type="video" aria-pressed="false">▶ Video</button>
-        <button type="button" class="upload-type-option rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 text-sm font-bold text-white transition hover:border-[var(--color-primary)]" data-upload-type="gif" aria-pressed="false">✨ GIF</button>
+      <div class="mb-4 grid grid-cols-3 gap-3">
+        <button class="upload-type-option rounded-xl border border-gray-700 bg-[var(--color-primary)] px-4 py-3 text-sm font-bold" data-upload-type="photo">📷 Photo</button>
+        <button class="upload-type-option rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 text-sm font-bold" data-upload-type="video">▶ Video</button>
+        <button class="upload-type-option rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 text-sm font-bold" data-upload-type="gif">✨ GIF</button>
       </div>
-      <label id="dropZone" class="upload-zone group flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 px-6 text-center transition hover:border-[var(--color-primary)] hover:bg-black">
-        <input id="mediaInput" type="file" accept="image/jpeg,image/png,image/webp,image/avif" class="sr-only">
-        <span class="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-primary)] text-3xl text-white transition group-hover:scale-105">↑</span>
-        <span id="dropTitle" class="text-lg font-bold text-white">Drag &amp; drop a photo here</span>
+      <label id="dropZone" class="upload-zone flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 p-6 text-center hover:border-[var(--color-primary)]">
+        <input id="mediaInput" type="file" accept="image/*" class="sr-only">
+        <span class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl text-white">↑</span>
+        <span id="dropTitle" class="text-lg font-bold">Drag & drop a photo</span>
         <span id="dropHint" class="mt-2 text-sm text-gray-400">or click to browse · up to 90 MB</span>
       </label>
-
       <div id="filePanel" class="mt-5 hidden rounded-xl border border-gray-800 bg-black p-5">
-        <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div class="flex min-w-0 items-center gap-4">
-            <div id="fileTypeIcon" class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary)]/15 text-xl text-[var(--color-primary)]">✦</div>
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-3 min-w-0">
+            <div id="fileTypeIcon" class="w-12 h-12 rounded-xl bg-[var(--color-primary)]/15 flex items-center justify-center text-xl text-[var(--color-primary)]">✦</div>
             <div class="min-w-0">
-              <p id="fileName" class="truncate font-bold text-white"></p>
-              <p id="fileSize" class="mt-1 text-sm text-gray-400"></p>
+              <p id="fileName" class="truncate font-bold"></p>
+              <p id="fileSize" class="text-sm text-gray-400"></p>
             </div>
           </div>
-          <button id="clearFile" type="button" class="text-sm text-gray-400 underline hover:text-white">Remove</button>
+          <button id="clearFile" class="text-sm text-gray-400 underline">Remove</button>
         </div>
-        <div class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
-          <input id="mediaTitle" class="rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm text-white outline-none focus:border-[var(--color-primary)]" placeholder="Give it a title">
-          <button id="publishButton" type="button" class="rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold text-white transition hover:brightness-110">Publish</button>
+        <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <input id="mediaTitle" class="rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm" placeholder="Give it a title">
+          <button id="publishButton" class="rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold">Publish</button>
         </div>
-        <p id="uploadStatus" class="mt-4 hidden text-sm text-[var(--color-primary)]" role="status" aria-live="polite"></p>
+        <p id="uploadStatus" class="mt-4 hidden text-sm text-[var(--color-primary)]"></p>
       </div>
-      </div>
-    </section>
-
-    <section id="wall" class="scroll-mt-8 pt-12">
-      <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between px-4 sm:px-0">
-        <div>
-          <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">02 / The public wall</p>
-          <h2 class="text-3xl font-black tracking-tight text-white sm:text-4xl">Latest arrivals</h2>
-        </div>
-        <div class="flex items-center gap-3">
-          <select id="mediaFilter" class="rounded-full border border-gray-700 bg-gray-900 px-4 py-2 text-sm text-white outline-none focus:border-[var(--color-primary)]">
-            <option value="all">All media</option>
-            <option value="photo">Photos</option>
-            <option value="video">Videos</option>
-          </select>
-          <span id="countLabel" class="rounded-full bg-gray-800 px-3 py-1.5 text-xs text-gray-400">Loading</span>
-        </div>
-      </div>
-      
-      <div id="mediaGrid" class="flex flex-col px-0 sm:px-0"></div>
-      <p id="wallStatus" class="mt-5 text-center text-sm text-gray-400" role="status" aria-live="polite"></p>
-    </section>
-
-    <section id="reels" class="scroll-mt-8 pt-24 pb-10">
-      <div class="mb-8 px-4 sm:px-0">
-        <p class="mb-2 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">03 / Video feed</p>
-        <h2 class="text-3xl font-black tracking-tight text-white sm:text-4xl">Watch the reels</h2>
-        <p class="mt-3 max-w-xl text-sm leading-6 text-gray-400">Scroll vertically to move through community videos.</p>
-      </div>
-      <div id="reelsFeed" class="reels-feed mx-auto max-w-md" aria-label="Video reels"></div>
-      <p id="reelsStatus" class="mt-5 text-center text-sm text-gray-400" role="status" aria-live="polite"></p>
-    </section>
-  </main>
-
-  <nav class="fixed bottom-0 inset-x-0 z-40 bg-black border-t border-gray-800 flex justify-around items-center py-2 pb-safe">
-    <a href="#wall" id="navHome" class="text-white flex flex-col items-center gap-1">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-      <span class="text-[10px]">Home</span>
-    </a>
-    <button class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-      <span class="text-[10px]">Search</span>
-    </button>
-    <button id="bottomPlus" class="bg-[var(--color-primary)] text-white rounded-lg p-2 hover:brightness-110 transition" aria-expanded="false">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-    </button>
-    <a href="/reels/index.html" id="navReels" class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-      <span class="text-[10px]">Reels</span>
-    </a>
-    <a href="/profile/index.html" class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
-      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-      <span class="text-[10px]">Profile</span>
-    </a>
-  </nav>
-
-  <footer class="relative z-10 border-t border-gray-800 pb-20">
-    <div class="mx-auto flex max-w-7xl flex-col gap-4 px-5 py-8 text-sm text-gray-400 sm:flex-row sm:items-center sm:justify-between">
-      <p><strong class="font-black text-white">REELS BOOK 😎</strong> <span class="mx-2">/</span> Created by <span class="text-[var(--color-primary)]">MANSOOR OF TALASH MACHO</span></p>
-      <p>Photos &amp; videos, shared with everyone <span class="ml-2 text-[var(--color-primary)]">●</span></p>
     </div>
-  </footer>
+  </section>
 
-  <script>
-    const mediaInput = document.getElementById('mediaInput');
-    const dropZone = document.getElementById('dropZone');
-    const filePanel = document.getElementById('filePanel');
-    const fileName = document.getElementById('fileName');
-    const fileSize = document.getElementById('fileSize');
-    const uploadStatus = document.getElementById('uploadStatus');
-    const wallStatus = document.getElementById('wallStatus');
-    const mediaGrid = document.getElementById('mediaGrid');
-    const reelsFeed = document.getElementById('reelsFeed');
-    const reelsStatus = document.getElementById('reelsStatus');
-    const countLabel = document.getElementById('countLabel');
-    const authStatus = document.getElementById('authStatus');
-    const authAccount = document.getElementById('authAccount');
-    const googleSignInButton = document.getElementById('googleSignInButton');
-    const signOutButton = document.getElementById('signOutButton');
-    const accountDialog = document.getElementById('accountDialog');
-    const accountDialogStatus = document.getElementById('accountDialogStatus');
-    const authStorageKey = 'fullMastiGoogleCredential';
-    let googleCredential = localStorage.getItem(authStorageKey) || '';
-    let googleUser = null;
-    const maxUploadSize = 90 * 1024 * 1024;
-    const uploadTypes = {
-      photo: { accept: 'image/jpeg,image/png,image/webp,image/avif', title: 'Drag & drop a photo here', hint: 'or click to browse · JPG, PNG, WEBP, AVIF · up to 90 MB' },
-      video: { accept: 'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska', title: 'Drag & drop a video here', hint: 'or click to browse · MP4, MOV, WEBM, OGG, MKV · up to 90 MB' },
-      gif: { accept: 'image/gif', title: 'Drag & drop a GIF here', hint: 'or click to browse · GIF · up to 90 MB' }
-    };
-    let activeUploadType = 'photo';
-    let selectedFile = null;
-    let galleryItems = [];
+  <section class="mb-10">
+    <div class="mb-4 flex justify-between items-center">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">Recent clips</p>
+        <h2 class="text-2xl font-black">Fresh on ReelsBook</h2>
+      </div>
+      <a href="/reels/index.html" class="text-sm text-[var(--color-primary)] font-bold">See all →</a>
+    </div>
+    <div id="clipsGrid" class="grid grid-cols-3 gap-2"></div>
+    <p id="clipsStatus" class="mt-3 text-center text-sm text-gray-400"></p>
+  </section>
 
-    function getVisitorId() {
-      let visitorId = localStorage.getItem('ReelsbookVisitorId') || localStorage.getItem('openframeVisitorId');
-      if (!visitorId) visitorId = crypto.randomUUID();
-      localStorage.setItem('ReelsbookVisitorId', visitorId);
-      return visitorId;
-    }
-    const visitorId = getVisitorId();
+</main>
 
-    function readableSize(bytes) {
-      if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    }
+<nav class="fixed bottom-0 inset-x-0 z-40 bg-black border-t border-gray-800 flex justify-around items-center py-2" style="padding-bottom:max(.75rem,env(safe-area-inset-bottom))">
+  <a href="/" class="text-white flex flex-col items-center gap-1">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
+    <span class="text-[10px]">Home</span>
+  </a>
+  <button id="bottomPlus" class="bg-[var(--color-primary)] text-white rounded-lg p-2">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+  </button>
+  <a href="/reels/index.html" class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
+    <span class="text-[10px]">Reels</span>
+  </a>
+  <a href="/profile/index.html" class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+    <span class="text-[10px]">Profile</span>
+  </a>
+</nav>
 
-    function showUploadMessage(message) {
-      uploadStatus.textContent = message;
-      uploadStatus.classList.remove('hidden');
-    }
+<script>
+const authStorageKey = 'fullMastiGoogleCredential';
+let googleCredential = localStorage.getItem(authStorageKey) || '';
+let googleUser = null;
+let galleryItems = [];
+const visitorId = (() => {
+  let v = localStorage.getItem('ReelsbookVisitorId');
+  if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); }
+  return v;
+})();
+const $ = (id) => document.getElementById(id);
 
-    function setUploadType(type) {
-      activeUploadType = type;
-      const settings = uploadTypes[type];
-      mediaInput.accept = settings.accept;
-      document.getElementById('dropTitle').textContent = settings.title;
-      document.getElementById('dropHint').textContent = settings.hint;
-      document.querySelectorAll('.upload-type-option').forEach((button) => {
-        const isActive = button.dataset.uploadType === type;
-        button.setAttribute('aria-pressed', String(isActive));
-        button.classList.toggle('bg-[var(--color-primary)]', isActive);
-        button.classList.toggle('text-white', isActive);
-        button.classList.toggle('bg-gray-800', !isActive);
-        button.classList.toggle('text-white', !isActive);
-      });
-      selectedFile = null;
-      mediaInput.value = '';
-      filePanel.classList.add('hidden');
-      uploadStatus.classList.add('hidden');
-    }
+const uploadTypes = {
+  photo: { accept:'image/jpeg,image/png,image/webp,image/avif', title:'Drag & drop a photo', hint:'JPG, PNG, WEBP, AVIF · up to 90 MB' },
+  video: { accept:'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska', title:'Drag & drop a video', hint:'MP4, MOV, WEBM, OGG, MKV · up to 90 MB' },
+  gif: { accept:'image/gif', title:'Drag & drop a GIF', hint:'GIF · up to 90 MB' }
+};
+let activeUploadType = 'photo';
+let selectedFile = null;
+const maxUploadSize = 90 * 1024 * 1024;
 
-    const toggleUpload = document.getElementById('toggleUpload');
-    const uploadOptions = document.getElementById('uploadOptions');
-    const bottomPlus = document.getElementById('bottomPlus');
-    const uploadSection = document.getElementById('upload');
-    const toggleUploadTop = document.getElementById('toggleUploadTop');
+function updateLikeButton(button, result) {
+  button.querySelector('.like-count').textContent = result.count;
+  button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
+  button.querySelector('.like-icon').style.color = result.liked ? '#ec4899' : 'inherit';
+  button.setAttribute('aria-pressed', String(result.liked));
+}
+async function loadLikeState(mediaId, button) {
+  try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}&t=${Date.now()}`); if (r.ok) updateLikeButton(button, await r.json()); } catch {}
+}
+function attachLikeHandler(button) {
+  button.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    button.disabled = true;
+    try { const r = await fetch('/api/likes', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mediaId: button.dataset.mediaId, visitorId }) }); const result = await r.json(); if (r.ok) updateLikeButton(button, result); } catch {}
+    finally { button.disabled = false; }
+  });
+}
 
-    document.getElementById('navHome').addEventListener('click', (e) => {
-      document.getElementById('reels').classList.add('hidden');
-      document.getElementById('wall').classList.remove('hidden');
+async function loadClips() {
+  try {
+    const r = await fetch('/api/media?t=' + Date.now());
+    if (!r.ok) throw new Error('load failed');
+    galleryItems = await r.json();
+    const grid = $('clipsGrid');
+    grid.innerHTML = '';
+    const videos = galleryItems.filter(i => i.type === 'video').slice(0, 9);
+    if (!videos.length) { $('clipsStatus').textContent = 'No clips yet — be the first!'; return; }
+    $('clipsStatus').textContent = '';
+    videos.forEach(v => {
+      const tile = document.createElement('div');
+      tile.className = 'clip-tile';
+      tile.onclick = () => { window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
+      const vid = document.createElement('video');
+      vid.src = v.url + '#t=0.1';
+      vid.muted = true; vid.playsInline = true; vid.preload = 'metadata';
+      vid.onerror = () => { const img = document.createElement('img'); img.src = '/SAD.jpg'; img.alt=''; vid.replaceWith(img); };
+      const play = document.createElement('div'); play.className = 'play-overlay'; play.textContent = '▶';
+      const views = document.createElement('div'); views.className = 'view-badge'; views.textContent = `👁 ${v.views || 0}`;
+      tile.append(vid, play, views);
+      grid.appendChild(tile);
     });
-
-    function openAccountDialog() {
-      accountDialog.classList.remove('hidden');
-      accountDialog.classList.add('flex');
-      document.getElementById('closeAccountDialog').focus();
-    }
-
-    function closeAccountDialog() {
-      accountDialog.classList.add('hidden');
-      accountDialog.classList.remove('flex');
-      document.getElementById('accountButton').focus();
-    }
-
-    document.getElementById('accountButton').addEventListener('click', openAccountDialog);
-    document.getElementById('closeAccountDialog').addEventListener('click', closeAccountDialog);
-    accountDialog.addEventListener('click', (event) => { if (event.target === accountDialog) closeAccountDialog(); });
-    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !accountDialog.classList.contains('hidden')) closeAccountDialog(); });
-
-    function openUploadPanel() {
-      toggleUpload.setAttribute('aria-expanded', 'true');
-      bottomPlus.setAttribute('aria-expanded', 'true');
-      uploadSection.classList.add('is-open');
-      uploadOptions.classList.remove('hidden');
-    }
-
-    function closeUploadPanel() {
-      toggleUpload.setAttribute('aria-expanded', 'false');
-      bottomPlus.setAttribute('aria-expanded', 'false');
-      uploadSection.classList.remove('is-open');
-      uploadOptions.classList.add('hidden');
-    }
-
-    toggleUpload.addEventListener('click', () => {
-      const isExpanded = toggleUpload.getAttribute('aria-expanded') === 'true';
-      if (isExpanded) closeUploadPanel(); else openUploadPanel();
+    const stories = $('storiesContainer');
+    stories.innerHTML = '';
+    const creators = [...new Map(galleryItems.map(i => [i.creator, i])).values()];
+    creators.forEach(u => {
+      if (!u.creator || u.creator === 'Anonymous') return;
+      const d = document.createElement('div');
+      d.className = 'flex flex-col items-center gap-1 cursor-pointer shrink-0';
+      d.innerHTML = `
+        <div class="w-[62px] h-[62px] rounded-full p-[2.5px]" style="background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)">
+          <div class="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden border-2 border-black">
+            ${u.creatorPic ? `<img src="${u.creatorPic}" class="w-full h-full object-cover rounded-full">` : `<span class="font-bold text-lg">${u.creator[0]}</span>`}
+          </div>
+        </div>
+        <span class="text-xs text-gray-300 w-16 truncate text-center">${u.creator}</span>
+      `;
+      d.onclick = () => { location.href = `/profile/index.html?name=${encodeURIComponent(u.creator)}&pic=${encodeURIComponent(u.creatorPic || '')}&email=${encodeURIComponent(u.creatorEmail || '')}`; };
+      stories.appendChild(d);
     });
+  } catch { $('clipsStatus').textContent = 'Could not load clips.'; }
+}
 
-    toggleUploadTop.addEventListener('click', openUploadPanel);
-    bottomPlus.addEventListener('click', openUploadPanel);
-    document.getElementById('addStoryBtn').addEventListener('click', openUploadPanel);
-    document.getElementById('closeUpload').addEventListener('click', closeUploadPanel);
+function openUploadPanel() { $('uploadOptions').classList.remove('hidden'); $('upload').scrollIntoView({ behavior:'smooth', block:'start' }); }
+function closeUploadPanel() { $('uploadOptions').classList.add('hidden'); }
+$('toggleUpload').onclick = openUploadPanel;
+$('toggleUploadTop').onclick = openUploadPanel;
+$('bottomPlus').onclick = openUploadPanel;
+$('addStoryBtn').onclick = openUploadPanel;
+$('closeUpload').onclick = closeUploadPanel;
+document.querySelectorAll('a[href="#upload"]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); openUploadPanel(); }));
 
-    document.querySelectorAll('a[href="#upload"]').forEach((link) => {
-      link.addEventListener('click', (event) => {
-        event.preventDefault();
-        if (!uploadSection.classList.contains('is-open')) openUploadPanel();
-      });
-    });
+function setUploadType(type) {
+  activeUploadType = type;
+  const s = uploadTypes[type];
+  $('mediaInput').accept = s.accept;
+  $('dropTitle').textContent = s.title;
+  $('dropHint').textContent = s.hint;
+  document.querySelectorAll('.upload-type-option').forEach(b => {
+    const on = b.dataset.uploadType === type;
+    b.classList.toggle('bg-[var(--color-primary)]', on);
+    b.classList.toggle('bg-gray-800', !on);
+  });
+  selectedFile = null; $('mediaInput').value = ''; $('filePanel').classList.add('hidden'); $('uploadStatus').classList.add('hidden');
+}
+document.querySelectorAll('.upload-type-option').forEach(b => b.onclick = () => setUploadType(b.dataset.uploadType));
 
-    document.querySelectorAll('.upload-type-option').forEach((button) => {
-      button.addEventListener('click', () => setUploadType(button.dataset.uploadType));
-    });
+function readableSize(b) { return b < 1048576 ? `${Math.max(1, Math.round(b/1024))} KB` : `${(b/1048576).toFixed(1)} MB`; }
+function showUploadMessage(msg) { $('uploadStatus').textContent = msg; $('uploadStatus').classList.remove('hidden'); }
+function showFile(file) {
+  if (!file) return;
+  const matches = activeUploadType === 'photo' ? (file.type.startsWith('image/') && file.type !== 'image/gif')
+    : activeUploadType === 'video' ? file.type.startsWith('video/') : file.type === 'image/gif';
+  if (!matches) return showUploadMessage(`Please choose a ${activeUploadType} file.`);
+  if (file.size > maxUploadSize) return showUploadMessage('File must be ≤ 90 MB.');
+  selectedFile = file;
+  $('fileName').textContent = file.name;
+  $('fileSize').textContent = `${readableSize(file.size)} · ready`;
+  $('fileTypeIcon').textContent = (activeUploadType === 'video') ? '▶' : '▧';
+  $('filePanel').classList.remove('hidden');
+  $('uploadStatus').classList.add('hidden');
+}
+$('mediaInput').onchange = () => showFile($('mediaInput').files[0]);
+['dragenter','dragover'].forEach(ev => $('dropZone').addEventListener(ev, e => { e.preventDefault(); $('dropZone').classList.add('is-dragging'); }));
+['dragleave','drop'].forEach(ev => $('dropZone').addEventListener(ev, e => { e.preventDefault(); $('dropZone').classList.remove('is-dragging'); }));
+$('dropZone').addEventListener('drop', e => showFile(e.dataTransfer.files[0]));
+$('clearFile').onclick = () => { selectedFile = null; $('mediaInput').value=''; $('filePanel').classList.add('hidden'); };
 
-    function showFile(file) {
-      if (!file) return;
-      const matchesSelection = activeUploadType === 'photo' ? file.type.startsWith('image/') && file.type !== 'image/gif' : activeUploadType === 'video' ? file.type.startsWith('video/') : file.type === 'image/gif';
-      if (!matchesSelection) { showUploadMessage(`Please choose a ${activeUploadType === 'gif' ? 'GIF' : activeUploadType} file for the selected option.`); return; }
-      const isPhoto = activeUploadType === 'photo' || activeUploadType === 'gif';
-      if (file.size > maxUploadSize) { showUploadMessage('Files must be 90 MB or smaller. Please choose a smaller file.'); return; }
-      selectedFile = file;
-      fileName.textContent = file.name;
-      fileSize.textContent = `${readableSize(file.size)} · ${isPhoto ? 'photo' : 'video'} · ready to upload`;
-      document.getElementById('fileTypeIcon').textContent = isPhoto ? '▧' : '▶';
-      filePanel.classList.remove('hidden');
-      uploadStatus.classList.add('hidden');
-    }
+function showSignedInUser(user) {
+  googleUser = user;
+  const users = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}');
+  users[user.email] = user;
+  localStorage.setItem('reelsBookUsers', JSON.stringify(users));
+  localStorage.setItem('currentReelsUser', JSON.stringify(user));
+  $('accountButton').textContent = 'My Account';
+  $('authStatus').textContent = 'Signed in.';
+  $('authAccount').textContent = user.name || user.email;
+  $('googleSignInButton').classList.add('hidden');
+  $('signOutButton').classList.remove('hidden');
+  $('accountDialogStatus').textContent = 'Signed in.';
+  closeAccountDialog();
+}
+function showSignedOutUser(msg) {
+  googleUser = null;
+  $('accountButton').textContent = 'Log in';
+  $('authStatus').textContent = msg || 'Sign in with Google to upload.';
+  $('authAccount').textContent = '';
+  $('googleSignInButton').classList.remove('hidden');
+  $('signOutButton').classList.add('hidden');
+  $('accountDialogStatus').textContent = msg || '';
+}
+async function verifyGoogleCredential(credential) {
+  const r = await fetch('/api/auth/google', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ credential }) });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || 'Sign-in failed');
+  googleCredential = credential;
+  localStorage.setItem(authStorageKey, credential);
+  showSignedInUser(data);
+}
+async function initializeGoogleSignIn() {
+  try {
+    const r = await fetch('/api/auth/config');
+    const cfg = await r.json();
+    if (!cfg.googleClientId) { showSignedOutUser('Google sign-in not configured.'); return; }
+    let attempts = 0;
+    const wait = setInterval(() => {
+      attempts++;
+      if (window.google?.accounts?.id) {
+        clearInterval(wait);
+        google.accounts.id.initialize({ client_id: cfg.googleClientId, callback: async (res) => {
+          try { await verifyGoogleCredential(res.credential); } catch (e) { showSignedOutUser(e.message); }
+        }});
+        google.accounts.id.renderButton($('googleSignInButton'), { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill' });
+        google.accounts.id.renderButton($('googleContinueButton'), { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill', width:280 });
+        google.accounts.id.renderButton($('googleSignupButton'), { type:'standard', theme:'outline', size:'large', text:'signup_with', shape:'pill', width:280 });
+        if (googleCredential) verifyGoogleCredential(googleCredential).catch(() => { googleCredential=''; localStorage.removeItem(authStorageKey); showSignedOutUser('Sign-in expired.'); });
+      } else if (attempts >= 100) { clearInterval(wait); showSignedOutUser('Could not load Google sign-in.'); }
+    }, 100);
+  } catch { showSignedOutUser('Could not check sign-in settings.'); }
+}
+$('signOutButton').onclick = () => { googleCredential=''; localStorage.removeItem(authStorageKey); window.google?.accounts?.id?.disableAutoSelect(); showSignedOutUser(); };
 
-    mediaInput.addEventListener('change', () => showFile(mediaInput.files[0]));
-    ['dragenter', 'dragover'].forEach((eventName) => { dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.add('is-dragging'); }); });
-    ['dragleave', 'drop'].forEach((eventName) => { dropZone.addEventListener(eventName, (event) => { event.preventDefault(); dropZone.classList.remove('is-dragging'); }); });
-    dropZone.addEventListener('drop', (event) => showFile(event.dataTransfer.files[0]));
+function openAccountDialog() { $('accountDialog').classList.remove('hidden'); $('accountDialog').classList.add('flex'); }
+function closeAccountDialog() { $('accountDialog').classList.add('hidden'); $('accountDialog').classList.remove('flex'); }
+$('accountButton').onclick = openAccountDialog;
+$('closeAccountDialog').onclick = closeAccountDialog;
+$('accountDialog').addEventListener('click', e => { if (e.target === $('accountDialog')) closeAccountDialog(); });
 
-    document.getElementById('clearFile').addEventListener('click', () => {
-      selectedFile = null; mediaInput.value = ''; filePanel.classList.add('hidden'); uploadStatus.classList.add('hidden');
-    });
+$('publishButton').onclick = (ev) => {
+  if (!googleCredential || !googleUser) return showUploadMessage('Sign in with Google first.');
+  if (!selectedFile) return showUploadMessage('Choose a file first.');
+  const btn = ev.currentTarget;
+  const title = $('mediaTitle').value.trim() || selectedFile.name.replace(/\.[^/.]+$/, '');
+  const fd = new FormData();
+  fd.append('media', selectedFile);
+  fd.append('title', title);
+  fd.append('creator', googleUser.name || 'Anonymous');
+  fd.append('creatorEmail', googleUser.email || '');
+  fd.append('creatorPic', googleUser.picture || '');
+  btn.disabled = true; btn.textContent = 'Uploading… 0%';
+  showUploadMessage('Uploading…');
+  const req = new XMLHttpRequest();
+  req.open('POST', '/api/upload');
+  req.setRequestHeader('Authorization', `Bearer ${googleCredential}`);
+  req.timeout = 30 * 60 * 1000;
+  req.upload.addEventListener('progress', e => {
+    if (!e.lengthComputable) return;
+    const p = Math.round((e.loaded/e.total)*100);
+    btn.textContent = `Uploading… ${p}%`;
+    showUploadMessage(`Uploading… ${p}%`);
+  });
+  req.addEventListener('load', async () => {
+    try {
+      const result = JSON.parse(req.responseText);
+      if (req.status < 200 || req.status >= 300) throw new Error(result.error || 'Upload failed');
+      showUploadMessage('Published!');
+      selectedFile = null; $('mediaInput').value=''; $('filePanel').classList.add('hidden'); $('mediaTitle').value='';
+      closeUploadPanel();
+      await loadClips();
+    } catch (e) { showUploadMessage(e.message); }
+    finally { btn.disabled = false; btn.textContent = 'Publish'; }
+  });
+  req.addEventListener('error', () => { showUploadMessage('Network error.'); btn.disabled = false; btn.textContent='Publish'; });
+  req.send(fd);
+};
 
-    // LIKES LOGIC
-    function updateLikeButton(button, result) {
-      button.querySelector('.like-count').textContent = result.count;
-      button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
-      button.querySelector('.like-icon').style.color = result.liked ? '#ec4899' : 'inherit';
-      button.setAttribute('aria-pressed', String(result.liked));
-    }
+const heroLike = document.querySelector('.like-hero');
+if (heroLike) { attachLikeHandler(heroLike); loadLikeState('featured-sad-image', heroLike); }
 
-    async function loadLikeState(mediaId, button) {
-      try {
-        const response = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}&t=${Date.now()}`);
-        if (!response.ok) throw new Error('Likes API is unavailable.');
-        updateLikeButton(button, await response.json());
-      } catch (error) { 
-        console.error("Error loading likes:", error);
-      }
-    }
-
-    function attachLikeHandler(button) {
-      button.addEventListener('click', async () => {
-        const mediaId = button.dataset.mediaId; 
-        button.disabled = true;
-        try {
-          const response = await fetch('/api/likes', { 
-            method: 'POST', 
-            headers: { 'content-type': 'application/json' }, 
-            body: JSON.stringify({ mediaId, visitorId }) 
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || 'Likes API is unavailable.');
-          updateLikeButton(button, result);
-        } catch (error) {
-          console.error("Error posting like:", error);
-        } finally { 
-          button.disabled = false; 
-        }
-      });
-    }
-
-    function makeLikeButton(mediaId) {
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = `like-button flex items-center gap-1 text-gray-400 hover:text-white transition`;
-      button.dataset.mediaId = mediaId; 
-      button.setAttribute('aria-pressed', 'false');
-      button.innerHTML = '<span class="like-icon text-xl" aria-hidden="true">♡</span><span class="like-count text-sm font-semibold">0</span>';
-      attachLikeHandler(button); 
-      loadLikeState(mediaId, button); 
-      return button;
-    }
-
-    // RENDER MEDIA (Thumbnail Fix in Feed)
-    function renderMedia(item) {
-      const card = document.createElement('article');
-      card.className = 'post-card';
-      card.dataset.type = item.type;
-      const mediaId = item.key || item.id;
-
-      const header = document.createElement('div');
-      header.className = 'flex items-center gap-3 px-4 py-3';
-      
-      const avatar = document.createElement('div');
-      avatar.className = 'w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-xs font-bold text-white overflow-hidden cursor-pointer';
-      if (item.creatorPic) {
-        avatar.innerHTML = `<img src="${item.creatorPic}" class="w-full h-full object-cover">`;
-      } else {
-        avatar.textContent = (item.creator || 'A')[0].toUpperCase();
-      }
-      avatar.onclick = () => window.location.href = `/profile/index.html?name=${encodeURIComponent(item.creator)}&pic=${encodeURIComponent(item.creatorPic || '')}`;
-      
-      const creatorInfo = document.createElement('div');
-      creatorInfo.className = 'flex flex-col cursor-pointer';
-      creatorInfo.onclick = avatar.onclick;
-      creatorInfo.innerHTML = `<span class="text-sm font-bold text-white">${item.creator || 'Anonymous'}</span><span class="text-xs text-gray-500">${new Date(item.uploadedAt || Date.now()).toLocaleDateString()}</span>`;
-      
-      header.append(avatar, creatorInfo);
-
-      let media;
-      if (item.type === 'photo' || item.type === 'gif') {
-        media = document.createElement('img'); 
-        media.src = item.url; 
-        media.loading = 'lazy'; 
-        media.className = 'post-media';
-      } else {
-        media = document.createElement('video'); 
-        media.src = item.url; 
-        // THUMBNAIL YAHAN LAGAYA HAI
-        media.poster = item.url + '#t=0.1';
-        media.controls = true; 
-        media.className = 'post-media';
-        media.preload = 'metadata'; // Sirf pehla frame load hoga
-      }
-
-      const actions = document.createElement('div');
-      actions.className = 'flex items-center gap-4 px-4 pt-3 pb-1';
-      actions.appendChild(makeLikeButton(mediaId));
-      
-      const commentBtn = document.createElement('button');
-      commentBtn.className = 'text-gray-400 hover:text-white transition';
-      commentBtn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>`;
-      actions.appendChild(commentBtn);
-
-      const caption = document.createElement('div');
-      caption.className = 'px-4 pt-2 text-sm text-white';
-      caption.innerHTML = `<span class="font-bold mr-2">${item.creator || 'Anonymous'}</span>${item.title || ''}`;
-
-      card.append(header, media, actions, caption); 
-      return card;
-    }
-
-    // RENDER REELS (Thumbnail + Scroll Pause/Mute)
-    function renderReels(items) {
-      const videos = items.filter((item) => item.type === 'video');
-      reelsFeed.replaceChildren();
-      if (!videos.length) { reelsStatus.textContent = 'No videos yet. Share a video to start the reels feed.'; return; }
-      reelsStatus.textContent = '';
-      videos.forEach((item) => {
-        const card = document.createElement('article'); card.className = 'reel-card rounded-2xl';
-        const video = document.createElement('video');
-        video.src = item.url; 
-        // THUMBNAIL YAHAN LAGAYA HAI
-        video.poster = item.url + '#t=0.1';
-        video.controls = true; 
-        video.muted = true; 
-        video.loop = true; 
-        video.playsInline = true; 
-        video.preload = 'metadata';
-        video.setAttribute('aria-label', item.title || 'Community video');
-        
-        const details = document.createElement('div'); details.className = 'reel-details';
-        const title = document.createElement('h3'); title.className = 'text-lg font-bold text-white'; title.textContent = item.title || 'Untitled moment';
-        
-        const creator = document.createElement('p'); creator.className = 'mt-1 text-sm text-gray-400 cursor-pointer hover:underline pointer-events-auto';
-        creator.textContent = `by ${item.creator || 'Anonymous creator'}`;
-        creator.onclick = (e) => {
-          e.stopPropagation();
-          window.location.href = `/profile/index.html?name=${encodeURIComponent(item.creator)}&pic=${encodeURIComponent(item.creatorPic || '')}`;
-        };
-
-        details.append(title, creator, makeLikeButton(item.key || item.id)); card.append(video, details); reelsFeed.append(card);
-      });
-      
-      // SCROLL FIX: PAUSE AND MUTE
-      if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
-          entries.forEach((entry) => {
-            const video = entry.target.querySelector('video');
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.65) { 
-              video.play().catch(() => {}); 
-            }
-            else { 
-              video.pause(); 
-              video.muted = true; // Aawaz band
-            }
-          });
-        }, { root: reelsFeed, threshold: [0, 0.65, 1] });
-        reelsFeed.querySelectorAll('.reel-card').forEach((card) => observer.observe(card));
-      }
-    }
-
-    function applyFilter() {
-      const filter = document.getElementById('mediaFilter').value;
-      const cards = [...mediaGrid.children];
-      let visibleCount = 0;
-      cards.forEach((card) => {
-        const isVisible = filter === 'all' || card.dataset.type === filter;
-        card.classList.toggle('hidden', !isVisible);
-        if (isVisible) visibleCount += 1;
-      });
-      countLabel.textContent = `${visibleCount} ${visibleCount === 1 ? 'post' : 'posts'}`;
-    }
-
-    document.getElementById('mediaFilter').addEventListener('change', applyFilter);
-
-    async function loadMedia() {
-      try {
-        const response = await fetch('/api/media?t=' + Date.now());
-        if (!response.ok) throw new Error('Could not load media.');
-        galleryItems = await response.json();
-        
-        if (!galleryItems.length) {
-           wallStatus.textContent = 'Be the first to share a photo or video.';
-           mediaGrid.innerHTML = '<div class="text-center text-gray-500 py-10">No posts yet.</div>';
-           return;
-        }
-
-        mediaGrid.replaceChildren(...galleryItems.map(renderMedia));
-        renderReels(galleryItems);
-        applyFilter();
-
-        // SCROLL PAR PAUSE AUR MUTE (FEED KE LIYE)
-        if ('IntersectionObserver' in window) {
-          const videoObserver = new IntersectionObserver((entries) => {
-            entries.forEach((entry) => {
-              const video = entry.target;
-              if (video.tagName === 'VIDEO') {
-                if (!entry.isIntersecting || entry.intersectionRatio < 0.3) {
-                  if (!video.paused) { video.pause(); video.muted = true; }
-                }
-              }
-            });
-          }, { threshold: [0, 0.3] });
-          mediaGrid.querySelectorAll('video').forEach(vid => videoObserver.observe(vid));
-        }
-
-        const storiesContainer = document.getElementById('storiesContainer');
-        storiesContainer.innerHTML = ''; 
-        const uniqueCreators = [...new Map(galleryItems.map(item => [item.creator, item])).values()];
-        
-        uniqueCreators.forEach(user => {
-          if (!user.creator || user.creator === 'Anonymous') return;
-          const storyDiv = document.createElement('div');
-          storyDiv.className = 'flex flex-col items-center gap-1 cursor-pointer shrink-0';
-          storyDiv.innerHTML = `
-            <div class="story-ring">
-              <div class="story-ring-inner flex items-center justify-center bg-gray-800">
-                ${user.creatorPic ? `<img src="${user.creatorPic}" class="w-full h-full object-cover rounded-full">` : `<span class="text-white font-bold text-lg">${user.creator[0]}</span>`}
-              </div>
-            </div>
-            <span class="text-xs text-gray-300 w-16 truncate text-center">${user.creator}</span>
-          `;
-          storiesContainer.appendChild(storyDiv);
-        });
-
-      } catch (error) {
-        countLabel.textContent = 'Wall offline';
-        wallStatus.textContent = 'The public wall will load when the Node.js backend and storage are connected.';
-      }
-    }
-
-    function showSignedInUser(user) {
-      googleUser = user;
-      
-      let registeredUsers = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}');
-      registeredUsers[user.email] = { name: user.name, picture: user.picture, email: user.email };
-      localStorage.setItem('reelsBookUsers', JSON.stringify(registeredUsers));
-      localStorage.setItem('currentReelsUser', JSON.stringify(registeredUsers[user.email]));
-
-      const accountButton = document.getElementById('accountButton');
-      accountButton.textContent = 'My Account';
-      accountButton.setAttribute('aria-label', user?.name ? `Signed in as ${user.name}` : 'Signed in');
-      
-      authStatus.textContent = 'Google account connected. You can publish.';
-      authAccount.textContent = `Signed in as ${user.name}`;
-      
-      googleSignInButton.classList.add('hidden');
-      signOutButton.classList.remove('hidden');
-      accountDialogStatus.textContent = 'Google account connected.';
-      closeAccountDialog();
-    }
-
-    function showSignedOutUser(message = 'Sign in with Google to upload. Browsing and watching videos stay open to everyone.') {
-      googleUser = null;
-      const accountButton = document.getElementById('accountButton');
-      accountButton.textContent = 'Log in';
-      accountButton.setAttribute('aria-label', 'Log in or sign up');
-      authStatus.textContent = message;
-      accountDialogStatus.textContent = message;
-      authAccount.textContent = '';
-      googleSignInButton.classList.remove('hidden');
-      signOutButton.classList.add('hidden');
-    }
-
-    async function verifyGoogleCredential(credential) {
-      const response = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ credential })
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Google sign-in could not be verified.');
-      googleCredential = credential;
-      localStorage.setItem(authStorageKey, credential);
-      showSignedInUser(result);
-    }
-
-    async function initializeGoogleSignIn() {
-      try {
-        const configResponse = await fetch('/api/auth/config');
-        const config = await configResponse.json();
-        if (!configResponse.ok || !config.googleClientId) {
-          showSignedOutUser('Google sign-in is not configured yet. The site owner needs to add GOOGLE_CLIENT_ID.');
-          googleSignInButton.textContent = '';
-          return;
-        }
-
-        let attempts = 0;
-        const waitForLibrary = window.setInterval(() => {
-          attempts += 1;
-          if (window.google?.accounts?.id) {
-            window.clearInterval(waitForLibrary);
-            window.google.accounts.id.initialize({
-              client_id: config.googleClientId,
-              callback: async (response) => {
-                try {
-                  await verifyGoogleCredential(response.credential);
-                } catch (error) {
-                  showSignedOutUser(error.message);
-                }
-              }
-            });
-            window.google.accounts.id.renderButton(googleSignInButton, {
-              type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill'
-            });
-            window.google.accounts.id.renderButton(document.getElementById('googleContinueButton'), {
-              type: 'standard', theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: 280
-            });
-            window.google.accounts.id.renderButton(document.getElementById('googleSignupButton'), {
-              type: 'standard', theme: 'outline', size: 'large', text: 'signup_with', shape: 'pill', width: 280
-            });
-            if (googleCredential) {
-              verifyGoogleCredential(googleCredential).catch(() => {
-                googleCredential = '';
-                localStorage.removeItem(authStorageKey);
-                showSignedOutUser('Your Google sign-in expired. Sign in again to upload.');
-              });
-            }
-          } else if (attempts >= 100) {
-            window.clearInterval(waitForLibrary);
-            showSignedOutUser('Google sign-in could not load. Check your connection and reload the page.');
-          }
-        }, 100);
-      } catch (error) {
-        showSignedOutUser('Could not check Google sign-in settings. Please reload the page.');
-      }
-    }
-
-    signOutButton.addEventListener('click', () => {
-      googleCredential = '';
-      localStorage.removeItem(authStorageKey);
-      window.google?.accounts?.id?.disableAutoSelect();
-      showSignedOutUser();
-    });
-
-    initializeGoogleSignIn();
-
-    document.getElementById('publishButton').addEventListener('click', (event) => {
-      if (!googleCredential || !googleUser) {
-        showUploadMessage('Sign in with Google before publishing. You can still browse THE RB and watch videos without an account.');
-        return;
-      }
-
-      if (!selectedFile) {
-        showUploadMessage('Choose a photo or video before publishing.');
-        return;
-      }
-      const button = event.currentTarget;
-      const title = document.getElementById('mediaTitle').value.trim() || selectedFile.name.replace(/\.[^/.]+$/, '');
-      
-      const formData = new FormData();
-      formData.append('media', selectedFile);
-      formData.append('title', title);
-      formData.append('creator', googleUser.name || 'Anonymous');
-      formData.append('creatorEmail', googleUser.email || '');
-      formData.append('creatorPic', googleUser.picture || '');
-
-      button.disabled = true;
-      button.textContent = 'Uploading… 0%';
-      showUploadMessage('Uploading to cloud storage. Please keep this tab open.');
-
-      const request = new XMLHttpRequest();
-      request.open('POST', '/api/upload');
-      request.setRequestHeader('Authorization', `Bearer ${googleCredential}`);
-      request.timeout = 30 * 60 * 1000;
-      request.upload.addEventListener('progress', (progressEvent) => {
-        if (!progressEvent.lengthComputable) return;
-        const percent = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-        button.textContent = `Uploading… ${percent}%`;
-        showUploadMessage(`Uploading your ${selectedFile.type.startsWith('image/') ? 'photo' : 'video'}… ${percent}%`);
-      });
-      request.addEventListener('load', async () => {
-        try {
-          const result = JSON.parse(request.responseText);
-          if (request.status < 200 || request.status >= 300) throw new Error(result.error || `Upload failed (${request.status}).`);
-          showUploadMessage('Published successfully to the public wall.');
-          selectedFile = null;
-          mediaInput.value = '';
-          filePanel.classList.add('hidden');
-          document.getElementById('mediaTitle').value = '';
-          closeUploadPanel(); 
-          await loadMedia();
-        } catch (error) {
-          showUploadMessage(error.message || 'Upload failed. Please try again.');
-        } finally {
-          button.disabled = false;
-          button.textContent = 'Publish';
-        }
-      });
-      request.addEventListener('error', () => {
-        showUploadMessage('Network error. Check that the backend is running and try again.');
-        button.disabled = false;
-        button.textContent = 'Publish';
-      });
-      request.addEventListener('timeout', () => {
-        showUploadMessage('The upload timed out. Try a smaller file or a faster connection.');
-        button.disabled = false;
-        button.textContent = 'Publish';
-      });
-      request.send(formData);
-    });
-
-    const featuredLikeButton = document.querySelector('.like-hero');
-    if(featuredLikeButton) {
-      attachLikeHandler(featuredLikeButton);
-      loadLikeState('featured-sad-image', featuredLikeButton);
-    }
-    
-    loadMedia();
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(registration => console.log('Service Worker registered!', registration.scope))
-          .catch(err => console.log('Service Worker registration failed:', err));
-      });
-    }
-
-  </script>
+initializeGoogleSignIn();
+loadClips();
+if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(()=>{})); }
+</script>
 </body>
 </html>
