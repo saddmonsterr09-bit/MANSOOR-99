@@ -233,13 +233,26 @@ async function loadFriendButton() {
       b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold';
       b.textContent = '+ Add friend';
       b.onclick = async () => {
-        b.disabled = true;
-        await fetch('/api/friends/request', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from: me.email, to: targetEmail }) });
+        b.disabled = true; b.textContent = 'Sending…';
+        try {
+          const resp = await fetch('/api/friends/request', {
+            method:'POST', headers:{'content-type':'application/json'},
+            body: JSON.stringify({ from: me.email, to: targetEmail })
+          });
+          const respData = await resp.json().catch(() => ({}));
+          if (!resp.ok) {
+            alert('Could not send friend request: ' + (respData.error || `HTTP ${resp.status}`));
+          }
+        } catch (err) {
+          alert('Network error: ' + err.message);
+        }
         loadFriendButton();
       };
       actions.appendChild(b);
     }
-  } catch {}
+  } catch (err) {
+    console.error('Friend status error:', err);
+  }
 }
 
 function openMessages(friend) {
