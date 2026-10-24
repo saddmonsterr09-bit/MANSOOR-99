@@ -95,8 +95,14 @@ async function listMediaWithStats(env) {
   const likesMap = Object.fromEntries((likeRows.results || []).map(r => [r.media_id, r.c]));
   const viewsMap = Object.fromEntries((viewRows.results || []).map(r => [r.media_id, r.c]));
   const watchMap = Object.fromEntries((watchRows.results || []).map(r => [r.media_id, r.completion]));
+
+  // Backfill creatorEmail for old videos by looking up creator name in users table
+  const usersRows = await env.DB.prepare("SELECT email, name FROM users").all();
+  const nameToEmail = Object.fromEntries((usersRows.results || []).map(u => [u.name, u.email]));
+
   return all.map(item => ({
     ...item,
+    creatorEmail: item.creatorEmail || nameToEmail[item.creator] || "",
     views: viewsMap[item.key] || 0,
     likes: likesMap[item.key] || 0,
     completion: watchMap[item.key] || 0
@@ -257,11 +263,23 @@ export default {
       const pair = from < to ? [from, to] : [to, from];
       const exists = await env.DB.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").bind(pair[0], pair[1]).first();
       if (exists) return json({ error: "Already friends" }, 400);
-      const id = crypto.randomUUID();
+
+      // Try insert; if blocked by unique constraint, revive rejected row
       try {
+        const id = crypto.randomUUID();
         await env.DB.prepare("INSERT INTO friend_requests (id, from_email, to_email, status) VALUES (?, ?, ?, 'pending')").bind(id, from, to).run();
         return json({ ok: true, id });
-      } catch { return json({ error: "Request already exists" }, 400); }
+      } catch {
+        const existing = await env.DB.prepare("SELECT id, status FROM friend_requests WHERE from_email = ? AND to_email = ?").bind(from, to).first();
+        if (existing && existing.status === "rejected") {
+          await env.DB.prepare("UPDATE friend_requests SET status = 'pending', created_at = CURRENT_TIMESTAMP WHERE id = ?").bind(existing.id).run();
+          return json({ ok: true, id: existing.id, revived: true });
+        }
+        if (existing && existing.status === "pending") {
+          return json({ ok: true, id: existing.id, alreadyPending: true });
+        }
+        return json({ error: "Request already exists" }, 400);
+      }
     }
     if (path === "/api/friends/accept" && method === "POST") {
       const b = await request.json();
