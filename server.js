@@ -161,8 +161,14 @@ async function listMediaWithStats() {
   const likesMap = Object.fromEntries(database.prepare("SELECT media_id, COUNT(*) as c FROM likes GROUP BY media_id").all().map(r => [r.media_id, r.c]));
   const viewsMap = Object.fromEntries(database.prepare("SELECT media_id, COUNT(*) as c FROM media_views GROUP BY media_id").all().map(r => [r.media_id, r.c]));
   const watchMap = Object.fromEntries(database.prepare("SELECT media_id, AVG(CASE WHEN duration > 0 THEN MIN(seconds * 1.0 / duration, 1.0) ELSE 0 END) as completion FROM watch_events GROUP BY media_id").all().map(r => [r.media_id, r.completion]));
+
+  // Backfill creatorEmail for old videos by looking up creator name in users table
+  const usersRows = database.prepare("SELECT email, name FROM users").all();
+  const nameToEmail = Object.fromEntries(usersRows.map(u => [u.name, u.email]));
+
   return all.map(item => ({
     ...item,
+    creatorEmail: item.creatorEmail || nameToEmail[item.creator] || "",
     views: viewsMap[item.key] || 0,
     likes: likesMap[item.key] || 0,
     completion: watchMap[item.key] || 0
@@ -219,11 +225,22 @@ app.post("/api/friends/request", (req, res) => {
   if (!from || !to || from === to) return res.status(400).json({ error: "invalid" });
   const pair = from < to ? [from, to] : [to, from];
   if (database.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").get(pair[0], pair[1])) return res.status(400).json({ error: "Already friends" });
-  const id = randomUUID();
+
   try {
+    const id = randomUUID();
     database.prepare("INSERT INTO friend_requests (id, from_email, to_email, status) VALUES (?, ?, ?, 'pending')").run(id, from, to);
     res.json({ ok: true, id });
-  } catch { res.status(400).json({ error: "Request already exists" }); }
+  } catch {
+    const existing = database.prepare("SELECT id, status FROM friend_requests WHERE from_email = ? AND to_email = ?").get(from, to);
+    if (existing && existing.status === "rejected") {
+      database.prepare("UPDATE friend_requests SET status = 'pending', created_at = CURRENT_TIMESTAMP WHERE id = ?").run(existing.id);
+      return res.json({ ok: true, id: existing.id, revived: true });
+    }
+    if (existing && existing.status === "pending") {
+      return res.json({ ok: true, id: existing.id, alreadyPending: true });
+    }
+    res.status(400).json({ error: "Request already exists" });
+  }
 });
 app.post("/api/friends/accept", (req, res) => {
   const me = normEmail(req.body.me);
