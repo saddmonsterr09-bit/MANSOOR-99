@@ -96,7 +96,6 @@ async function listMediaWithStats(env) {
   const viewsMap = Object.fromEntries((viewRows.results || []).map(r => [r.media_id, r.c]));
   const watchMap = Object.fromEntries((watchRows.results || []).map(r => [r.media_id, r.completion]));
 
-  // Backfill creatorEmail for old videos by looking up creator name in users table (case-insensitive)
   const usersRows = await env.DB.prepare("SELECT email, name FROM users").all();
   const nameToEmail = {};
   (usersRows.results || []).forEach(u => {
@@ -161,7 +160,6 @@ export default {
       return json(u || null);
     }
 
-    // ⭐ NEW: Look up user by name (case-insensitive) — used to resolve old videos missing email
     if (path === "/api/users/find" && method === "GET") {
       const name = String(url.searchParams.get("name") || "").trim();
       if (!name) return json(null);
@@ -169,6 +167,31 @@ export default {
         "SELECT email, name, picture FROM users WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1"
       ).bind(name).first();
       return json(u || null);
+    }
+
+    // ⭐ NEW: List users (with friend status) — powers "Find People" feature
+    if (path === "/api/users/list" && method === "GET") {
+      const me = (url.searchParams.get("me") || "").toLowerCase();
+      const q = String(url.searchParams.get("q") || "").trim().toLowerCase();
+      let query = "SELECT email, name, picture FROM users WHERE email != ''";
+      const params = [];
+      if (me) { query += " AND email != ?"; params.push(me); }
+      if (q) { query += " AND (LOWER(name) LIKE ? OR LOWER(email) LIKE ?)"; params.push(`%${q}%`, `%${q}%`); }
+      query += " ORDER BY updated_at DESC LIMIT 100";
+      const rows = await env.DB.prepare(query).bind(...params).all();
+      const users = rows.results || [];
+      const enriched = await Promise.all(users.map(async (u) => {
+        if (!me) return { ...u, status: "none" };
+        const pair = me < u.email ? [me, u.email] : [u.email, me];
+        const friend = await env.DB.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").bind(pair[0], pair[1]).first();
+        if (friend) return { ...u, status: "friends" };
+        const outgoing = await env.DB.prepare("SELECT id FROM friend_requests WHERE from_email = ? AND to_email = ? AND status = 'pending'").bind(me, u.email).first();
+        if (outgoing) return { ...u, status: "outgoing", requestId: outgoing.id };
+        const incoming = await env.DB.prepare("SELECT id FROM friend_requests WHERE from_email = ? AND to_email = ? AND status = 'pending'").bind(u.email, me).first();
+        if (incoming) return { ...u, status: "incoming", requestId: incoming.id };
+        return { ...u, status: "none" };
+      }));
+      return json(enriched);
     }
 
     if (path === "/api/likes" && method === "GET") {
@@ -203,15 +226,6 @@ export default {
       const mediaId = url.searchParams.get("mediaId");
       const c = await env.DB.prepare("SELECT COUNT(*) as count FROM media_views WHERE media_id = ?").bind(mediaId).first();
       return json({ mediaId, count: c ? c.count : 0 });
-    }
-    if (path === "/api/views/batch" && method === "GET") {
-      const ids = (url.searchParams.get("mediaIds") || "").split(",").filter(Boolean);
-      if (!ids.length) return json({});
-      const ph = ids.map(() => "?").join(",");
-      const rows = await env.DB.prepare(`SELECT media_id, COUNT(*) as count FROM media_views WHERE media_id IN (${ph}) GROUP BY media_id`).bind(...ids).all();
-      const out = {}; ids.forEach(id => out[id] = 0);
-      (rows.results || []).forEach(r => out[r.media_id] = r.count);
-      return json(out);
     }
 
     if (path === "/api/watch" && method === "POST") {
@@ -292,9 +306,7 @@ export default {
           await env.DB.prepare("UPDATE friend_requests SET status = 'pending', created_at = CURRENT_TIMESTAMP WHERE id = ?").bind(existing.id).run();
           return json({ ok: true, id: existing.id, revived: true });
         }
-        if (existing && existing.status === "pending") {
-          return json({ ok: true, id: existing.id, alreadyPending: true });
-        }
+        if (existing && existing.status === "pending") return json({ ok: true, id: existing.id, alreadyPending: true });
         return json({ error: "Request already exists" }, 400);
       }
     }
