@@ -21,7 +21,8 @@ body { background:#000; color:#fff; }
 .loading-overlay { position:absolute; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:15; pointer-events:none; transition:opacity .3s; }
 .loading-overlay.hidden { opacity:0; }
 .like-button[aria-pressed="true"] { color:var(--color-primary); border-color:var(--color-primary); }
-.view-count { position:absolute; top:20px; left:20px; z-index:20; background:rgba(0,0,0,.6); padding:4px 10px; border-radius:12px; font-size:12px; }
+/* ⭐ view badge moved below the fixed header so it's not hidden by "REELS" text */
+.view-count { position:absolute; top:72px; left:20px; z-index:20; background:rgba(0,0,0,.6); padding:4px 10px; border-radius:12px; font-size:12px; }
 </style>
 </head>
 <body>
@@ -74,7 +75,7 @@ function makeLikeButton(mediaId) {
   return b;
 }
 
-// ⭐ FIX: view is recorded ONLY when the reel actually starts playing (not at render time)
+// ⭐ View is recorded ONLY when the reel actually starts playing (not at render time)
 function recordView(mediaId) {
   const key = 'viewed:' + mediaId;
   if (sessionStorage.getItem(key)) return;
@@ -110,7 +111,7 @@ function renderReels(items) {
     video.addEventListener('loadeddata', () => loadingOverlay.classList.add('hidden'));
     video.addEventListener('click', () => { video.paused ? video.play().catch(()=>{}) : video.pause(); });
 
-    // ⭐ Record view ONLY when the video truly starts playing
+    // ⭐ Record view only when the video truly starts playing
     video.addEventListener('play', () => recordView(item.key));
 
     // Watch-time tracking
