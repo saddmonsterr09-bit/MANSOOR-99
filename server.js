@@ -85,14 +85,34 @@ app.get("/api/users", (req, res) => {
   res.json(u || null);
 });
 
-// ⭐ NEW: Look up user by name (case-insensitive) — used to resolve old videos missing email
 app.get("/api/users/find", (req, res) => {
   const name = String(req.query.name || "").trim();
   if (!name) return res.json(null);
-  const u = database.prepare(
-    "SELECT email, name, picture FROM users WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1"
-  ).get(name);
+  const u = database.prepare("SELECT email, name, picture FROM users WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1").get(name);
   res.json(u || null);
+});
+
+// ⭐ NEW: List users (with friend status)
+app.get("/api/users/list", (req, res) => {
+  const me = normEmail(req.query.me);
+  const q = String(req.query.q || "").trim().toLowerCase();
+  let query = "SELECT email, name, picture FROM users WHERE email != ''";
+  const params = [];
+  if (me) { query += " AND email != ?"; params.push(me); }
+  if (q) { query += " AND (LOWER(name) LIKE ? OR LOWER(email) LIKE ?)"; params.push(`%${q}%`, `%${q}%`); }
+  query += " ORDER BY updated_at DESC LIMIT 100";
+  const users = database.prepare(query).all(...params);
+  const enriched = users.map(u => {
+    if (!me) return { ...u, status: "none" };
+    const pair = me < u.email ? [me, u.email] : [u.email, me];
+    if (database.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").get(pair[0], pair[1])) return { ...u, status: "friends" };
+    const o = database.prepare("SELECT id FROM friend_requests WHERE from_email = ? AND to_email = ? AND status = 'pending'").get(me, u.email);
+    if (o) return { ...u, status: "outgoing", requestId: o.id };
+    const i = database.prepare("SELECT id FROM friend_requests WHERE from_email = ? AND to_email = ? AND status = 'pending'").get(u.email, me);
+    if (i) return { ...u, status: "incoming", requestId: i.id };
+    return { ...u, status: "none" };
+  });
+  res.json(enriched);
 });
 
 app.get("/api/likes", (req, res) => {
@@ -122,15 +142,6 @@ app.get("/api/views", (req, res) => {
   const { mediaId } = req.query;
   const count = database.prepare("SELECT COUNT(*) AS count FROM media_views WHERE media_id = ?").get(mediaId).count;
   res.json({ mediaId, count });
-});
-app.get("/api/views/batch", (req, res) => {
-  const ids = String(req.query.mediaIds || "").split(",").filter(Boolean);
-  if (!ids.length) return res.json({});
-  const ph = ids.map(() => "?").join(",");
-  const rows = database.prepare(`SELECT media_id, COUNT(*) as count FROM media_views WHERE media_id IN (${ph}) GROUP BY media_id`).all(...ids);
-  const out = {}; ids.forEach(id => out[id] = 0);
-  rows.forEach(r => out[r.media_id] = r.count);
-  res.json(out);
 });
 
 app.post("/api/watch", (req, res) => {
@@ -172,18 +183,13 @@ async function listMediaWithStats() {
   const viewsMap = Object.fromEntries(database.prepare("SELECT media_id, COUNT(*) as c FROM media_views GROUP BY media_id").all().map(r => [r.media_id, r.c]));
   const watchMap = Object.fromEntries(database.prepare("SELECT media_id, AVG(CASE WHEN duration > 0 THEN MIN(seconds * 1.0 / duration, 1.0) ELSE 0 END) as completion FROM watch_events GROUP BY media_id").all().map(r => [r.media_id, r.completion]));
 
-  // Backfill creatorEmail for old videos by looking up creator name in users table (case-insensitive)
   const usersRows = database.prepare("SELECT email, name FROM users").all();
   const nameToEmail = {};
-  usersRows.forEach(u => {
-    if (u.name) nameToEmail[String(u.name).toLowerCase().trim()] = u.email;
-  });
+  usersRows.forEach(u => { if (u.name) nameToEmail[String(u.name).toLowerCase().trim()] = u.email; });
 
   return all.map(item => {
     let email = item.creatorEmail || "";
-    if (!email && item.creator) {
-      email = nameToEmail[String(item.creator).toLowerCase().trim()] || "";
-    }
+    if (!email && item.creator) email = nameToEmail[String(item.creator).toLowerCase().trim()] || "";
     return {
       ...item,
       creatorEmail: email,
@@ -209,9 +215,7 @@ app.get("/api/recommendations", async (req, res) => {
     const maxLikes = Math.max(1, ...all.map(v => v.likes));
     const maxViews = Math.max(1, ...all.map(v => v.views));
     let interests = {};
-    if (visitorId) {
-      database.prepare("SELECT tag, weight FROM user_interests WHERE visitor_id = ?").all(visitorId).forEach(r => interests[r.tag] = r.weight);
-    }
+    if (visitorId) database.prepare("SELECT tag, weight FROM user_interests WHERE visitor_id = ?").all(visitorId).forEach(r => interests[r.tag] = r.weight);
     const maxInterest = Math.max(1, ...Object.values(interests));
     const scored = all.map(item => {
       const perf = 0.4 * (item.views / maxViews) + 0.3 * (item.likes / maxLikes) + 0.3 * (item.completion || 0);
@@ -254,9 +258,7 @@ app.post("/api/friends/request", (req, res) => {
       database.prepare("UPDATE friend_requests SET status = 'pending', created_at = CURRENT_TIMESTAMP WHERE id = ?").run(existing.id);
       return res.json({ ok: true, id: existing.id, revived: true });
     }
-    if (existing && existing.status === "pending") {
-      return res.json({ ok: true, id: existing.id, alreadyPending: true });
-    }
+    if (existing && existing.status === "pending") return res.json({ ok: true, id: existing.id, alreadyPending: true });
     res.status(400).json({ error: "Request already exists" });
   }
 });
