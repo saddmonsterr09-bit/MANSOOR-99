@@ -96,17 +96,26 @@ async function listMediaWithStats(env) {
   const viewsMap = Object.fromEntries((viewRows.results || []).map(r => [r.media_id, r.c]));
   const watchMap = Object.fromEntries((watchRows.results || []).map(r => [r.media_id, r.completion]));
 
-  // Backfill creatorEmail for old videos by looking up creator name in users table
+  // Backfill creatorEmail for old videos by looking up creator name in users table (case-insensitive)
   const usersRows = await env.DB.prepare("SELECT email, name FROM users").all();
-  const nameToEmail = Object.fromEntries((usersRows.results || []).map(u => [u.name, u.email]));
+  const nameToEmail = {};
+  (usersRows.results || []).forEach(u => {
+    if (u.name) nameToEmail[String(u.name).toLowerCase().trim()] = u.email;
+  });
 
-  return all.map(item => ({
-    ...item,
-    creatorEmail: item.creatorEmail || nameToEmail[item.creator] || "",
-    views: viewsMap[item.key] || 0,
-    likes: likesMap[item.key] || 0,
-    completion: watchMap[item.key] || 0
-  })).sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+  return all.map(item => {
+    let email = item.creatorEmail || "";
+    if (!email && item.creator) {
+      email = nameToEmail[String(item.creator).toLowerCase().trim()] || "";
+    }
+    return {
+      ...item,
+      creatorEmail: email,
+      views: viewsMap[item.key] || 0,
+      likes: likesMap[item.key] || 0,
+      completion: watchMap[item.key] || 0
+    };
+  }).sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
 }
 
 export default {
@@ -149,6 +158,16 @@ export default {
       const email = (url.searchParams.get("email") || "").toLowerCase();
       if (!email) return json({ error: "missing email" }, 400);
       const u = await env.DB.prepare("SELECT email, name, picture FROM users WHERE email = ?").bind(email).first();
+      return json(u || null);
+    }
+
+    // ⭐ NEW: Look up user by name (case-insensitive) — used to resolve old videos missing email
+    if (path === "/api/users/find" && method === "GET") {
+      const name = String(url.searchParams.get("name") || "").trim();
+      if (!name) return json(null);
+      const u = await env.DB.prepare(
+        "SELECT email, name, picture FROM users WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1"
+      ).bind(name).first();
       return json(u || null);
     }
 
@@ -263,8 +282,6 @@ export default {
       const pair = from < to ? [from, to] : [to, from];
       const exists = await env.DB.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").bind(pair[0], pair[1]).first();
       if (exists) return json({ error: "Already friends" }, 400);
-
-      // Try insert; if blocked by unique constraint, revive rejected row
       try {
         const id = crypto.randomUUID();
         await env.DB.prepare("INSERT INTO friend_requests (id, from_email, to_email, status) VALUES (?, ?, ?, 'pending')").bind(id, from, to).run();
@@ -370,10 +387,8 @@ export default {
     }
 
     if (path === "/api/media" && method === "GET") {
-      try {
-        const items = await listMediaWithStats(env);
-        return json(items);
-      } catch { return json({ error: "Could not load media" }, 500); }
+      try { return json(await listMediaWithStats(env)); }
+      catch { return json({ error: "Could not load media" }, 500); }
     }
 
     if (path.startsWith("/media/") && method === "GET") {
