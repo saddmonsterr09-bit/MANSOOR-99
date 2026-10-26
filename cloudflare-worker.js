@@ -25,7 +25,8 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS user_interests (visitor_id TEXT NOT NULL, tag TEXT NOT NULL, weight REAL NOT NULL DEFAULT 1, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (visitor_id, tag))`,
   `CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT, picture TEXT, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE TABLE IF NOT EXISTS comments (id TEXT PRIMARY KEY, media_id TEXT NOT NULL, author_email TEXT, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE INDEX IF NOT EXISTS comments_media_idx ON comments (media_id, created_at)`
+  `CREATE INDEX IF NOT EXISTS comments_media_idx ON comments (media_id, created_at)`,
+  `CREATE TABLE IF NOT EXISTS copyright_reports (id TEXT PRIMARY KEY, media_id TEXT NOT NULL, media_url TEXT NOT NULL, reporter_email TEXT, reporter_name TEXT, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`
 ];
 
 let schemaReady = false;
@@ -229,6 +230,35 @@ export default {
         mediaCache.ts = 0;
         return json({ ok: true, id });
       } catch (err) { return json({ error: "failed" }, 500); }
+    }
+
+    // ⭐ NEW: COPYRIGHT REPORT ROUTES
+    if (path === "/api/report" && method === "POST") {
+      try {
+        const { mediaId, mediaUrl, reporterEmail, reporterName, reason } = await request.json();
+        if (!mediaId || !reason) return json({ error: "Missing data" }, 400);
+        const id = crypto.randomUUID();
+        await env.DB.prepare(
+          "INSERT INTO copyright_reports (id, media_id, media_url, reporter_email, reporter_name, reason) VALUES (?, ?, ?, ?, ?, ?)"
+        ).bind(id, mediaId, mediaUrl || "", reporterEmail || "", reporterName || "Anonymous", reason).run();
+        return json({ ok: true, id });
+      } catch { return json({ error: "Failed to save report" }, 500); }
+    }
+    if (path === "/api/admin/reports" && method === "GET") {
+      const rows = await env.DB.prepare("SELECT * FROM copyright_reports ORDER BY created_at DESC").all();
+      return json(rows.results || []);
+    }
+    if (path === "/api/admin/delete-video" && method === "POST") {
+      const { mediaId, reportId } = await request.json();
+      if (mediaId) await env.VIDEOS.delete(mediaId);
+      if (reportId) await env.DB.prepare("UPDATE copyright_reports SET status = 'resolved' WHERE id = ?").bind(reportId).run();
+      mediaCache.ts = 0;
+      return json({ ok: true });
+    }
+    if (path === "/api/admin/reject-report" && method === "POST") {
+      const { reportId } = await request.json();
+      await env.DB.prepare("UPDATE copyright_reports SET status = 'rejected' WHERE id = ?").bind(reportId).run();
+      return json({ ok: true });
     }
 
     if (path === "/api/views" && method === "POST") {
