@@ -20,15 +20,15 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
 
 <main class="max-w-5xl mx-auto">
 
-  <!-- 🛑 Login Wall -->
+  <!-- Login Wall -->
   <div id="loginWall" class="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center max-w-md mx-auto mt-20">
     <h2 class="text-xl font-bold mb-4">Admin Access Only</h2>
     <p class="text-gray-400 mb-6 text-sm">Please sign in with your admin Google account.</p>
     <div id="googleSignInBtn" class="flex justify-center mb-4"></div>
-    <p id="authStatus" class="text-sm text-red-400"></p>
+    <p id="authStatus" class="text-sm text-red-400 font-bold"></p>
   </div>
 
-  <!-- 🛑 Reports Section (Hidden by default) -->
+  <!-- Reports Section -->
   <div id="reportsSection" class="hidden">
     <div class="mb-6 flex justify-between items-center">
       <h2 class="text-xl font-bold">Copyright Reports</h2>
@@ -40,12 +40,9 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
 </main>
 
 <script>
-// ⚠️ YAHAN APNI EMAIL DAALEIN (Sirf yahi email Admin banegi)
-const ADMIN_EMAIL = "mansoor@example.com"; // <--- APNI GOOGLE EMAIL YAHAN LIKHEIN
+const ADMIN_EMAIL = "saddmonsterr09@gmail.com"; // ⭐ Admin Email set
+const ADMIN_TOKEN_KEY = 'adminGoogleCredential';
 
-let adminUser = null;
-
-// Google Login Initialize karein
 async function initAdminLogin() {
   try {
     const r = await fetch('/api/auth/config');
@@ -55,7 +52,6 @@ async function initAdminLogin() {
     google.accounts.id.initialize({
       client_id: cfg.googleClientId,
       callback: async (res) => {
-        // Token verify karein backend se
         const verifyRes = await fetch('/api/auth/google', {
           method: 'POST', headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ credential: res.credential })
@@ -64,13 +60,11 @@ async function initAdminLogin() {
 
         if (verifyRes.ok) {
           if (data.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-            // ✅ Email match ho gayi! Admin panel kholo
-            adminUser = data;
+            localStorage.setItem(ADMIN_TOKEN_KEY, res.credential);
             document.getElementById('loginWall').classList.add('hidden');
             document.getElementById('reportsSection').classList.remove('hidden');
             loadAdminReports();
           } else {
-            // ❌ Email match nahi hui (Koi aur banda hai)
             document.getElementById('authStatus').textContent = "Access Denied. You are not the admin.";
           }
         } else {
@@ -87,13 +81,25 @@ async function initAdminLogin() {
   }
 }
 
-// Reports Load karo
+function getAdminToken() {
+  return localStorage.getItem(ADMIN_TOKEN_KEY) || '';
+}
+
 async function loadAdminReports() {
   const list = document.getElementById('reportsList');
   list.innerHTML = '<p class="text-gray-500 text-center py-10">Loading reports...</p>';
 
   try {
-    const res = await fetch('/api/admin/reports');
+    const res = await fetch('/api/admin/reports', {
+      headers: { 'Authorization': `Bearer ${getAdminToken()}` }
+    });
+
+    if (res.status === 401) {
+      localStorage.removeItem(ADMIN_TOKEN_KEY);
+      location.reload();
+      return;
+    }
+
     const reports = await res.json();
 
     if (!reports.length) {
@@ -134,12 +140,14 @@ async function loadAdminReports() {
 }
 
 async function deleteReportedVideo(mediaId, reportId) {
-  if (!adminUser) return alert('Login required');
   if (!confirm('⚠️ Delete this video permanently from R2?')) return;
-  
   try {
     const res = await fetch('/api/admin/delete-video', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
+      method: 'POST', 
+      headers: { 
+        'content-type': 'application/json',
+        'Authorization': `Bearer ${getAdminToken()}` 
+      },
       body: JSON.stringify({ mediaId, reportId })
     });
     if (res.ok) { alert('✅ Video Deleted.'); loadAdminReports(); }
@@ -148,20 +156,29 @@ async function deleteReportedVideo(mediaId, reportId) {
 }
 
 async function rejectReport(reportId) {
-  if (!adminUser) return alert('Login required');
   if (!confirm('Reject this report? Video will stay.')) return;
-  
   try {
     const res = await fetch('/api/admin/reject-report', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
+      method: 'POST', 
+      headers: { 
+        'content-type': 'application/json',
+        'Authorization': `Bearer ${getAdminToken()}`
+      },
       body: JSON.stringify({ reportId })
     });
     if (res.ok) { alert('✅ Report Rejected.'); loadAdminReports(); }
   } catch { alert('Network error.'); }
 }
 
-// Sab shuru karo
-initAdminLogin();
+// Check if already logged in (token exists)
+if (getAdminToken()) {
+  // Token exist karta hai toh seedha reports load karo, agar expire hua toh 401 aayega aur reload hoga
+  document.getElementById('loginWall').classList.add('hidden');
+  document.getElementById('reportsSection').classList.remove('hidden');
+  loadAdminReports();
+} else {
+  initAdminLogin();
+}
 </script>
 </body>
 </html>
