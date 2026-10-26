@@ -33,6 +33,9 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
 /* Modal for comments */
 .modal-overlay { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.85); display:flex; align-items:flex-end; justify-content:center; }
 .modal-content { background:#18181b; width:100%; max-width:500px; max-height:80vh; border-radius:16px 16px 0 0; display:flex; flex-direction:column; }
+
+/* Header icons badge */
+.icon-badge { position:absolute; top:-4px; right:-6px; background:#ef4444; color:#fff; font-size:10px; font-weight:bold; min-width:16px; height:16px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0 4px; }
 </style>
 </head>
 <body class="antialiased">
@@ -41,9 +44,23 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
   📡 You're offline — showing cached content
 </div>
 
+<!-- ⭐ HEADER with Messages & Notifications -->
 <header class="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-gray-800 px-4 py-3 flex justify-between items-center">
   <a href="/" class="text-2xl font-logo">ReelsBook</a>
-  <div class="flex items-center gap-5">
+  <div class="flex items-center gap-4">
+    
+    <!-- Messages Icon -->
+    <a href="/profile/index.html?tab=messages" class="relative text-white hover:text-[var(--color-primary)] transition">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      <span id="headerMsgBadge" class="icon-badge hidden">0</span>
+    </a>
+
+    <!-- Notifications Icon -->
+    <button id="notifBtn" class="relative text-white hover:text-[var(--color-primary)] transition">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+      <span id="headerNotifBadge" class="icon-badge hidden">0</span>
+    </button>
+
     <button id="toggleUploadTop" class="text-white hover:text-[var(--color-primary)]"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></button>
     <button id="accountButton" class="rounded-full border border-gray-700 px-3 py-1.5 text-sm font-semibold hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Log in</button>
   </div>
@@ -177,6 +194,17 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
   </a>
 </nav>
 
+<!-- Notifications Modal -->
+<div id="notifModal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
+      <h3 class="text-lg font-bold">Notifications</h3>
+      <button onclick="closeNotif()" class="text-2xl text-gray-400 px-2">×</button>
+    </div>
+    <div id="notifList" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm"></div>
+  </div>
+</div>
+
 <!-- Comments Modal -->
 <div id="commentModal" class="modal-overlay hidden">
   <div class="modal-content">
@@ -195,7 +223,7 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
 <script>
 const authStorageKey = 'fullMastiGoogleCredential';
 let googleCredential = localStorage.getItem(authStorageKey) || '';
-let googleUser = null;
+let googleUser = JSON.parse(localStorage.getItem('currentReelsUser') || 'null');
 let galleryItems = [];
 let currentCommentMediaId = null;
 
@@ -206,41 +234,93 @@ const visitorId = (() => {
 })();
 const $ = (id) => document.getElementById(id);
 
-// Offline banner
-(function () {
-  const banner = document.getElementById('offlineBanner');
-  function update() { banner.classList.toggle('hidden', navigator.onLine); }
-  window.addEventListener('online', update);
-  window.addEventListener('offline', update);
-  update();
-})();
-
-// Client Cache
-const MEDIA_CACHE_KEY = 'reelsbook_media_cache_v1';
-function getCachedMediaClient() {
+// ⭐ NOTIFICATIONS LOGIC
+async function loadNotifications() {
+  if (!googleUser) return;
   try {
-    const raw = sessionStorage.getItem(MEDIA_CACHE_KEY);
-    if (!raw) return null;
-    const obj = JSON.parse(raw);
-    if (!obj || !obj.ts || !obj.data) return null;
-    if (Date.now() - obj.ts > 60000) return null;
-    return obj.data;
-  } catch { return null; }
-}
-function setCachedMediaClient(data) {
-  try { sessionStorage.setItem(MEDIA_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch {}
+    const [convRes, pendRes] = await Promise.all([
+      fetch(`/api/conversations?me=${encodeURIComponent(googleUser.email)}`),
+      fetch(`/api/friends/pending?me=${encodeURIComponent(googleUser.email)}`)
+    ]);
+    
+    let totalMsgs = 0, totalReqs = 0;
+    let convList = [], pendList = [];
+
+    if (convRes.ok) {
+      convList = await convRes.json();
+      totalMsgs = convList.reduce((s, c) => s + (c.unread || 0), 0);
+    }
+    if (pendRes.ok) {
+      const p = await pendRes.json();
+      pendList = p.incoming || [];
+      totalReqs = pendList.length;
+    }
+
+    // Update badges
+    const msgBadge = $('headerMsgBadge');
+    const notifBadge = $('headerNotifBadge');
+    const totalNotifs = totalMsgs + totalReqs;
+
+    if (totalMsgs > 0) { msgBadge.textContent = totalMsgs > 9 ? '9+' : totalMsgs; msgBadge.classList.remove('hidden'); }
+    else msgBadge.classList.add('hidden');
+
+    if (totalNotifs > 0) { notifBadge.textContent = totalNotifs > 9 ? '9+' : totalNotifs; notifBadge.classList.remove('hidden'); }
+    else notifBadge.classList.add('hidden');
+
+    // Populate Notif List
+    const list = $('notifList');
+    list.innerHTML = '';
+    
+    if (convList.length === 0 && pendList.length === 0) {
+      list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>';
+      return;
+    }
+
+    pendList.forEach(r => {
+      list.innerHTML += `
+        <div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html'">
+          <img src="${r.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(r.name||r.email)}" class="w-8 h-8 rounded-full">
+          <div>
+            <p class="font-bold text-[var(--color-primary)]">${r.name || r.email}</p>
+            <p class="text-gray-400 text-xs">Sent you a friend request.</p>
+          </div>
+        </div>
+      `;
+    });
+
+    convList.forEach(c => {
+      if (c.unread > 0) {
+        list.innerHTML += `
+          <div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html?tab=messages'">
+            <img src="${c.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(c.name||c.email)}" class="w-8 h-8 rounded-full">
+            <div>
+              <p class="font-bold text-[var(--color-primary)]">${c.name || c.email}</p>
+              <p class="text-gray-400 text-xs">${c.unread} new message${c.unread>1?'s':''}.</p>
+            </div>
+          </div>
+        `;
+      }
+    });
+
+    if (list.innerHTML === '') {
+      list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>';
+    }
+
+  } catch (err) {
+    console.error("Notif Error:", err);
+  }
 }
 
-const uploadTypes = {
-  photo: { accept:'image/jpeg,image/png,image/webp,image/avif', title:'Drag & drop a photo', hint:'JPG, PNG, WEBP, AVIF · up to 90 MB' },
-  video: { accept:'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska', title:'Drag & drop a video', hint:'MP4, MOV, WEBM, OGG, MKV · up to 90 MB' },
-  gif: { accept:'image/gif', title:'Drag & drop a GIF', hint:'GIF · up to 90 MB' }
-};
-let activeUploadType = 'photo';
-let selectedFile = null;
-const maxUploadSize = 90 * 1024 * 1024;
+function openNotif() {
+  if (!googleUser) { alert('Please sign in first.'); return; }
+  $('notifModal').classList.remove('hidden');
+  loadNotifications();
+}
+function closeNotif() { $('notifModal').classList.add('hidden'); }
 
-// Likes & Comments Functions
+$('notifBtn').onclick = openNotif;
+
+// ⭐ Likes & Comments Functions
 function updateLikeBtnHtml(btn, count, liked) {
   btn.innerHTML = `<span style="color:${liked ? '#ec4899' : '#a1a1aa'};font-size:1.2rem;line-height:1">${liked ? '♥' : '♡'}</span> <span>${count}</span>`;
   btn.setAttribute('aria-pressed', String(liked));
@@ -307,7 +387,7 @@ $('commentForm').onsubmit = async (e) => {
   } catch (err) { alert('Failed to post comment.'); }
 };
 
-// RENDER CLIPS (⭐ THUMBNAIL FIXED)
+// ⭐ RENDER CLIPS (Thumbnail Fixed)
 function renderClips(items) {
   const grid = $('clipsGrid');
   const status = $('clipsStatus');
@@ -331,11 +411,11 @@ function renderClips(items) {
     mediaWrap.onclick = (e) => { e.preventDefault(); window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
 
     const vid = document.createElement('video');
-    vid.src = v.url;                     // ⭐ Direct URL
+    vid.src = v.url;
     vid.muted = true;
     vid.playsInline = true;
-    vid.preload = 'metadata';            // ⭐ Load metadata for thumbnail
-    vid.onloadeddata = () => { vid.currentTime = 0.1; }; // Seek to 0.1s to show frame
+    vid.preload = 'metadata';
+    vid.onloadeddata = () => { vid.currentTime = 0.1; };
     vid.onerror = () => {
       const img = document.createElement('img');
       img.src = '/SAD.jpg';
@@ -387,7 +467,7 @@ function renderClips(items) {
   });
 }
 
-// RENDER STORIES
+// ⭐ RENDER STORIES
 function renderStories(items) {
   const stories = $('storiesContainer');
   stories.innerHTML = '';
@@ -416,7 +496,7 @@ function renderStories(items) {
   });
 }
 
-// LOAD MEDIA
+// ⭐ LOAD MEDIA
 async function loadClips() {
   const cached = getCachedMediaClient();
   if (cached) {
@@ -440,6 +520,22 @@ async function loadClips() {
   }
 }
 
+// Client Cache
+const MEDIA_CACHE_KEY = 'reelsbook_media_cache_v1';
+function getCachedMediaClient() {
+  try {
+    const raw = sessionStorage.getItem(MEDIA_CACHE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || !obj.ts || !obj.data) return null;
+    if (Date.now() - obj.ts > 60000) return null;
+    return obj.data;
+  } catch { return null; }
+}
+function setCachedMediaClient(data) {
+  try { sessionStorage.setItem(MEDIA_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch {}
+}
+
 // UPLOAD PANEL LOGIC
 function openUploadPanel() { $('uploadOptions').classList.remove('hidden'); $('upload').scrollIntoView({ behavior:'smooth', block:'start' }); }
 function closeUploadPanel() { $('uploadOptions').classList.add('hidden'); }
@@ -449,6 +545,15 @@ $('bottomPlus').onclick = openUploadPanel;
 $('addStoryBtn').onclick = openUploadPanel;
 $('closeUpload').onclick = closeUploadPanel;
 document.querySelectorAll('a[href="#upload"]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); openUploadPanel(); }));
+
+const uploadTypes = {
+  photo: { accept:'image/jpeg,image/png,image/webp,image/avif', title:'Drag & drop a photo', hint:'JPG, PNG, WEBP, AVIF · up to 90 MB' },
+  video: { accept:'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska', title:'Drag & drop a video', hint:'MP4, MOV, WEBM, OGG, MKV · up to 90 MB' },
+  gif: { accept:'image/gif', title:'Drag & drop a GIF', hint:'GIF · up to 90 MB' }
+};
+let activeUploadType = 'photo';
+let selectedFile = null;
+const maxUploadSize = 90 * 1024 * 1024;
 
 function setUploadType(type) {
   activeUploadType = type;
@@ -500,6 +605,7 @@ function showSignedInUser(user) {
   $('signOutButton').classList.remove('hidden');
   $('accountDialogStatus').textContent = 'Signed in.';
   closeAccountDialog();
+  loadNotifications(); // ⭐ load notifications on sign in
 }
 function showSignedOutUser(msg) {
   googleUser = null;
@@ -587,8 +693,12 @@ $('publishButton').onclick = (ev) => {
   req.send(fd);
 };
 
+// Init
 initializeGoogleSignIn();
 loadClips();
+
+// Load notifications if already signed in
+if (googleUser) loadNotifications();
 
 // Service Worker
 if ('serviceWorker' in navigator) {
