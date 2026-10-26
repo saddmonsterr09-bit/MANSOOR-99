@@ -6,6 +6,7 @@ const ALLOWED_TYPES = new Set([
 
 const mediaCache = { data: null, ts: 0 };
 const MEDIA_CACHE_MS = 30 * 1000;
+const ADMIN_EMAIL = "saddmonsterr09@gmail.com"; // ⭐ Yahan aapki email set hai
 
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS likes (media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (media_id, visitor_id))`,
@@ -232,7 +233,7 @@ export default {
       } catch (err) { return json({ error: "failed" }, 500); }
     }
 
-    // ⭐ NEW: COPYRIGHT REPORT ROUTES
+    // ⭐ COPYRIGHT REPORT ROUTES
     if (path === "/api/report" && method === "POST") {
       try {
         const { mediaId, mediaUrl, reporterEmail, reporterName, reason } = await request.json();
@@ -244,6 +245,17 @@ export default {
         return json({ ok: true, id });
       } catch { return json({ error: "Failed to save report" }, 500); }
     }
+
+    // ⭐ ADMIN ROUTES (SECURED)
+    if (path.startsWith("/api/admin/")) {
+      const authz = request.headers.get("authorization") || "";
+      const m = authz.match(/^Bearer\s+(.+)$/i);
+      const gUser = m ? await verifyGoogleToken(m[1], env.GOOGLE_CLIENT_ID) : null;
+      if (!gUser || gUser.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+        return json({ error: "Unauthorized. Admin only." }, 401);
+      }
+    }
+
     if (path === "/api/admin/reports" && method === "GET") {
       const rows = await env.DB.prepare("SELECT * FROM copyright_reports ORDER BY created_at DESC").all();
       return json(rows.results || []);
