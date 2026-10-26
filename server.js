@@ -65,6 +65,9 @@ function extensionFor(type, name) {
 }
 function normEmail(e) { return String(e || "").trim().toLowerCase(); }
 
+const mediaCache = { data: null, ts: 0 };
+const MEDIA_CACHE_MS = 30 * 1000;
+
 app.get("/api/auth/config", (req, res) => res.json({ googleClientId: googleClientId || null }));
 
 app.post("/api/auth/google", async (req, res) => {
@@ -92,7 +95,6 @@ app.get("/api/users/find", (req, res) => {
   res.json(u || null);
 });
 
-// ⭐ NEW: List users (with friend status)
 app.get("/api/users/list", (req, res) => {
   const me = normEmail(req.query.me);
   const q = String(req.query.q || "").trim().toLowerCase();
@@ -128,6 +130,7 @@ app.post("/api/likes", (req, res) => {
   if (existing) database.prepare("DELETE FROM likes WHERE media_id = ? AND visitor_id = ?").run(mediaId, visitorId);
   else database.prepare("INSERT INTO likes (media_id, visitor_id) VALUES (?, ?)").run(mediaId, visitorId);
   const count = database.prepare("SELECT COUNT(*) AS count FROM likes WHERE media_id = ?").get(mediaId).count;
+  mediaCache.ts = 0;
   res.json({ mediaId, count, liked: !existing });
 });
 
@@ -136,6 +139,7 @@ app.post("/api/views", (req, res) => {
   if (!mediaId || !visitorId) return res.status(400).json({ error: "missing" });
   database.prepare("INSERT OR IGNORE INTO media_views (media_id, visitor_id) VALUES (?, ?)").run(mediaId, visitorId);
   const count = database.prepare("SELECT COUNT(*) AS count FROM media_views WHERE media_id = ?").get(mediaId).count;
+  mediaCache.ts = 0;
   res.json({ mediaId, count });
 });
 app.get("/api/views", (req, res) => {
@@ -155,6 +159,7 @@ app.post("/api/watch", (req, res) => {
   for (const tag of tags) {
     database.prepare(`INSERT INTO user_interests (visitor_id, tag, weight, updated_at) VALUES (?, ?, 1, CURRENT_TIMESTAMP) ON CONFLICT(visitor_id, tag) DO UPDATE SET weight = weight + 1, updated_at = CURRENT_TIMESTAMP`).run(visitorId, tag);
   }
+  mediaCache.ts = 0;
   res.json({ ok: true });
 });
 
@@ -200,9 +205,18 @@ async function listMediaWithStats() {
   }).sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
 }
 
+async function getCachedMedia() {
+  const now = Date.now();
+  if (mediaCache.data && (now - mediaCache.ts) < MEDIA_CACHE_MS) return mediaCache.data;
+  const fresh = await listMediaWithStats();
+  mediaCache.data = fresh;
+  mediaCache.ts = now;
+  return fresh;
+}
+
 app.get("/api/media", async (req, res) => {
   if (!r2) return res.status(503).json({ error: "R2 not configured" });
-  try { res.json(await listMediaWithStats()); }
+  try { res.json(await getCachedMedia()); }
   catch { res.status(500).json({ error: "Load failed" }); }
 });
 
@@ -211,7 +225,7 @@ app.get("/api/recommendations", async (req, res) => {
   try {
     const visitorId = String(req.query.visitorId || "");
     const limit = Math.min(Number(req.query.limit) || 30, 100);
-    const all = (await listMediaWithStats()).filter(m => m.type === "video");
+    const all = (await getCachedMedia()).filter(m => m.type === "video");
     const maxLikes = Math.max(1, ...all.map(v => v.likes));
     const maxViews = Math.max(1, ...all.map(v => v.views));
     let interests = {};
@@ -298,20 +312,65 @@ app.get("/api/friends/pending", (req, res) => {
   res.json({ incoming: inc, outgoing: out });
 });
 
+// ⭐ Messages — non-friends bhi
 app.get("/api/messages", (req, res) => {
   const me = normEmail(req.query.me), withEmail = normEmail(req.query.with);
   if (!me || !withEmail) return res.json([]);
-  const rows = database.prepare(`SELECT id, from_email as sender, to_email as recipient, body, created_at FROM messages WHERE (from_email = ? AND to_email = ?) OR (from_email = ? AND to_email = ?) ORDER BY created_at ASC LIMIT 500`).all(me, withEmail, withEmail, me);
+  const rows = database.prepare(
+    `SELECT id, from_email as sender, to_email as recipient, body, created_at, read_at
+     FROM messages
+     WHERE (from_email = ? AND to_email = ?) OR (from_email = ? AND to_email = ?)
+     ORDER BY created_at ASC LIMIT 500`
+  ).all(me, withEmail, withEmail, me);
+  database.prepare("UPDATE messages SET read_at = CURRENT_TIMESTAMP WHERE from_email = ? AND to_email = ? AND read_at IS NULL").run(withEmail, me);
   res.json(rows);
 });
 app.post("/api/messages", (req, res) => {
-  const from = normEmail(req.body.from), to = normEmail(req.body.to), body = String(req.body.body || "").slice(0, 2000);
+  const from = normEmail(req.body.from), to = normEmail(req.body.to);
+  const body = String(req.body.body || "").trim().slice(0, 2000);
   if (!from || !to || !body) return res.status(400).json({ error: "missing" });
-  const pair = from < to ? [from, to] : [to, from];
-  if (!database.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").get(pair[0], pair[1])) return res.status(403).json({ error: "Not friends" });
+  if (from === to) return res.status(400).json({ error: "Cannot message yourself" });
   const id = randomUUID();
   database.prepare("INSERT INTO messages (id, from_email, to_email, body) VALUES (?, ?, ?, ?)").run(id, from, to, body);
   res.json({ ok: true, id });
+});
+
+app.get("/api/conversations", (req, res) => {
+  const me = normEmail(req.query.me);
+  if (!me) return res.json([]);
+  const rows = database.prepare(
+    `SELECT
+       CASE WHEN from_email = ? THEN to_email ELSE from_email END AS peer_email,
+       MAX(created_at) AS last_at,
+       SUM(CASE WHEN to_email = ? AND read_at IS NULL THEN 1 ELSE 0 END) AS unread
+     FROM messages
+     WHERE from_email = ? OR to_email = ?
+     GROUP BY peer_email
+     ORDER BY last_at DESC
+     LIMIT 100`
+  ).all(me, me, me, me);
+  const peers = rows.map(r => r.peer_email);
+  if (!peers.length) return res.json([]);
+  const ph = peers.map(() => "?").join(",");
+  const users = database.prepare(`SELECT email, name, picture FROM users WHERE email IN (${ph})`).all(...peers);
+  const uMap = Object.fromEntries(users.map(u => [u.email, u]));
+  const out = rows.map(r => {
+    const last = database.prepare(
+      `SELECT body, created_at, from_email FROM messages
+       WHERE (from_email = ? AND to_email = ?) OR (from_email = ? AND to_email = ?)
+       ORDER BY created_at DESC LIMIT 1`
+    ).get(me, r.peer_email, r.peer_email, me);
+    return {
+      email: r.peer_email,
+      name: uMap[r.peer_email]?.name || r.peer_email,
+      picture: uMap[r.peer_email]?.picture || "",
+      lastMessage: last?.body || "",
+      lastAt: last?.created_at || r.last_at,
+      lastFromMe: last?.from_email === me,
+      unread: r.unread || 0
+    };
+  });
+  res.json(out);
 });
 
 app.post("/api/upload", upload.fields([{ name: "media", maxCount: 1 }, { name: "video", maxCount: 1 }]), async (req, res) => {
@@ -330,6 +389,7 @@ app.post("/api/upload", upload.fields([{ name: "media", maxCount: 1 }, { name: "
       Bucket: bucketName, Key: key, Body: file.buffer, ContentType: file.mimetype,
       Metadata: { kind: isPhoto ? "photo" : "video", title, creator, creatoremail: creatorEmail, creatorpic: creatorPic, uploadedat: uploadedAt }
     }));
+    mediaCache.ts = 0;
     res.status(201).json({ key, type: isPhoto ? "photo" : "video", title, creator, creatorEmail, creatorPic, uploadedAt, url: `/media/${encodeURIComponent(key)}` });
   } catch { res.status(500).json({ error: "Upload failed" }); }
 });
