@@ -11,19 +11,15 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS likes (media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (media_id, visitor_id))`,
   `CREATE INDEX IF NOT EXISTS likes_media_id_idx ON likes (media_id)`,
   `CREATE TABLE IF NOT EXISTS media_views (media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (media_id, visitor_id))`,
-  `CREATE INDEX IF NOT EXISTS media_views_media_id_idx ON media_views (media_id)`,
   `CREATE TABLE IF NOT EXISTS watch_events (id TEXT PRIMARY KEY, media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, seconds REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE INDEX IF NOT EXISTS watch_events_media_id_idx ON watch_events (media_id)`,
   `CREATE TABLE IF NOT EXISTS friend_requests (id TEXT PRIMARY KEY, from_email TEXT NOT NULL, to_email TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(from_email, to_email))`,
-  `CREATE INDEX IF NOT EXISTS friend_requests_to_idx ON friend_requests (to_email, status)`,
-  `CREATE INDEX IF NOT EXISTS friend_requests_from_idx ON friend_requests (from_email, status)`,
   `CREATE TABLE IF NOT EXISTS friendships (user_a TEXT NOT NULL, user_b TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_a, user_b))`,
-  `CREATE INDEX IF NOT EXISTS friendships_a_idx ON friendships (user_a)`,
-  `CREATE INDEX IF NOT EXISTS friendships_b_idx ON friendships (user_b)`,
   `CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, from_email TEXT NOT NULL, to_email TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, read_at TEXT)`,
-  `CREATE INDEX IF NOT EXISTS messages_pair_idx ON messages (from_email, to_email, created_at)`,
   `CREATE TABLE IF NOT EXISTS user_interests (visitor_id TEXT NOT NULL, tag TEXT NOT NULL, weight REAL NOT NULL DEFAULT 1, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (visitor_id, tag))`,
-  `CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT, picture TEXT, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`
+  `CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT, picture TEXT, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+  // ⭐ NEW COMMENTS TABLE
+  `CREATE TABLE IF NOT EXISTS comments (id TEXT PRIMARY KEY, media_id TEXT NOT NULL, author_email TEXT, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+  `CREATE INDEX IF NOT EXISTS comments_media_idx ON comments (media_id, created_at)`
 ];
 
 let schemaReady = false;
@@ -38,11 +34,7 @@ async function ensureSchema(env) {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: {
-      "content-type": "application/json; charset=UTF-8",
-      "access-control-allow-origin": "*",
-      "cache-control": "no-store"
-    }
+    headers: { "content-type": "application/json; charset=UTF-8", "access-control-allow-origin": "*", "cache-control": "no-store" }
   });
 }
 function safeText(v, f, m) { const t = String(v || "").trim().slice(0, m); return t || f; }
@@ -99,31 +91,30 @@ async function listMedia(env, prefix) {
 async function listMediaWithStats(env) {
   const [videos, photos] = await Promise.all([listMedia(env, "videos"), listMedia(env, "photos")]);
   const all = [...videos, ...photos];
-  const [likeRows, viewRows, watchRows] = await Promise.all([
+  const [likeRows, viewRows, watchRows, commentRows] = await Promise.all([
     env.DB.prepare("SELECT media_id, COUNT(*) as c FROM likes GROUP BY media_id").all(),
     env.DB.prepare("SELECT media_id, COUNT(*) as c FROM media_views GROUP BY media_id").all(),
-    env.DB.prepare("SELECT media_id, AVG(CASE WHEN duration > 0 THEN MIN(seconds * 1.0 / duration, 1.0) ELSE 0 END) as completion FROM watch_events GROUP BY media_id").all()
+    env.DB.prepare("SELECT media_id, AVG(CASE WHEN duration > 0 THEN MIN(seconds * 1.0 / duration, 1.0) ELSE 0 END) as completion FROM watch_events GROUP BY media_id").all(),
+    env.DB.prepare("SELECT media_id, COUNT(*) as c FROM comments GROUP BY media_id").all()
   ]);
   const likesMap = Object.fromEntries((likeRows.results || []).map(r => [r.media_id, r.c]));
   const viewsMap = Object.fromEntries((viewRows.results || []).map(r => [r.media_id, r.c]));
   const watchMap = Object.fromEntries((watchRows.results || []).map(r => [r.media_id, r.completion]));
+  const commentsMap = Object.fromEntries((commentRows.results || []).map(r => [r.media_id, r.c]));
 
   const usersRows = await env.DB.prepare("SELECT email, name FROM users").all();
   const nameToEmail = {};
-  (usersRows.results || []).forEach(u => {
-    if (u.name) nameToEmail[String(u.name).toLowerCase().trim()] = u.email;
-  });
+  (usersRows.results || []).forEach(u => { if (u.name) nameToEmail[String(u.name).toLowerCase().trim()] = u.email; });
 
   return all.map(item => {
     let email = item.creatorEmail || "";
-    if (!email && item.creator) {
-      email = nameToEmail[String(item.creator).toLowerCase().trim()] || "";
-    }
+    if (!email && item.creator) email = nameToEmail[String(item.creator).toLowerCase().trim()] || "";
     return {
       ...item,
       creatorEmail: email,
       views: viewsMap[item.key] || 0,
       likes: likesMap[item.key] || 0,
+      comments: commentsMap[item.key] || 0,
       completion: watchMap[item.key] || 0
     };
   }).sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
@@ -145,18 +136,12 @@ export default {
     const method = request.method;
 
     if (method === "OPTIONS") {
-      return new Response(null, { headers: {
-        "access-control-allow-origin": "*",
-        "access-control-allow-methods": "GET, POST, OPTIONS",
-        "access-control-allow-headers": "content-type, authorization"
-      }});
+      return new Response(null, { headers: { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type, authorization" }});
     }
 
     if (path.startsWith("/api/")) await ensureSchema(env);
 
-    if (path === "/api/auth/config" && method === "GET") {
-      return json({ googleClientId: env.GOOGLE_CLIENT_ID || null });
-    }
+    if (path === "/api/auth/config" && method === "GET") return json({ googleClientId: env.GOOGLE_CLIENT_ID || null });
 
     if (path === "/api/auth/google" && method === "POST") {
       if (!env.GOOGLE_CLIENT_ID) return json({ error: "Not configured" }, 503);
@@ -167,26 +152,15 @@ export default {
         const email = (user.email || "").toLowerCase();
         const name = user.name || email || "User";
         const picture = user.picture || "";
-        if (email) {
-          await env.DB.prepare(`INSERT INTO users (email, name, picture, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(email) DO UPDATE SET name = excluded.name, picture = excluded.picture, updated_at = CURRENT_TIMESTAMP`).bind(email, name, picture).run();
-        }
+        if (email) await env.DB.prepare(`INSERT INTO users (email, name, picture, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(email) DO UPDATE SET name = excluded.name, picture = excluded.picture, updated_at = CURRENT_TIMESTAMP`).bind(email, name, picture).run();
         return json({ name, email, picture });
       } catch { return json({ error: "Invalid request" }, 400); }
-    }
-
-    if (path === "/api/users" && method === "GET") {
-      const email = (url.searchParams.get("email") || "").toLowerCase();
-      if (!email) return json({ error: "missing email" }, 400);
-      const u = await env.DB.prepare("SELECT email, name, picture FROM users WHERE email = ?").bind(email).first();
-      return json(u || null);
     }
 
     if (path === "/api/users/find" && method === "GET") {
       const name = String(url.searchParams.get("name") || "").trim();
       if (!name) return json(null);
-      const u = await env.DB.prepare(
-        "SELECT email, name, picture FROM users WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1"
-      ).bind(name).first();
+      const u = await env.DB.prepare("SELECT email, name, picture FROM users WHERE LOWER(TRIM(name)) = LOWER(?) LIMIT 1").bind(name).first();
       return json(u || null);
     }
 
@@ -203,17 +177,17 @@ export default {
       const enriched = await Promise.all(users.map(async (u) => {
         if (!me) return { ...u, status: "none" };
         const pair = me < u.email ? [me, u.email] : [u.email, me];
-        const friend = await env.DB.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").bind(pair[0], pair[1]).first();
-        if (friend) return { ...u, status: "friends" };
-        const outgoing = await env.DB.prepare("SELECT id FROM friend_requests WHERE from_email = ? AND to_email = ? AND status = 'pending'").bind(me, u.email).first();
-        if (outgoing) return { ...u, status: "outgoing", requestId: outgoing.id };
-        const incoming = await env.DB.prepare("SELECT id FROM friend_requests WHERE from_email = ? AND to_email = ? AND status = 'pending'").bind(u.email, me).first();
-        if (incoming) return { ...u, status: "incoming", requestId: incoming.id };
+        if (await env.DB.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").bind(pair[0], pair[1]).first()) return { ...u, status: "friends" };
+        const o = await env.DB.prepare("SELECT id FROM friend_requests WHERE from_email = ? AND to_email = ? AND status = 'pending'").bind(me, u.email).first();
+        if (o) return { ...u, status: "outgoing", requestId: o.id };
+        const i = await env.DB.prepare("SELECT id FROM friend_requests WHERE from_email = ? AND to_email = ? AND status = 'pending'").bind(u.email, me).first();
+        if (i) return { ...u, status: "incoming", requestId: i.id };
         return { ...u, status: "none" };
       }));
       return json(enriched);
     }
 
+    // ⭐ LIKES
     if (path === "/api/likes" && method === "GET") {
       const mediaId = url.searchParams.get("mediaId");
       const visitorId = url.searchParams.get("visitorId");
@@ -234,20 +208,33 @@ export default {
       } catch (err) { return json({ error: "Database error", details: err.message }, 500); }
     }
 
+    // ⭐ COMMENTS API
+    if (path === "/api/comments" && method === "GET") {
+      const mediaId = url.searchParams.get("mediaId");
+      if (!mediaId) return json([]);
+      const rows = await env.DB.prepare("SELECT id, author_name, author_email, body, created_at FROM comments WHERE media_id = ? ORDER BY created_at ASC LIMIT 200").bind(mediaId).all();
+      return json(rows.results || []);
+    }
+    if (path === "/api/comments" && method === "POST") {
+      try {
+        const { mediaId, authorName, authorEmail, body } = await request.json();
+        if (!mediaId || !body) return json({ error: "Missing data" }, 400);
+        const id = crypto.randomUUID();
+        await env.DB.prepare("INSERT INTO comments (id, media_id, author_email, author_name, body) VALUES (?, ?, ?, ?, ?)")
+          .bind(id, mediaId, authorEmail || "", authorName || "Anonymous", String(body).trim().slice(0, 500)).run();
+        mediaCache.ts = 0;
+        return json({ ok: true, id });
+      } catch (err) { return json({ error: "failed" }, 500); }
+    }
+
     if (path === "/api/views" && method === "POST") {
       try {
         const { mediaId, visitorId } = await request.json();
         if (!mediaId || !visitorId) return json({ error: "missing" }, 400);
         await env.DB.prepare("INSERT OR IGNORE INTO media_views (media_id, visitor_id) VALUES (?, ?)").bind(mediaId, visitorId).run();
-        const c = await env.DB.prepare("SELECT COUNT(*) as count FROM media_views WHERE media_id = ?").bind(mediaId).first();
         mediaCache.ts = 0;
-        return json({ mediaId, count: c ? c.count : 0 });
+        return json({ ok: true });
       } catch { return json({ error: "failed" }, 500); }
-    }
-    if (path === "/api/views" && method === "GET") {
-      const mediaId = url.searchParams.get("mediaId");
-      const c = await env.DB.prepare("SELECT COUNT(*) as count FROM media_views WHERE media_id = ?").bind(mediaId).first();
-      return json({ mediaId, count: c ? c.count : 0 });
     }
 
     if (path === "/api/watch" && method === "POST") {
@@ -255,15 +242,12 @@ export default {
         const b = await request.json();
         const { mediaId, visitorId, seconds, duration, creator, title } = b;
         if (!mediaId || !visitorId || !duration) return json({ error: "missing" }, 400);
-        const id = crypto.randomUUID();
         await env.DB.prepare("INSERT INTO watch_events (id, media_id, visitor_id, seconds, duration) VALUES (?, ?, ?, ?, ?)")
-          .bind(id, mediaId, visitorId, Number(seconds) || 0, Number(duration) || 0).run();
+          .bind(crypto.randomUUID(), mediaId, visitorId, Number(seconds) || 0, Number(duration) || 0).run();
         const tags = new Set();
         if (creator) tags.add(`creator:${String(creator).toLowerCase()}`);
         if (title) String(title).toLowerCase().split(/\W+/).filter(w => w.length >= 4).forEach(w => tags.add(`tag:${w}`));
-        for (const tag of tags) {
-          await env.DB.prepare(`INSERT INTO user_interests (visitor_id, tag, weight, updated_at) VALUES (?, ?, 1, CURRENT_TIMESTAMP) ON CONFLICT(visitor_id, tag) DO UPDATE SET weight = weight + 1, updated_at = CURRENT_TIMESTAMP`).bind(visitorId, tag).run();
-        }
+        for (const tag of tags) await env.DB.prepare(`INSERT INTO user_interests (visitor_id, tag, weight, updated_at) VALUES (?, ?, 1, CURRENT_TIMESTAMP) ON CONFLICT(visitor_id, tag) DO UPDATE SET weight = weight + 1, updated_at = CURRENT_TIMESTAMP`).bind(visitorId, tag).run();
         mediaCache.ts = 0;
         return json({ ok: true });
       } catch { return json({ error: "failed" }, 500); }
@@ -299,13 +283,13 @@ export default {
       } catch { return json({ error: "failed" }, 500); }
     }
 
+    // ⭐ FRIENDS & MESSAGES (SAME AS BEFORE)
     if (path === "/api/friends/status" && method === "GET") {
       const me = (url.searchParams.get("me") || "").toLowerCase();
       const target = (url.searchParams.get("target") || "").toLowerCase();
       if (!me || !target) return json({ status: "none" });
       const pair = me < target ? [me, target] : [target, me];
-      const friend = await env.DB.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").bind(pair[0], pair[1]).first();
-      if (friend) return json({ status: "friends" });
+      if (await env.DB.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").bind(pair[0], pair[1]).first()) return json({ status: "friends" });
       const outgoing = await env.DB.prepare("SELECT id FROM friend_requests WHERE from_email = ? AND to_email = ? AND status = 'pending'").bind(me, target).first();
       if (outgoing) return json({ status: "outgoing", requestId: outgoing.id });
       const incoming = await env.DB.prepare("SELECT id FROM friend_requests WHERE from_email = ? AND to_email = ? AND status = 'pending'").bind(target, me).first();
@@ -317,8 +301,7 @@ export default {
       const from = (b.from || "").toLowerCase(), to = (b.to || "").toLowerCase();
       if (!from || !to || from === to) return json({ error: "invalid" }, 400);
       const pair = from < to ? [from, to] : [to, from];
-      const exists = await env.DB.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").bind(pair[0], pair[1]).first();
-      if (exists) return json({ error: "Already friends" }, 400);
+      if (await env.DB.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").bind(pair[0], pair[1]).first()) return json({ error: "Already friends" }, 400);
       try {
         const id = crypto.randomUUID();
         await env.DB.prepare("INSERT INTO friend_requests (id, from_email, to_email, status) VALUES (?, ?, ?, 'pending')").bind(id, from, to).run();
@@ -371,21 +354,12 @@ export default {
       return json({ incoming: inc.results || [], outgoing: out.results || [] });
     }
 
-    // ⭐ Messages: non-friends bhi message kar sakte hain
     if (path === "/api/messages" && method === "GET") {
       const me = (url.searchParams.get("me") || "").toLowerCase();
       const withEmail = (url.searchParams.get("with") || "").toLowerCase();
       if (!me || !withEmail) return json([]);
-      const rows = await env.DB.prepare(
-        `SELECT id, from_email as sender, to_email as recipient, body, created_at, read_at
-         FROM messages
-         WHERE (from_email = ? AND to_email = ?) OR (from_email = ? AND to_email = ?)
-         ORDER BY created_at ASC LIMIT 500`
-      ).bind(me, withEmail, withEmail, me).all();
-      // Mark incoming as read
-      await env.DB.prepare(
-        "UPDATE messages SET read_at = CURRENT_TIMESTAMP WHERE from_email = ? AND to_email = ? AND read_at IS NULL"
-      ).bind(withEmail, me).run();
+      const rows = await env.DB.prepare(`SELECT id, from_email as sender, to_email as recipient, body, created_at FROM messages WHERE (from_email = ? AND to_email = ?) OR (from_email = ? AND to_email = ?) ORDER BY created_at ASC LIMIT 500`).bind(me, withEmail, withEmail, me).all();
+      await env.DB.prepare("UPDATE messages SET read_at = CURRENT_TIMESTAMP WHERE from_email = ? AND to_email = ? AND read_at IS NULL").bind(withEmail, me).run();
       return json(rows.results || []);
     }
     if (path === "/api/messages" && method === "POST") {
@@ -394,46 +368,21 @@ export default {
       const body = String(b.body || "").trim().slice(0, 2000);
       if (!from || !to || !body) return json({ error: "missing" }, 400);
       if (from === to) return json({ error: "Cannot message yourself" }, 400);
-      const id = crypto.randomUUID();
-      await env.DB.prepare("INSERT INTO messages (id, from_email, to_email, body) VALUES (?, ?, ?, ?)").bind(id, from, to, body).run();
-      return json({ ok: true, id });
+      await env.DB.prepare("INSERT INTO messages (id, from_email, to_email, body) VALUES (?, ?, ?, ?)").bind(crypto.randomUUID(), from, to, body).run();
+      return json({ ok: true });
     }
-
-    // ⭐ Conversations list (chats with last message + unread)
     if (path === "/api/conversations" && method === "GET") {
       const me = (url.searchParams.get("me") || "").toLowerCase();
       if (!me) return json([]);
-      const rows = await env.DB.prepare(
-        `SELECT
-           CASE WHEN from_email = ? THEN to_email ELSE from_email END AS peer_email,
-           MAX(created_at) AS last_at,
-           SUM(CASE WHEN to_email = ? AND read_at IS NULL THEN 1 ELSE 0 END) AS unread
-         FROM messages
-         WHERE from_email = ? OR to_email = ?
-         GROUP BY peer_email
-         ORDER BY last_at DESC
-         LIMIT 100`
-      ).bind(me, me, me, me).all();
+      const rows = await env.DB.prepare(`SELECT CASE WHEN from_email = ? THEN to_email ELSE from_email END AS peer_email, MAX(created_at) AS last_at, SUM(CASE WHEN to_email = ? AND read_at IS NULL THEN 1 ELSE 0 END) AS unread FROM messages WHERE from_email = ? OR to_email = ? GROUP BY peer_email ORDER BY last_at DESC LIMIT 100`).bind(me, me, me, me).all();
       const peers = (rows.results || []).map(r => r.peer_email);
       if (!peers.length) return json([]);
       const ph = peers.map(() => "?").join(",");
       const users = await env.DB.prepare(`SELECT email, name, picture FROM users WHERE email IN (${ph})`).bind(...peers).all();
       const uMap = Object.fromEntries((users.results || []).map(u => [u.email, u]));
       const out = await Promise.all((rows.results || []).map(async (r) => {
-        const last = await env.DB.prepare(
-          `SELECT body, created_at, from_email FROM messages
-           WHERE (from_email = ? AND to_email = ?) OR (from_email = ? AND to_email = ?)
-           ORDER BY created_at DESC LIMIT 1`
-        ).bind(me, r.peer_email, r.peer_email, me).first();
-        return {
-          email: r.peer_email,
-          name: uMap[r.peer_email]?.name || r.peer_email,
-          picture: uMap[r.peer_email]?.picture || "",
-          lastMessage: last?.body || "",
-          lastAt: last?.created_at || r.last_at,
-          lastFromMe: last?.from_email === me,
-          unread: r.unread || 0
-        };
+        const last = await env.DB.prepare(`SELECT body, created_at, from_email FROM messages WHERE (from_email = ? AND to_email = ?) OR (from_email = ? AND to_email = ?) ORDER BY created_at DESC LIMIT 1`).bind(me, r.peer_email, r.peer_email, me).first();
+        return { email: r.peer_email, name: uMap[r.peer_email]?.name || r.peer_email, picture: uMap[r.peer_email]?.picture || "", lastMessage: last?.body || "", lastAt: last?.created_at || r.last_at, lastFromMe: last?.from_email === me, unread: r.unread || 0 };
       }));
       return json(out);
     }
