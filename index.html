@@ -18,10 +18,10 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
 .font-logo { font-family:'Pacifico',cursive; }
 .hide-scrollbar::-webkit-scrollbar { display:none; }
 
-/* ⭐ Naya Feed Card Design */
+/* Feed Card Design */
 .feed-card { background:#0f0f0f; border:1px solid #27272a; border-radius:16px; overflow:hidden; margin:0 auto; max-width:400px; width:100%; }
-.feed-media-wrap { position:relative; aspect-ratio:9/16; background:#000; overflow:hidden; }
-.feed-media-wrap video, .feed-media-wrap img { width:100%; height:100%; object-fit:cover; pointer-events:none; }
+.feed-media-wrap { position:relative; aspect-ratio:9/16; background:#000; overflow:hidden; cursor:pointer; }
+.feed-media-wrap video, .feed-media-wrap img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
 .feed-play-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:2rem; text-shadow:0 2px 10px rgba(0,0,0,.7); pointer-events:none; user-select:none; }
 .feed-view-badge { position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,.7); font-size:11px; padding:2px 8px; border-radius:6px; pointer-events:none; }
 
@@ -231,34 +231,6 @@ function setCachedMediaClient(data) {
   try { sessionStorage.setItem(MEDIA_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch {}
 }
 
-// Lazy Load Observer
-let clipObserver = null;
-function setupClipObserver() {
-  if (clipObserver) clipObserver.disconnect();
-  if (!('IntersectionObserver' in window)) return;
-  clipObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (!entry.isIntersecting) return;
-      const vid = entry.target;
-      const src = vid.dataset.src;
-      if (src && !vid.src) {
-        vid.src = src;
-        vid.preload = 'metadata';
-        try { vid.load(); } catch {}
-      }
-      clipObserver.unobserve(vid);
-    });
-  }, { rootMargin: '300px 0px' });
-}
-function observeClipVideo(vid) {
-  if (clipObserver) clipObserver.observe(vid);
-  else {
-    vid.src = vid.dataset.src;
-    vid.preload = 'metadata';
-    try { vid.load(); } catch {}
-  }
-}
-
 const uploadTypes = {
   photo: { accept:'image/jpeg,image/png,image/webp,image/avif', title:'Drag & drop a photo', hint:'JPG, PNG, WEBP, AVIF · up to 90 MB' },
   video: { accept:'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska', title:'Drag & drop a video', hint:'MP4, MOV, WEBM, OGG, MKV · up to 90 MB' },
@@ -335,7 +307,7 @@ $('commentForm').onsubmit = async (e) => {
   } catch (err) { alert('Failed to post comment.'); }
 };
 
-// RENDER CLIPS
+// RENDER CLIPS (⭐ THUMBNAIL FIXED)
 function renderClips(items) {
   const grid = $('clipsGrid');
   const status = $('clipsStatus');
@@ -353,14 +325,23 @@ function renderClips(items) {
     card.className = 'feed-card';
 
     const mediaWrap = document.createElement('div');
-    mediaWrap.className = 'feed-media-wrap cursor-pointer';
+    mediaWrap.className = 'feed-media-wrap';
+    mediaWrap.style.userSelect = 'none';
+    mediaWrap.style.webkitTapHighlightColor = 'transparent';
     mediaWrap.onclick = (e) => { e.preventDefault(); window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
 
     const vid = document.createElement('video');
-    vid.dataset.src = v.url + '#t=0.1';
-    vid.muted = true; vid.playsInline = true; vid.preload = 'none';
-    vid.src = vid.dataset.src;
-    vid.onerror = () => { const img = document.createElement('img'); img.src = '/SAD.jpg'; img.alt=''; vid.replaceWith(img); };
+    vid.src = v.url;                     // ⭐ Direct URL
+    vid.muted = true;
+    vid.playsInline = true;
+    vid.preload = 'metadata';            // ⭐ Load metadata for thumbnail
+    vid.onloadeddata = () => { vid.currentTime = 0.1; }; // Seek to 0.1s to show frame
+    vid.onerror = () => {
+      const img = document.createElement('img');
+      img.src = '/SAD.jpg';
+      img.alt = '';
+      vid.replaceWith(img);
+    };
     
     const play = document.createElement('div'); play.className = 'feed-play-overlay'; play.textContent = '▶';
     const views = document.createElement('div'); views.className = 'feed-view-badge'; views.textContent = `👁 ${v.views || 0}`;
@@ -437,7 +418,6 @@ function renderStories(items) {
 
 // LOAD MEDIA
 async function loadClips() {
-  setupClipObserver();
   const cached = getCachedMediaClient();
   if (cached) {
     galleryItems = cached;
@@ -606,11 +586,6 @@ $('publishButton').onclick = (ev) => {
   req.addEventListener('error', () => { showUploadMessage('Network error.'); btn.disabled = false; btn.textContent='Publish'; });
   req.send(fd);
 };
-
-const heroLike = document.querySelector('.like-hero');
-if (heroLike) { 
-  // Optional: setup hero like logic if needed
-}
 
 initializeGoogleSignIn();
 loadClips();
