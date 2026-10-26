@@ -6,6 +6,7 @@
 <title>Admin Panel - Reports</title>
 <link rel="stylesheet" href="/theme.css">
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
 </style>
@@ -18,27 +19,80 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
 </header>
 
 <main class="max-w-5xl mx-auto">
-  <div class="mb-6 flex justify-between items-center">
-    <h2 class="text-xl font-bold">Copyright Reports</h2>
-    <button onclick="loadAdminReports()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition">🔄 Refresh List</button>
+
+  <!-- 🛑 Login Wall -->
+  <div id="loginWall" class="bg-gray-900 border border-gray-800 rounded-xl p-8 text-center max-w-md mx-auto mt-20">
+    <h2 class="text-xl font-bold mb-4">Admin Access Only</h2>
+    <p class="text-gray-400 mb-6 text-sm">Please sign in with your admin Google account.</p>
+    <div id="googleSignInBtn" class="flex justify-center mb-4"></div>
+    <p id="authStatus" class="text-sm text-red-400"></p>
   </div>
 
-  <div id="reportsList" class="space-y-4">
-    <p class="text-gray-500 text-center py-10">Loading reports...</p>
+  <!-- 🛑 Reports Section (Hidden by default) -->
+  <div id="reportsSection" class="hidden">
+    <div class="mb-6 flex justify-between items-center">
+      <h2 class="text-xl font-bold">Copyright Reports</h2>
+      <button onclick="loadAdminReports()" class="bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg text-sm font-bold transition">🔄 Refresh List</button>
+    </div>
+    <div id="reportsList" class="space-y-4"></div>
   </div>
+
 </main>
 
 <script>
-// ⚠️ Yahan apna Admin Email daalein (Security ke liye)
-// Filhaal maine isko open rakha hai testing ke liye. Baad mein isko true kar dein.
-const REQUIRE_ADMIN_LOGIN = false; 
+// ⚠️ YAHAN APNI EMAIL DAALEIN (Sirf yahi email Admin banegi)
+const ADMIN_EMAIL = "mansoor@example.com"; // <--- APNI GOOGLE EMAIL YAHAN LIKHEIN
 
+let adminUser = null;
+
+// Google Login Initialize karein
+async function initAdminLogin() {
+  try {
+    const r = await fetch('/api/auth/config');
+    const cfg = await r.json();
+    if (!cfg.googleClientId) { document.getElementById('authStatus').textContent = "Google login not configured."; return; }
+
+    google.accounts.id.initialize({
+      client_id: cfg.googleClientId,
+      callback: async (res) => {
+        // Token verify karein backend se
+        const verifyRes = await fetch('/api/auth/google', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ credential: res.credential })
+        });
+        const data = await verifyRes.json();
+
+        if (verifyRes.ok) {
+          if (data.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+            // ✅ Email match ho gayi! Admin panel kholo
+            adminUser = data;
+            document.getElementById('loginWall').classList.add('hidden');
+            document.getElementById('reportsSection').classList.remove('hidden');
+            loadAdminReports();
+          } else {
+            // ❌ Email match nahi hui (Koi aur banda hai)
+            document.getElementById('authStatus').textContent = "Access Denied. You are not the admin.";
+          }
+        } else {
+          document.getElementById('authStatus').textContent = "Verification failed.";
+        }
+      }
+    });
+
+    google.accounts.id.renderButton(document.getElementById('googleSignInBtn'), {
+      theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill'
+    });
+  } catch {
+    document.getElementById('authStatus').textContent = "Error loading Google login.";
+  }
+}
+
+// Reports Load karo
 async function loadAdminReports() {
   const list = document.getElementById('reportsList');
   list.innerHTML = '<p class="text-gray-500 text-center py-10">Loading reports...</p>';
 
   try {
-    // Backend se reports fetch kar rahe hain
     const res = await fetch('/api/admin/reports');
     const reports = await res.json();
 
@@ -58,67 +112,56 @@ async function loadAdminReports() {
       card.innerHTML = `
         <div class="flex-1">
           <div class="flex items-center gap-2 mb-2">
-            <span class="px-2 py-1 rounded text-xs font-bold ${isPending ? 'bg-yellow-500/20 text-yellow-500' : 'bg-green-500/20 text-green-500'}">
-              ${r.status.toUpperCase()}
-            </span>
+            <span class="px-2 py-1 rounded text-xs font-bold ${isPending ? 'bg-yellow-500/20 text-yellow-500' : 'bg-green-500/20 text-green-500'}">${r.status.toUpperCase()}</span>
             <span class="text-gray-500 text-xs">${date}</span>
           </div>
           <p class="text-lg font-bold text-red-400 mb-1">${r.reason}</p>
           <p class="text-sm text-gray-300 mb-2">Reported By: <span class="font-semibold text-white">${r.reporter_name}</span> (${r.reporter_email || 'No email'})</p>
           <a href="${r.media_url}" target="_blank" class="text-sm text-blue-400 underline hover:text-blue-300">🔗 View Reported Video</a>
         </div>
-        
         <div class="flex gap-2 shrink-0 w-full md:w-auto">
           ${isPending ? `
             <button onclick="deleteReportedVideo('${r.media_id}', '${r.id}')" class="flex-1 md:flex-none bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-bold transition">Delete Video</button>
             <button onclick="rejectReport('${r.id}')" class="flex-1 md:flex-none bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg text-sm font-bold transition">Reject</button>
-          ` : `
-            <p class="text-sm text-gray-500 italic">Action already taken.</p>
-          `}
+          ` : `<p class="text-sm text-gray-500 italic">Action already taken.</p>`}
         </div>
       `;
       list.appendChild(card);
     });
   } catch (err) {
-    list.innerHTML = '<p class="text-red-500 text-center py-10">Error loading reports. Check console.</p>';
-    console.error(err);
+    list.innerHTML = '<p class="text-red-500 text-center py-10">Error loading reports.</p>';
   }
 }
 
 async function deleteReportedVideo(mediaId, reportId) {
-  if (!confirm('⚠️ Kya aap waqai yeh video delete karna chahte hain? Yeh R2 storage se hamesha ke liye mit jayegi.')) return;
+  if (!adminUser) return alert('Login required');
+  if (!confirm('⚠️ Delete this video permanently from R2?')) return;
   
   try {
     const res = await fetch('/api/admin/delete-video', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ mediaId, reportId })
     });
-    if (res.ok) {
-      alert('✅ Video delete ho gayi aur report resolve ho gayi.');
-      loadAdminReports(); // List refresh karo
-    } else {
-      alert('❌ Video delete nahi ho saki.');
-    }
-  } catch (e) { alert('Network error.'); }
+    if (res.ok) { alert('✅ Video Deleted.'); loadAdminReports(); }
+    else { alert('❌ Error deleting video.'); }
+  } catch { alert('Network error.'); }
 }
 
 async function rejectReport(reportId) {
-  if (!confirm('Kya aap is report ko reject karna chahte hain? Video save rahegi.')) return;
+  if (!adminUser) return alert('Login required');
+  if (!confirm('Reject this report? Video will stay.')) return;
   
   try {
     const res = await fetch('/api/admin/reject-report', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ reportId })
     });
-    if (res.ok) {
-      alert('✅ Report reject ho gayi.');
-      loadAdminReports();
-    }
-  } catch (e) { alert('Network error.'); }
+    if (res.ok) { alert('✅ Report Rejected.'); loadAdminReports(); }
+  } catch { alert('Network error.'); }
 }
 
-// Page load hote hi reports fetch karo
-loadAdminReports();
+// Sab shuru karo
+initAdminLogin();
 </script>
 </body>
 </html>
