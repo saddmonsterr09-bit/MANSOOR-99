@@ -30,7 +30,7 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
 .skeleton-text { height:16px; background:#1a1a1a; border-radius:4px; margin:8px 16px; }
 @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
 
-/* Modal for comments */
+/* Modal */
 .modal-overlay { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.85); display:flex; align-items:flex-end; justify-content:center; }
 .modal-content { background:#18181b; width:100%; max-width:500px; max-height:80vh; border-radius:16px 16px 0 0; display:flex; flex-direction:column; }
 
@@ -44,10 +44,12 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
   📡 You're offline — showing cached content
 </div>
 
-<!-- ⭐ HEADER with Messages & Notifications -->
+<!-- HEADER with space between logo and icons -->
 <header class="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-gray-800 px-4 py-3 flex justify-between items-center">
-  <a href="/" class="text-2xl font-logo">ReelsBook</a>
-  <div class="flex items-center gap-4">
+  
+  <a href="/" class="text-2xl font-logo pr-4 sm:pr-8">ReelsBook</a>
+  
+  <div class="flex items-center gap-4 sm:gap-5">
     
     <!-- Messages Icon -->
     <a href="/profile/index.html?tab=messages" class="relative text-white hover:text-[var(--color-primary)] transition">
@@ -79,6 +81,7 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
 
 <main class="relative z-10 mx-auto max-w-xl px-4 pb-20">
 
+  <!-- Stories / Your Story section -->
   <section class="mb-6 border-b border-gray-800 pb-4 pt-4">
     <div class="flex gap-4 overflow-x-auto hide-scrollbar">
       <div id="addStoryBtn" class="flex flex-col items-center gap-1 cursor-pointer shrink-0">
@@ -91,23 +94,7 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
     </div>
   </section>
 
-  <section class="mb-8">
-    <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">
-      <span class="h-2 w-2 rounded-full bg-[var(--color-primary)]"></span> Open to everyone
-    </div>
-    <h1 class="text-5xl leading-[.94] tracking-[-.055em] sm:text-6xl">YOU WILL EARN<br><span class="text-[var(--color-primary)]">ON REELS BOOK.</span></h1>
-    <p class="mt-5 text-lg text-gray-400">A living gallery of shared moments. Upload a photo or video, add your name, and leave a little piece of your world behind.</p>
-    <div class="mt-7 flex flex-wrap gap-4">
-      <a href="#upload" class="rounded-full bg-[var(--color-primary)] px-6 py-3.5 font-bold shadow-lg hover:brightness-110">Share a moment</a>
-      <a href="/reels/index.html" class="rounded-full border border-gray-700 px-6 py-3.5 font-bold hover:border-[var(--color-primary)]">Watch reels</a>
-    </div>
-    <div class="mt-8">
-      <figure class="overflow-hidden rounded-[1.5rem] border border-gray-800 bg-gray-900 p-2">
-        <img src="/SAD.jpg" alt="Featured" class="aspect-[4/5] w-full rounded-[1.2rem] object-cover" onerror="this.style.display='none'">
-      </figure>
-    </div>
-  </section>
-
+  <!-- Upload Section -->
   <section id="upload" class="mb-10 rounded-2xl border border-gray-800 bg-gray-900 p-3">
     <button id="toggleUpload" class="flex w-full items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold hover:bg-[var(--color-primary)]/10">
       <span class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl text-white">+</span> Share a moment
@@ -158,11 +145,12 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
     </div>
   </section>
 
+  <!-- Recent Clips Section -->
   <section class="mb-10">
     <div class="mb-4 flex justify-between items-center">
       <div>
-        <p class="text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">Recent clips</p>
-        <h2 class="text-2xl font-black">Fresh on ReelsBook</h2>
+        <p class="text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">RECENT CLIPS</p>
+        <h2 class="text-2xl font-black">FRESH ON REELS BOOK</h2>
       </div>
       <a href="/reels/index.html" class="text-sm text-[var(--color-primary)] font-bold">See all →</a>
     </div>
@@ -234,7 +222,7 @@ const visitorId = (() => {
 })();
 const $ = (id) => document.getElementById(id);
 
-// ⭐ NOTIFICATIONS LOGIC
+// NOTIFICATIONS LOGIC
 async function loadNotifications() {
   if (!googleUser) return;
   try {
@@ -256,7 +244,6 @@ async function loadNotifications() {
       totalReqs = pendList.length;
     }
 
-    // Update badges
     const msgBadge = $('headerMsgBadge');
     const notifBadge = $('headerNotifBadge');
     const totalNotifs = totalMsgs + totalReqs;
@@ -267,7 +254,6 @@ async function loadNotifications() {
     if (totalNotifs > 0) { notifBadge.textContent = totalNotifs > 9 ? '9+' : totalNotifs; notifBadge.classList.remove('hidden'); }
     else notifBadge.classList.add('hidden');
 
-    // Populate Notif List
     const list = $('notifList');
     list.innerHTML = '';
     
@@ -306,9 +292,7 @@ async function loadNotifications() {
       list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>';
     }
 
-  } catch (err) {
-    console.error("Notif Error:", err);
-  }
+  } catch (err) { console.error("Notif Error:", err); }
 }
 
 function openNotif() {
@@ -317,10 +301,9 @@ function openNotif() {
   loadNotifications();
 }
 function closeNotif() { $('notifModal').classList.add('hidden'); }
-
 $('notifBtn').onclick = openNotif;
 
-// ⭐ Likes & Comments Functions
+// LIKES & COMMENTS
 function updateLikeBtnHtml(btn, count, liked) {
   btn.innerHTML = `<span style="color:${liked ? '#ec4899' : '#a1a1aa'};font-size:1.2rem;line-height:1">${liked ? '♥' : '♡'}</span> <span>${count}</span>`;
   btn.setAttribute('aria-pressed', String(liked));
@@ -387,7 +370,7 @@ $('commentForm').onsubmit = async (e) => {
   } catch (err) { alert('Failed to post comment.'); }
 };
 
-// ⭐ RENDER CLIPS (Thumbnail Fixed)
+// RENDER CLIPS
 function renderClips(items) {
   const grid = $('clipsGrid');
   const status = $('clipsStatus');
@@ -467,7 +450,7 @@ function renderClips(items) {
   });
 }
 
-// ⭐ RENDER STORIES
+// RENDER STORIES
 function renderStories(items) {
   const stories = $('storiesContainer');
   stories.innerHTML = '';
@@ -496,7 +479,7 @@ function renderStories(items) {
   });
 }
 
-// ⭐ LOAD MEDIA
+// LOAD DATA
 async function loadClips() {
   const cached = getCachedMediaClient();
   if (cached) {
@@ -536,7 +519,7 @@ function setCachedMediaClient(data) {
   try { sessionStorage.setItem(MEDIA_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch {}
 }
 
-// UPLOAD PANEL LOGIC
+// UPLOAD LOGIC
 function openUploadPanel() { $('uploadOptions').classList.remove('hidden'); $('upload').scrollIntoView({ behavior:'smooth', block:'start' }); }
 function closeUploadPanel() { $('uploadOptions').classList.add('hidden'); }
 $('toggleUpload').onclick = openUploadPanel;
@@ -605,7 +588,7 @@ function showSignedInUser(user) {
   $('signOutButton').classList.remove('hidden');
   $('accountDialogStatus').textContent = 'Signed in.';
   closeAccountDialog();
-  loadNotifications(); // ⭐ load notifications on sign in
+  loadNotifications();
 }
 function showSignedOutUser(msg) {
   googleUser = null;
@@ -653,7 +636,6 @@ $('accountButton').onclick = openAccountDialog;
 $('closeAccountDialog').onclick = closeAccountDialog;
 $('accountDialog').addEventListener('click', e => { if (e.target === $('accountDialog')) closeAccountDialog(); });
 
-// PUBLISH LOGIC
 $('publishButton').onclick = (ev) => {
   if (!googleCredential || !googleUser) return showUploadMessage('Sign in with Google first.');
   if (!selectedFile) return showUploadMessage('Choose a file first.');
@@ -693,14 +675,10 @@ $('publishButton').onclick = (ev) => {
   req.send(fd);
 };
 
-// Init
 initializeGoogleSignIn();
 loadClips();
-
-// Load notifications if already signed in
 if (googleUser) loadNotifications();
 
-// Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').then((reg) => {
