@@ -4,6 +4,9 @@ const ALLOWED_TYPES = new Set([
   "video/mp4","video/quicktime","video/webm","video/ogg","video/x-matroska"
 ]);
 
+const mediaCache = { data: null, ts: 0 };
+const MEDIA_CACHE_MS = 30 * 1000;
+
 const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS likes (media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (media_id, visitor_id))`,
   `CREATE INDEX IF NOT EXISTS likes_media_id_idx ON likes (media_id)`,
@@ -35,7 +38,11 @@ async function ensureSchema(env) {
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json; charset=UTF-8", "access-control-allow-origin": "*" }
+    headers: {
+      "content-type": "application/json; charset=UTF-8",
+      "access-control-allow-origin": "*",
+      "cache-control": "no-store"
+    }
   });
 }
 function safeText(v, f, m) { const t = String(v || "").trim().slice(0, m); return t || f; }
@@ -65,8 +72,13 @@ async function listMedia(env, prefix) {
   let cursor;
   do {
     const listed = await env.VIDEOS.list({ prefix: `${prefix}/`, limit: 1000, cursor });
-    for (const object of listed.objects) {
-      const stored = await env.VIDEOS.head(object.key);
+    const heads = await Promise.all(listed.objects.map(async (object) => {
+      try {
+        const stored = await env.VIDEOS.head(object.key);
+        return { object, stored };
+      } catch { return { object, stored: null }; }
+    }));
+    for (const { object, stored } of heads) {
       const m = stored?.customMetadata || {};
       results.push({
         key: object.key,
@@ -115,6 +127,15 @@ async function listMediaWithStats(env) {
       completion: watchMap[item.key] || 0
     };
   }).sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+}
+
+async function getCachedMedia(env) {
+  const now = Date.now();
+  if (mediaCache.data && (now - mediaCache.ts) < MEDIA_CACHE_MS) return mediaCache.data;
+  const fresh = await listMediaWithStats(env);
+  mediaCache.data = fresh;
+  mediaCache.ts = now;
+  return fresh;
 }
 
 export default {
@@ -169,7 +190,6 @@ export default {
       return json(u || null);
     }
 
-    // ⭐ NEW: List users (with friend status) — powers "Find People" feature
     if (path === "/api/users/list" && method === "GET") {
       const me = (url.searchParams.get("me") || "").toLowerCase();
       const q = String(url.searchParams.get("q") || "").trim().toLowerCase();
@@ -209,6 +229,7 @@ export default {
         if (existing) await env.DB.prepare("DELETE FROM likes WHERE media_id = ? AND visitor_id = ?").bind(mediaId, visitorId).run();
         else await env.DB.prepare("INSERT INTO likes (media_id, visitor_id) VALUES (?, ?)").bind(mediaId, visitorId).run();
         const c = await env.DB.prepare("SELECT COUNT(*) as count FROM likes WHERE media_id = ?").bind(mediaId).first();
+        mediaCache.ts = 0;
         return json({ mediaId, count: c ? c.count : 0, liked: !existing });
       } catch (err) { return json({ error: "Database error", details: err.message }, 500); }
     }
@@ -219,6 +240,7 @@ export default {
         if (!mediaId || !visitorId) return json({ error: "missing" }, 400);
         await env.DB.prepare("INSERT OR IGNORE INTO media_views (media_id, visitor_id) VALUES (?, ?)").bind(mediaId, visitorId).run();
         const c = await env.DB.prepare("SELECT COUNT(*) as count FROM media_views WHERE media_id = ?").bind(mediaId).first();
+        mediaCache.ts = 0;
         return json({ mediaId, count: c ? c.count : 0 });
       } catch { return json({ error: "failed" }, 500); }
     }
@@ -242,6 +264,7 @@ export default {
         for (const tag of tags) {
           await env.DB.prepare(`INSERT INTO user_interests (visitor_id, tag, weight, updated_at) VALUES (?, ?, 1, CURRENT_TIMESTAMP) ON CONFLICT(visitor_id, tag) DO UPDATE SET weight = weight + 1, updated_at = CURRENT_TIMESTAMP`).bind(visitorId, tag).run();
         }
+        mediaCache.ts = 0;
         return json({ ok: true });
       } catch { return json({ error: "failed" }, 500); }
     }
@@ -250,7 +273,7 @@ export default {
       try {
         const visitorId = url.searchParams.get("visitorId") || "";
         const limit = Math.min(Number(url.searchParams.get("limit")) || 30, 100);
-        const all = await listMediaWithStats(env);
+        const all = await getCachedMedia(env);
         const videos = all.filter(m => m.type === "video");
         const maxLikes = Math.max(1, ...videos.map(v => v.likes));
         const maxViews = Math.max(1, ...videos.map(v => v.views));
@@ -348,24 +371,71 @@ export default {
       return json({ incoming: inc.results || [], outgoing: out.results || [] });
     }
 
+    // ⭐ Messages: non-friends bhi message kar sakte hain
     if (path === "/api/messages" && method === "GET") {
       const me = (url.searchParams.get("me") || "").toLowerCase();
       const withEmail = (url.searchParams.get("with") || "").toLowerCase();
       if (!me || !withEmail) return json([]);
-      const rows = await env.DB.prepare(`SELECT id, from_email as sender, to_email as recipient, body, created_at FROM messages WHERE (from_email = ? AND to_email = ?) OR (from_email = ? AND to_email = ?) ORDER BY created_at ASC LIMIT 500`).bind(me, withEmail, withEmail, me).all();
+      const rows = await env.DB.prepare(
+        `SELECT id, from_email as sender, to_email as recipient, body, created_at, read_at
+         FROM messages
+         WHERE (from_email = ? AND to_email = ?) OR (from_email = ? AND to_email = ?)
+         ORDER BY created_at ASC LIMIT 500`
+      ).bind(me, withEmail, withEmail, me).all();
+      // Mark incoming as read
+      await env.DB.prepare(
+        "UPDATE messages SET read_at = CURRENT_TIMESTAMP WHERE from_email = ? AND to_email = ? AND read_at IS NULL"
+      ).bind(withEmail, me).run();
       return json(rows.results || []);
     }
     if (path === "/api/messages" && method === "POST") {
       const b = await request.json();
       const from = (b.from || "").toLowerCase(), to = (b.to || "").toLowerCase();
-      const body = String(b.body || "").slice(0, 2000);
+      const body = String(b.body || "").trim().slice(0, 2000);
       if (!from || !to || !body) return json({ error: "missing" }, 400);
-      const pair = from < to ? [from, to] : [to, from];
-      const friend = await env.DB.prepare("SELECT 1 FROM friendships WHERE user_a = ? AND user_b = ?").bind(pair[0], pair[1]).first();
-      if (!friend) return json({ error: "Not friends" }, 403);
+      if (from === to) return json({ error: "Cannot message yourself" }, 400);
       const id = crypto.randomUUID();
       await env.DB.prepare("INSERT INTO messages (id, from_email, to_email, body) VALUES (?, ?, ?, ?)").bind(id, from, to, body).run();
       return json({ ok: true, id });
+    }
+
+    // ⭐ Conversations list (chats with last message + unread)
+    if (path === "/api/conversations" && method === "GET") {
+      const me = (url.searchParams.get("me") || "").toLowerCase();
+      if (!me) return json([]);
+      const rows = await env.DB.prepare(
+        `SELECT
+           CASE WHEN from_email = ? THEN to_email ELSE from_email END AS peer_email,
+           MAX(created_at) AS last_at,
+           SUM(CASE WHEN to_email = ? AND read_at IS NULL THEN 1 ELSE 0 END) AS unread
+         FROM messages
+         WHERE from_email = ? OR to_email = ?
+         GROUP BY peer_email
+         ORDER BY last_at DESC
+         LIMIT 100`
+      ).bind(me, me, me, me).all();
+      const peers = (rows.results || []).map(r => r.peer_email);
+      if (!peers.length) return json([]);
+      const ph = peers.map(() => "?").join(",");
+      const users = await env.DB.prepare(`SELECT email, name, picture FROM users WHERE email IN (${ph})`).bind(...peers).all();
+      const uMap = Object.fromEntries((users.results || []).map(u => [u.email, u]));
+      const out = await Promise.all((rows.results || []).map(async (r) => {
+        const last = await env.DB.prepare(
+          `SELECT body, created_at, from_email FROM messages
+           WHERE (from_email = ? AND to_email = ?) OR (from_email = ? AND to_email = ?)
+           ORDER BY created_at DESC LIMIT 1`
+        ).bind(me, r.peer_email, r.peer_email, me).first();
+        return {
+          email: r.peer_email,
+          name: uMap[r.peer_email]?.name || r.peer_email,
+          picture: uMap[r.peer_email]?.picture || "",
+          lastMessage: last?.body || "",
+          lastAt: last?.created_at || r.last_at,
+          lastFromMe: last?.from_email === me,
+          unread: r.unread || 0
+        };
+      }));
+      return json(out);
     }
 
     if (path === "/api/upload" && method === "POST") {
@@ -394,12 +464,13 @@ export default {
           httpMetadata: { contentType: file.type },
           customMetadata: { kind: type, title, creator, creatoremail: creatorEmail, creatorpic: creatorPic, uploadedat: uploadedAt }
         });
+        mediaCache.ts = 0;
         return json({ key, type, title, creator, creatorEmail, creatorPic, uploadedAt, url: mediaUrl(key) }, 201);
       } catch { return json({ error: "Upload failed" }, 500); }
     }
 
     if (path === "/api/media" && method === "GET") {
-      try { return json(await listMediaWithStats(env)); }
+      try { return json(await getCachedMedia(env)); }
       catch { return json({ error: "Could not load media" }, 500); }
     }
 
