@@ -7,6 +7,8 @@
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="/icon.png">
 <title>ReelsBook — Modern Social Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/theme.css">
 <script src="https://cdn.tailwindcss.com"></script>
@@ -20,12 +22,16 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
 .clip-tile .play-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:2rem; text-shadow:0 2px 10px rgba(0,0,0,.7); }
 .clip-tile .view-badge { position:absolute; left:6px; bottom:6px; background:rgba(0,0,0,.7); font-size:11px; padding:2px 6px; border-radius:6px; }
 
-/* ⭐ Skeleton shimmer while clips load */
 .skeleton-tile { position:relative; aspect-ratio:9/16; border-radius:12px; overflow:hidden; background:linear-gradient(90deg,#1a1a1a 0%,#2a2a2a 50%,#1a1a1a 100%); background-size:200% 100%; animation:shimmer 1.2s infinite; }
 @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
 </style>
 </head>
 <body class="antialiased">
+
+<!-- ⭐ Offline banner (auto shows/hides based on connection) -->
+<div id="offlineBanner" class="fixed top-14 inset-x-0 z-50 bg-yellow-500 text-black text-center text-sm font-bold py-2 hidden">
+  📡 You're offline — showing cached content
+</div>
 
 <header class="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-gray-800 px-4 py-3 flex justify-between items-center">
   <a href="/" class="text-2xl font-logo">ReelsBook</a>
@@ -136,7 +142,6 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bott
       <a href="/reels/index.html" class="text-sm text-[var(--color-primary)] font-bold">See all →</a>
     </div>
 
-    <!-- ⭐ Skeletons appear instantly, replaced when real data arrives -->
     <div id="clipsGrid" class="grid grid-cols-3 gap-2">
       <div class="skeleton-tile"></div>
       <div class="skeleton-tile"></div>
@@ -180,7 +185,15 @@ const visitorId = (() => {
 })();
 const $ = (id) => document.getElementById(id);
 
-// ⭐ Client cache — instant render on repeat visits (60 s)
+// ⭐ Offline banner
+(function () {
+  const banner = document.getElementById('offlineBanner');
+  function update() { banner.classList.toggle('hidden', navigator.onLine); }
+  window.addEventListener('online', update);
+  window.addEventListener('offline', update);
+  update();
+})();
+
 const MEDIA_CACHE_KEY = 'reelsbook_media_cache_v1';
 const MEDIA_CACHE_MS = 60 * 1000;
 function getCachedMediaClient() {
@@ -197,7 +210,6 @@ function setCachedMediaClient(data) {
   try { sessionStorage.setItem(MEDIA_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch {}
 }
 
-// ⭐ Lazy-load clip videos only when near viewport
 let clipObserver = null;
 function setupClipObserver() {
   if (clipObserver) clipObserver.disconnect();
@@ -252,7 +264,6 @@ function attachLikeHandler(button) {
   });
 }
 
-// ⭐ Render clips — accepts items|null; null keeps skeletons visible
 function renderClips(items) {
   const grid = $('clipsGrid');
   const status = $('clipsStatus');
@@ -281,7 +292,7 @@ function renderClips(items) {
     tile.onclick = () => { window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
 
     const vid = document.createElement('video');
-    vid.dataset.src = v.url + '#t=0.1';  // ⭐ load only when near viewport
+    vid.dataset.src = v.url + '#t=0.1';
     vid.muted = true;
     vid.playsInline = true;
     vid.preload = 'none';
@@ -334,11 +345,9 @@ function renderStories(items) {
   });
 }
 
-// ⭐ Load clips — cache first, then fresh fetch (no cache-buster)
 async function loadClips() {
   setupClipObserver();
 
-  // 1) instant render from session cache if fresh
   const cached = getCachedMediaClient();
   if (cached) {
     galleryItems = cached;
@@ -346,7 +355,6 @@ async function loadClips() {
     renderStories(galleryItems);
   }
 
-  // 2) fetch fresh
   try {
     const r = await fetch('/api/media', { cache: 'default' });
     if (!r.ok) throw new Error('load failed');
@@ -498,7 +506,6 @@ $('publishButton').onclick = (ev) => {
       showUploadMessage('Published!');
       selectedFile = null; $('mediaInput').value=''; $('filePanel').classList.add('hidden'); $('mediaTitle').value='';
       closeUploadPanel();
-      // ⭐ Bust client cache so new video shows immediately
       sessionStorage.removeItem(MEDIA_CACHE_KEY);
       await loadClips();
     } catch (e) { showUploadMessage(e.message); }
@@ -513,7 +520,23 @@ if (heroLike) { attachLikeHandler(heroLike); loadLikeState('featured-sad-image',
 
 initializeGoogleSignIn();
 loadClips();
-if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(()=>{})); }
+
+// ⭐ Improved SW registration — auto-updates on new deploy
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (nw) nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            nw.postMessage('SKIP_WAITING');
+          }
+        });
+      });
+    }).catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
