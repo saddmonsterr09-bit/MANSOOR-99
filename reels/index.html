@@ -18,16 +18,17 @@ body { background:#000; color:#fff; }
 .speed-controls { position:absolute; top:20px; right:20px; display:flex; gap:5px; z-index:20; }
 .speed-btn { background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.3); color:#fff; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:bold; cursor:pointer; }
 .speed-btn.active { background:var(--color-primary); border-color:var(--color-primary); }
-.loading-overlay { position:absolute; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:15; pointer-events:none; transition:opacity .3s; }
+.loading-overlay { position:absolute; inset:0; background:rgba(0,0,0,.6); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:15; pointer-events:none; transition:opacity .3s; }
 .loading-overlay.hidden { opacity:0; }
 .like-button[aria-pressed="true"] { color:var(--color-primary); border-color:var(--color-primary); }
-/* ⭐ view badge moved below the fixed header so it's not hidden by "REELS" text */
 .view-count { position:absolute; top:72px; left:20px; z-index:20; background:rgba(0,0,0,.6); padding:4px 10px; border-radius:12px; font-size:12px; }
+.modal-overlay { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.85); display:flex; align-items:flex-end; justify-content:center; }
+.modal-content { background:#18181b; width:100%; max-width:500px; max-height:80vh; border-radius:16px 16px 0 0; display:flex; flex-direction:column; }
 </style>
 </head>
 <body>
-<header class="fixed top-0 z-50 w-full flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
-  <a href="/" class="flex items-center gap-2 text-white">
+<header class="fixed top-0 z-50 w-full flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
+  <a href="/" class="flex items-center gap-2 text-white pointer-events-auto">
     <span class="text-2xl font-black">←</span>
     <span class="text-sm font-black tracking-[.12em]">REELS</span>
   </a>
@@ -38,17 +39,76 @@ body { background:#000; color:#fff; }
   <p id="reelsStatus" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-sm text-gray-400 p-4"></p>
 </main>
 
+<!-- Comments Modal -->
+<div id="commentModal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
+      <h3 class="text-lg font-bold">Comments</h3>
+      <button onclick="closeComments()" class="text-2xl text-gray-400 px-2">×</button>
+    </div>
+    <div id="modalCommentsList" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm"></div>
+    <form id="commentForm" class="border-t border-gray-800 p-3 flex gap-2">
+      <input id="commentInput" class="flex-1 rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm" placeholder="Add a comment..." autocomplete="off">
+      <button type="submit" class="bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg font-bold text-sm">Post</button>
+    </form>
+  </div>
+</div>
+
 <script>
 const reelsFeed = document.getElementById('reelsFeed');
 const reelsStatus = document.getElementById('reelsStatus');
 const urlParams = new URLSearchParams(location.search);
 const focusKey = urlParams.get('focus');
-const visitorId = (() => {
-  let v = localStorage.getItem('ReelsbookVisitorId');
-  if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); }
-  return v;
-})();
+let currentCommentMediaId = null;
+const googleUser = JSON.parse(localStorage.getItem('currentReelsUser') || 'null');
+const visitorId = (() => { let v = localStorage.getItem('ReelsbookVisitorId'); if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); } return v; })();
 
+// ⭐ Comments Logic
+async function openComments(mediaId) {
+  currentCommentMediaId = mediaId;
+  document.getElementById('commentModal').classList.remove('hidden');
+  loadComments();
+}
+function closeComments() {
+  document.getElementById('commentModal').classList.add('hidden');
+  currentCommentMediaId = null;
+}
+async function loadComments() {
+  if (!currentCommentMediaId) return;
+  const list = document.getElementById('modalCommentsList');
+  list.innerHTML = '<p class="text-gray-500 text-center py-4">Loading...</p>';
+  try {
+    const r = await fetch(`/api/comments?mediaId=${encodeURIComponent(currentCommentMediaId)}`);
+    const comments = await r.json();
+    list.innerHTML = '';
+    if (!comments.length) { list.innerHTML = '<p class="text-gray-500 text-center py-4">No comments yet. Be the first!</p>'; return; }
+    comments.forEach(c => {
+      const div = document.createElement('div');
+      div.className = 'flex gap-2';
+      div.innerHTML = `<p class="font-bold text-[var(--color-primary)]">${c.author_name}</p><p class="text-white">${c.body}</p>`;
+      list.appendChild(div);
+    });
+    list.scrollTop = list.scrollHeight;
+  } catch { list.innerHTML = '<p class="text-red-400 text-center py-4">Failed to load comments.</p>'; }
+}
+document.getElementById('commentForm').onsubmit = async (e) => {
+  e.preventDefault();
+  if (!currentCommentMediaId) return;
+  const input = document.getElementById('commentInput');
+  const body = input.value.trim();
+  if (!body) return;
+  if (!googleUser) { alert('Please sign in to comment.'); return; }
+  input.value = '';
+  try {
+    await fetch('/api/comments', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ mediaId: currentCommentMediaId, authorName: googleUser.name, authorEmail: googleUser.email, body })
+    });
+    loadComments();
+  } catch (err) { alert('Failed to post comment.'); }
+};
+
+// Likes Logic
 function updateLikeButton(button, result) {
   button.querySelector('.like-count').textContent = result.count;
   button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
@@ -56,17 +116,17 @@ function updateLikeButton(button, result) {
   button.setAttribute('aria-pressed', String(result.liked));
 }
 async function loadLikeState(mediaId, button) {
-  try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}&t=${Date.now()}`); if (r.ok) updateLikeButton(button, await r.json()); } catch {}
+  try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}`); if (r.ok) updateLikeButton(button, await r.json()); } catch {}
 }
 function makeLikeButton(mediaId) {
   const b = document.createElement('button');
   b.type = 'button';
-  b.className = 'like-button inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/50 px-4 py-2 text-sm font-semibold text-white';
+  b.className = 'like-button inline-flex items-center gap-1 rounded-full border border-white/30 bg-black/50 px-3 py-1 text-sm font-semibold text-white';
   b.dataset.mediaId = mediaId;
   b.setAttribute('aria-pressed', 'false');
   b.innerHTML = '<span class="like-icon text-xl">♡</span><span class="like-count">0</span>';
   b.addEventListener('click', async (e) => {
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     b.disabled = true;
     try { const r = await fetch('/api/likes', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mediaId, visitorId }) }); const result = await r.json(); if (r.ok) updateLikeButton(b, result); } catch {}
     finally { b.disabled = false; }
@@ -75,15 +135,20 @@ function makeLikeButton(mediaId) {
   return b;
 }
 
-// ⭐ View is recorded ONLY when the reel actually starts playing (not at render time)
+// Make Comment Button
+function makeCommentButton(mediaId, count) {
+  const b = document.createElement('button');
+  b.className = 'inline-flex items-center gap-1 rounded-full border border-white/30 bg-black/50 px-3 py-1 text-sm font-semibold text-white';
+  b.innerHTML = `<span class="text-xl" style="line-height:1">💬</span><span class="comment-count">${count || 0}</span>`;
+  b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openComments(mediaId); };
+  return b;
+}
+
 function recordView(mediaId) {
   const key = 'viewed:' + mediaId;
   if (sessionStorage.getItem(key)) return;
   sessionStorage.setItem(key, '1');
-  fetch('/api/views', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ mediaId, visitorId })
-  }).catch(() => {});
+  fetch('/api/views', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mediaId, visitorId }) }).catch(() => {});
 }
 
 function renderReels(items) {
@@ -102,33 +167,12 @@ function renderReels(items) {
     const video = document.createElement('video');
     video.dataset.src = item.url;
     video.poster = item.url + '#t=0.1';
-    video.controls = false;
-    video.muted = true;
-    video.loop = true;
-    video.playsInline = true;
-    video.preload = 'none';
+    video.controls = false; video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'metadata';
 
     video.addEventListener('loadeddata', () => loadingOverlay.classList.add('hidden'));
-    video.addEventListener('click', () => { video.paused ? video.play().catch(()=>{}) : video.pause(); });
-
-    // ⭐ Record view only when the video truly starts playing
+    video.addEventListener('canplay', () => loadingOverlay.classList.add('hidden'));
+    video.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); if (video.paused) video.play().catch(()=>{}); else video.pause(); });
     video.addEventListener('play', () => recordView(item.key));
-
-    // Watch-time tracking
-    let watchStart = null;
-    let watchAccum = 0;
-    const sendWatch = () => {
-      if (watchAccum < 1 || !video.duration) return;
-      fetch('/api/watch', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({
-        mediaId: item.key, visitorId, seconds: watchAccum, duration: video.duration,
-        creator: item.creator || '', title: item.title || ''
-      }) }).catch(()=>{});
-      watchAccum = 0;
-    };
-    video.addEventListener('play', () => { watchStart = Date.now(); });
-    video.addEventListener('pause', () => { if (watchStart) { watchAccum += (Date.now() - watchStart)/1000; watchStart = null; } });
-    video.addEventListener('ended', () => { if (watchStart) { watchAccum += (Date.now() - watchStart)/1000; watchStart = null; } sendWatch(); });
-    setInterval(() => { if (watchStart && watchAccum >= 5) sendWatch(); }, 5000);
 
     const speedBox = document.createElement('div');
     speedBox.className = 'speed-controls';
@@ -136,7 +180,7 @@ function renderReels(items) {
       const btn = document.createElement('button');
       btn.className = 'speed-btn' + (i === 0 ? ' active' : '');
       btn.textContent = s + 'x';
-      btn.onclick = (e) => { e.stopPropagation(); video.playbackRate = s; speedBox.querySelectorAll('.speed-btn').forEach(x => x.classList.remove('active')); btn.classList.add('active'); };
+      btn.onclick = (e) => { e.preventDefault(); e.stopPropagation(); video.playbackRate = s; speedBox.querySelectorAll('.speed-btn').forEach(x => x.classList.remove('active')); btn.classList.add('active'); };
       speedBox.appendChild(btn);
     });
 
@@ -150,9 +194,8 @@ function renderReels(items) {
     title.className = 'text-lg font-bold';
     title.textContent = item.title || 'Untitled';
     const creator = document.createElement('p');
-    creator.className = 'mt-1 mb-2 text-sm text-gray-300 cursor-pointer hover:underline';
+    creator.className = 'mt-1 mb-3 text-sm text-gray-300 cursor-pointer hover:underline';
     creator.textContent = `by ${item.creator || 'Anonymous'}`;
-    // ⭐ Build profile URL cleanly — only add email param if present
     creator.onclick = () => {
       const params = new URLSearchParams();
       params.set('name', item.creator || '');
@@ -160,7 +203,13 @@ function renderReels(items) {
       if (item.creatorEmail) params.set('email', item.creatorEmail);
       location.href = `/profile/index.html?${params.toString()}`;
     };
-    details.append(title, creator, makeLikeButton(item.key));
+
+    const actions = document.createElement('div');
+    actions.className = 'flex items-center gap-3 mt-2';
+    actions.append(makeLikeButton(item.key));
+    actions.append(makeCommentButton(item.key, item.comments || 0));
+
+    details.append(title, creator, actions);
     card.append(loadingOverlay, video, viewBadge, speedBox, details);
     reelsFeed.appendChild(card);
   });
@@ -175,7 +224,7 @@ function setupPlayback() {
       const video = entry.target.querySelector('video');
       if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
         document.querySelectorAll('video').forEach(v => { if (v !== video) v.pause(); });
-        if (!video.src) video.src = video.dataset.src;
+        if (!video.src) { video.src = video.dataset.src; video.load(); }
         video.play().then(() => { video.muted = false; }).catch(()=>{});
       } else { video.pause(); }
     });
