@@ -14,6 +14,13 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
 .video-card .play-icon { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:2rem; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.7); pointer-events:none; }
 .video-card .badges { position:absolute; left:4px; bottom:4px; display:flex; gap:4px; }
 .video-card .badge { background:rgba(0,0,0,.7); font-size:11px; padding:2px 6px; border-radius:6px; }
+
+.unread-dot { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:#ef4444; color:#fff; font-size:11px; font-weight:700; }
+
+.chat-bubble { max-width:80%; border-radius:16px; padding:8px 12px; font-size:14px; line-height:1.4; word-wrap:break-word; }
+.chat-bubble.mine { background:#ef4444; color:#fff; margin-left:auto; border-bottom-right-radius:4px; }
+.chat-bubble.theirs { background:#27272a; color:#fff; margin-right:auto; border-bottom-left-radius:4px; }
+.chat-time { font-size:10px; opacity:.7; margin-top:2px; }
 </style>
 </head>
 <body class="min-h-screen">
@@ -39,10 +46,14 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
     </div>
   </section>
 
-  <div class="mb-6 border-b border-gray-800 flex gap-6 justify-center">
-    <button id="tabVideos" class="pb-3 border-b-2 border-[var(--color-primary)] font-bold text-sm">Videos</button>
-    <button id="tabFriends" class="pb-3 border-b-2 border-transparent font-bold text-sm text-gray-400">Friends</button>
-    <button id="tabFindPeople" class="pb-3 border-b-2 border-transparent font-bold text-sm text-gray-400 hidden">Find People</button>
+  <div class="mb-6 border-b border-gray-800 flex gap-6 justify-center overflow-x-auto">
+    <button id="tabVideos" class="pb-3 border-b-2 border-[var(--color-primary)] font-bold text-sm whitespace-nowrap">Videos</button>
+    <button id="tabFriends" class="pb-3 border-b-2 border-transparent font-bold text-sm text-gray-400 whitespace-nowrap">Friends</button>
+    <button id="tabMessages" class="pb-3 border-b-2 border-transparent font-bold text-sm text-gray-400 whitespace-nowrap relative">
+      Messages
+      <span id="msgTabBadge" class="hidden absolute -top-1 -right-3 unread-dot">0</span>
+    </button>
+    <button id="tabFindPeople" class="pb-3 border-b-2 border-transparent font-bold text-sm text-gray-400 whitespace-nowrap hidden">Find People</button>
   </div>
 
   <div id="videosTab">
@@ -57,6 +68,11 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
   <div id="friendsTab" class="hidden">
     <div id="incomingList" class="mb-6"></div>
     <div id="friendsList"></div>
+  </div>
+
+  <div id="messagesTab" class="hidden">
+    <div id="conversationsList" class="space-y-1"></div>
+    <p id="messagesEmpty" class="text-center text-gray-400 text-sm py-8 hidden">No messages yet. Visit someone's profile or Find People to start a chat.</p>
   </div>
 
   <div id="findPeopleTab" class="hidden">
@@ -74,16 +90,19 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
   <div class="absolute inset-0 bg-black/80" onclick="closeMessages()"></div>
   <div class="absolute inset-y-0 right-0 w-full max-w-md bg-gray-900 border-l border-gray-800 flex flex-col">
     <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
-      <div>
-        <p id="msgWithName" class="font-bold">Chat</p>
-        <p id="msgWithEmail" class="text-xs text-gray-400"></p>
+      <div class="flex items-center gap-3 min-w-0">
+        <img id="msgWithPic" src="" class="w-9 h-9 rounded-full bg-gray-800 hidden">
+        <div class="min-w-0">
+          <p id="msgWithName" class="font-bold truncate">Chat</p>
+          <p id="msgWithEmail" class="text-xs text-gray-400 truncate"></p>
+        </div>
       </div>
-      <button onclick="closeMessages()" class="text-2xl text-gray-400">×</button>
+      <button onclick="closeMessages()" class="text-2xl text-gray-400 px-2">×</button>
     </div>
     <div id="msgList" class="flex-1 overflow-y-auto p-4 space-y-2 text-sm"></div>
     <form id="msgForm" class="border-t border-gray-800 p-3 flex gap-2">
-      <input id="msgInput" class="flex-1 rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm" placeholder="Type a message…">
-      <button class="bg-[var(--color-primary)] px-4 py-2 rounded-lg font-bold text-sm">Send</button>
+      <input id="msgInput" class="flex-1 rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm" placeholder="Type a message…" autocomplete="off">
+      <button type="submit" class="bg-[var(--color-primary)] px-4 py-2 rounded-lg font-bold text-sm">Send</button>
     </form>
   </div>
 </div>
@@ -100,6 +119,7 @@ let targetName = '';
 let targetPic = '';
 let isOwnProfile = false;
 let currentChatWith = null;
+let chatPollInterval = null;
 
 async function resolveTarget() {
   if (viewedEmail) {
@@ -141,7 +161,7 @@ async function resolveTarget() {
 async function loadProfileStats() {
   try {
     const [mediaR, friendsR] = await Promise.all([
-      fetch('/api/media?t=' + Date.now()),
+      fetch('/api/media'),
       targetEmail ? fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`) : Promise.resolve({ ok:false })
     ]);
     const allMedia = mediaR.ok ? await mediaR.json() : [];
@@ -234,6 +254,7 @@ async function loadFriendsList() {
           <p class="font-semibold text-sm truncate">${f.name || f.email}</p>
           <p class="text-xs text-gray-400 truncate">${f.lastMessage || ''}</p>
         </div>
+        <button class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">💬</button>
       `;
       row.onclick = () => openMessages(f);
       list.appendChild(row);
@@ -241,7 +262,135 @@ async function loadFriendsList() {
   } catch {}
 }
 
-// ⭐ Find People tab logic
+async function loadConversations() {
+  if (!isOwnProfile || !me) return;
+  const list = document.getElementById('conversationsList');
+  const empty = document.getElementById('messagesEmpty');
+  try {
+    const r = await fetch(`/api/conversations?me=${encodeURIComponent(me.email)}`);
+    if (!r.ok) return;
+    const convs = await r.json();
+    list.innerHTML = '';
+    if (!convs.length) {
+      empty.classList.remove('hidden');
+      updateMessagesBadge(0);
+      return;
+    }
+    empty.classList.add('hidden');
+    let totalUnread = 0;
+    convs.forEach(c => {
+      totalUnread += c.unread || 0;
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-3 py-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 px-2 rounded';
+      row.innerHTML = `
+        <img src="${c.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.name || c.email)}" class="w-12 h-12 rounded-full">
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between items-baseline gap-2">
+            <p class="font-semibold text-sm truncate">${c.name || c.email}</p>
+            <span class="text-xs text-gray-500 whitespace-nowrap">${formatTime(c.lastAt)}</span>
+          </div>
+          <div class="flex justify-between items-center gap-2 mt-0.5">
+            <p class="text-xs text-gray-400 truncate">${c.lastFromMe ? 'You: ' : ''}${c.lastMessage || ''}</p>
+            ${c.unread > 0 ? `<span class="unread-dot">${c.unread}</span>` : ''}
+          </div>
+        </div>
+      `;
+      row.onclick = () => openMessages({ email: c.email, name: c.name, picture: c.picture });
+      list.appendChild(row);
+    });
+    updateMessagesBadge(totalUnread);
+  } catch {}
+}
+
+function updateMessagesBadge(count) {
+  const badge = document.getElementById('msgTabBadge');
+  if (!badge) return;
+  if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
+  else badge.classList.add('hidden');
+}
+
+function formatTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 60) return 'now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h';
+  if (diff < 604800) return Math.floor(diff/86400) + 'd';
+  return d.toLocaleDateString();
+}
+
+async function loadFriendButton() {
+  const actions = document.getElementById('profileActions');
+  actions.innerHTML = '';
+
+  if (isOwnProfile) return;
+
+  if (!me) {
+    actions.innerHTML = '<a href="/" class="text-sm text-[var(--color-primary)] underline">Sign in to add friends →</a>';
+    return;
+  }
+  if (!targetEmail) {
+    actions.innerHTML = `
+      <div class="text-sm text-gray-400 text-center sm:text-left">
+        <p>⚠️ Could not find <strong>${targetName || 'this user'}</strong> in the user database.</p>
+        <p class="text-xs mt-1">They may not have signed in yet.</p>
+        <button onclick="switchToFindPeople()" class="text-[var(--color-primary)] underline mt-2 text-xs font-bold">Find people manually →</button>
+      </div>
+    `;
+    return;
+  }
+
+  try {
+    const r = await fetch(`/api/friends/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`);
+    const data = await r.json();
+    actions.innerHTML = '';
+
+    const msgBtn = document.createElement('button');
+    msgBtn.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
+    msgBtn.textContent = '💬 Message';
+    msgBtn.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
+
+    if (data.status === 'friends') {
+      actions.appendChild(msgBtn);
+    } else if (data.status === 'outgoing') {
+      actions.innerHTML = '<span class="text-sm text-gray-400">Friend request sent ✓</span>';
+      actions.appendChild(msgBtn);
+    } else if (data.status === 'incoming') {
+      const b = document.createElement('button');
+      b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
+      b.textContent = 'Accept request';
+      b.onclick = async () => {
+        await fetch('/api/friends/accept', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, requestId: data.requestId }) });
+        loadFriendButton(); loadFriendsList();
+      };
+      actions.appendChild(b);
+      actions.appendChild(msgBtn);
+    } else {
+      const addBtn = document.createElement('button');
+      addBtn.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold';
+      addBtn.textContent = '+ Add friend';
+      addBtn.onclick = async () => {
+        addBtn.disabled = true; addBtn.textContent = 'Sending…';
+        try {
+          const resp = await fetch('/api/friends/request', {
+            method:'POST', headers:{'content-type':'application/json'},
+            body: JSON.stringify({ from: me.email, to: targetEmail })
+          });
+          const respData = await resp.json().catch(() => ({}));
+          if (!resp.ok) alert('Could not send friend request: ' + (respData.error || `HTTP ${resp.status}`));
+        } catch (err) { alert('Network error: ' + err.message); }
+        loadFriendButton();
+      };
+      actions.appendChild(addBtn);
+      actions.appendChild(msgBtn);
+    }
+  } catch {
+    actions.innerHTML = '<span class="text-sm text-red-400">Could not check friend status</span>';
+  }
+}
+
 async function loadFindPeople() {
   if (!me || !me.email) return;
   const search = document.getElementById('findSearchInput').value.trim();
@@ -274,6 +423,7 @@ async function loadFindPeople() {
           <p class="text-xs text-gray-400 truncate">${u.email}</p>
         </div>
         ${actionHtml}
+        <button data-msg="${u.email}" data-name="${(u.name || '').replace(/"/g,'&quot;')}" data-pic="${u.picture || ''}" class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">💬</button>
       `;
       listEl.appendChild(row);
     });
@@ -290,78 +440,12 @@ async function loadFindPeople() {
       await fetch('/api/friends/accept', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, requestId: b.dataset.accept }) });
       loadFindPeople(); loadFriendsList();
     });
+    listEl.querySelectorAll('[data-msg]').forEach(b => b.onclick = () => {
+      openMessages({ email: b.dataset.msg, name: b.dataset.name, picture: b.dataset.pic });
+    });
   } catch {
     statusEl.textContent = 'Could not load users.'; statusEl.classList.remove('hidden');
   }
-}
-
-async function loadFriendButton() {
-  const actions = document.getElementById('profileActions');
-  actions.innerHTML = '';
-
-  if (isOwnProfile) return;
-
-  if (!me) {
-    actions.innerHTML = '<a href="/" class="text-sm text-[var(--color-primary)] underline">Sign in to add friends →</a>';
-    return;
-  }
-  if (!targetEmail) {
-    actions.innerHTML = `
-      <div class="text-sm text-gray-400 text-center sm:text-left">
-        <p>⚠️ Could not find <strong>${targetName || 'this user'}</strong> in the user database.</p>
-        <p class="text-xs mt-1">They may not have signed in yet.</p>
-        <button onclick="switchToFindPeople()" class="text-[var(--color-primary)] underline mt-2 text-xs font-bold">Find people manually →</button>
-      </div>
-    `;
-    return;
-  }
-
-  try {
-    const r = await fetch(`/api/friends/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`);
-    const data = await r.json();
-    actions.innerHTML = '';
-    if (data.status === 'friends') {
-      const b = document.createElement('button');
-      b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
-      b.textContent = '💬 Message';
-      b.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
-      actions.appendChild(b);
-    } else if (data.status === 'outgoing') {
-      actions.innerHTML = '<span class="text-sm text-gray-400">Friend request sent ✓</span>';
-    } else if (data.status === 'incoming') {
-      const b = document.createElement('button');
-      b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
-      b.textContent = 'Accept request';
-      b.onclick = async () => {
-        await fetch('/api/friends/accept', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, requestId: data.requestId }) });
-        loadFriendButton(); loadFriendsList();
-      };
-      actions.appendChild(b);
-    } else {
-      const b = document.createElement('button');
-      b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold';
-      b.textContent = '+ Add friend';
-      b.onclick = async () => {
-        b.disabled = true; b.textContent = 'Sending…';
-        try {
-          const resp = await fetch('/api/friends/request', {
-            method:'POST', headers:{'content-type':'application/json'},
-            body: JSON.stringify({ from: me.email, to: targetEmail })
-          });
-          const respData = await resp.json().catch(() => ({}));
-          if (!resp.ok) alert('Could not send friend request: ' + (respData.error || `HTTP ${resp.status}`));
-        } catch (err) { alert('Network error: ' + err.message); }
-        loadFriendButton();
-      };
-      actions.appendChild(b);
-    }
-  } catch {
-    actions.innerHTML = '<span class="text-sm text-red-400">Could not check friend status</span>';
-  }
-}
-
-function switchToFindPeople() {
-  document.getElementById('tabFindPeople')?.click();
 }
 
 function openMessages(friend) {
@@ -370,11 +454,18 @@ function openMessages(friend) {
   document.getElementById('messageDrawer').classList.remove('hidden');
   document.getElementById('msgWithName').textContent = friend.name || friend.email;
   document.getElementById('msgWithEmail').textContent = friend.email;
+  const picEl = document.getElementById('msgWithPic');
+  if (friend.picture) { picEl.src = friend.picture; picEl.classList.remove('hidden'); }
+  else picEl.classList.add('hidden');
   loadMessages();
+  if (chatPollInterval) clearInterval(chatPollInterval);
+  chatPollInterval = setInterval(loadMessages, 5000);
 }
 function closeMessages() {
   document.getElementById('messageDrawer').classList.add('hidden');
   currentChatWith = null;
+  if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
+  if (isOwnProfile) { loadConversations(); }
 }
 async function loadMessages() {
   if (!currentChatWith || !me) return;
@@ -385,10 +476,17 @@ async function loadMessages() {
   list.innerHTML = '';
   msgs.forEach(m => {
     const mine = m.sender === me.email;
-    const div = document.createElement('div');
-    div.className = `max-w-[80%] rounded-2xl px-3 py-2 ${mine ? 'ml-auto bg-[var(--color-primary)]' : 'bg-gray-800'}`;
-    div.textContent = m.body;
-    list.appendChild(div);
+    const wrap = document.createElement('div');
+    wrap.className = 'flex flex-col ' + (mine ? 'items-end' : 'items-start');
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble ' + (mine ? 'mine' : 'theirs');
+    bubble.textContent = m.body;
+    const time = document.createElement('div');
+    time.className = 'chat-time';
+    time.textContent = formatTime(m.created_at);
+    wrap.appendChild(bubble);
+    wrap.appendChild(time);
+    list.appendChild(wrap);
   });
   list.scrollTop = list.scrollHeight;
 }
@@ -399,12 +497,16 @@ document.getElementById('msgForm').onsubmit = async (e) => {
   const body = input.value.trim();
   if (!body) return;
   input.value = '';
-  await fetch('/api/messages', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from: me.email, to: currentChatWith.email, body }) });
-  loadMessages();
+  try {
+    const r = await fetch('/api/messages', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from: me.email, to: currentChatWith.email, body }) });
+    if (!r.ok) { const d = await r.json().catch(()=>({})); alert('Could not send: ' + (d.error || r.status)); return; }
+    loadMessages();
+    if (isOwnProfile) loadConversations();
+  } catch (err) { alert('Network error: ' + err.message); }
 };
 
 function setTab(name) {
-  ['videos', 'friends', 'findPeople'].forEach(t => {
+  ['videos', 'friends', 'messages', 'findPeople'].forEach(t => {
     const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
     const content = document.getElementById(t + 'Tab');
     if (!el || !content) return;
@@ -419,11 +521,17 @@ function setTab(name) {
     }
   });
   if (name === 'findPeople') loadFindPeople();
+  if (name === 'messages') loadConversations();
 }
 
 document.getElementById('tabVideos').onclick = () => setTab('videos');
 document.getElementById('tabFriends').onclick = () => setTab('friends');
+document.getElementById('tabMessages').onclick = () => setTab('messages');
 document.getElementById('tabFindPeople').onclick = () => setTab('findPeople');
+
+function switchToFindPeople() {
+  document.getElementById('tabFindPeople')?.click();
+}
 
 let searchTimeout;
 document.getElementById('findSearchInput').addEventListener('input', () => {
@@ -437,12 +545,12 @@ document.getElementById('findSearchInput').addEventListener('input', () => {
   document.getElementById('profileEmail').textContent = targetEmail || (isOwnProfile ? 'Sign in to see your account' : '');
   document.getElementById('profilePic').src = targetPic || `https://ui-avatars.com/api/?name=${encodeURIComponent(targetName || 'U')}&background=random&color=fff&size=128`;
 
-  // Show Find People tab only on own profile
   if (isOwnProfile && me) document.getElementById('tabFindPeople').classList.remove('hidden');
 
   loadProfileStats();
   loadFriendButton();
   loadFriendsList();
+  if (isOwnProfile) loadConversations();
 })();
 </script>
 </body>
