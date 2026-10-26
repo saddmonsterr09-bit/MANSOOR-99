@@ -11,13 +11,19 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS likes (media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (media_id, visitor_id))`,
   `CREATE INDEX IF NOT EXISTS likes_media_id_idx ON likes (media_id)`,
   `CREATE TABLE IF NOT EXISTS media_views (media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (media_id, visitor_id))`,
+  `CREATE INDEX IF NOT EXISTS media_views_media_id_idx ON media_views (media_id)`,
   `CREATE TABLE IF NOT EXISTS watch_events (id TEXT PRIMARY KEY, media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, seconds REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+  `CREATE INDEX IF NOT EXISTS watch_events_media_id_idx ON watch_events (media_id)`,
   `CREATE TABLE IF NOT EXISTS friend_requests (id TEXT PRIMARY KEY, from_email TEXT NOT NULL, to_email TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(from_email, to_email))`,
+  `CREATE INDEX IF NOT EXISTS friend_requests_to_idx ON friend_requests (to_email, status)`,
+  `CREATE INDEX IF NOT EXISTS friend_requests_from_idx ON friend_requests (from_email, status)`,
   `CREATE TABLE IF NOT EXISTS friendships (user_a TEXT NOT NULL, user_b TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_a, user_b))`,
+  `CREATE INDEX IF NOT EXISTS friendships_a_idx ON friendships (user_a)`,
+  `CREATE INDEX IF NOT EXISTS friendships_b_idx ON friendships (user_b)`,
   `CREATE TABLE IF NOT EXISTS messages (id TEXT PRIMARY KEY, from_email TEXT NOT NULL, to_email TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, read_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS messages_pair_idx ON messages (from_email, to_email, created_at)`,
   `CREATE TABLE IF NOT EXISTS user_interests (visitor_id TEXT NOT NULL, tag TEXT NOT NULL, weight REAL NOT NULL DEFAULT 1, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (visitor_id, tag))`,
   `CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT, picture TEXT, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
-  // ⭐ NEW COMMENTS TABLE
   `CREATE TABLE IF NOT EXISTS comments (id TEXT PRIMARY KEY, media_id TEXT NOT NULL, author_email TEXT, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE INDEX IF NOT EXISTS comments_media_idx ON comments (media_id, created_at)`
 ];
@@ -187,7 +193,6 @@ export default {
       return json(enriched);
     }
 
-    // ⭐ LIKES
     if (path === "/api/likes" && method === "GET") {
       const mediaId = url.searchParams.get("mediaId");
       const visitorId = url.searchParams.get("visitorId");
@@ -208,7 +213,6 @@ export default {
       } catch (err) { return json({ error: "Database error", details: err.message }, 500); }
     }
 
-    // ⭐ COMMENTS API
     if (path === "/api/comments" && method === "GET") {
       const mediaId = url.searchParams.get("mediaId");
       if (!mediaId) return json([]);
@@ -283,7 +287,6 @@ export default {
       } catch { return json({ error: "failed" }, 500); }
     }
 
-    // ⭐ FRIENDS & MESSAGES (SAME AS BEFORE)
     if (path === "/api/friends/status" && method === "GET") {
       const me = (url.searchParams.get("me") || "").toLowerCase();
       const target = (url.searchParams.get("target") || "").toLowerCase();
