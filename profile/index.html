@@ -8,14 +8,8 @@
 <link rel="stylesheet" href="/theme.css">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-/* ⭐ TEXT SELECTION FIX */
 body {
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+    -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
     background:#000; color:#fff; font-family:'Inter',sans-serif;
 }
 input, textarea { -webkit-user-select: text; user-select: text; }
@@ -49,10 +43,14 @@ input, textarea { -webkit-user-select: text; user-select: text; }
       <h2 id="profileName" class="text-2xl font-black">Loading…</h2>
       <p id="profileEmail" class="text-sm text-gray-400 mt-1"></p>
       <p id="profileBio" class="text-sm text-gray-300 mt-2 italic"></p>
+      
+      <!-- ⭐ STATS ROW (Videos, Friends, Followers) -->
       <div class="flex justify-center sm:justify-start gap-6 mt-3">
         <div><p id="videoCount" class="text-lg font-bold">0</p><p class="text-xs text-gray-400">Videos</p></div>
         <div><p id="friendCount" class="text-lg font-bold">0</p><p class="text-xs text-gray-400">Friends</p></div>
+        <div><p id="followerCount" class="text-lg font-bold">0</p><p class="text-xs text-gray-400">Followers</p></div>
       </div>
+      
       <div id="profileActions" class="mt-4 flex flex-wrap justify-center sm:justify-start gap-2"></div>
     </div>
   </section>
@@ -63,7 +61,6 @@ input, textarea { -webkit-user-select: text; user-select: text; }
     <button id="tabMessages" class="pb-3 border-b-2 border-transparent font-bold text-sm text-gray-400 whitespace-nowrap relative">
       Messages <span id="msgTabBadge" class="hidden absolute -top-1 -right-3 unread-dot">0</span>
     </button>
-    <button id="tabFindPeople" class="pb-3 border-b-2 border-transparent font-bold text-sm text-gray-400 whitespace-nowrap hidden">Find People</button>
   </div>
 
   <div id="videosTab">
@@ -81,16 +78,9 @@ input, textarea { -webkit-user-select: text; user-select: text; }
     <div id="conversationsList" class="space-y-1"></div>
     <p id="messagesEmpty" class="text-center text-gray-400 text-sm py-8 hidden">No messages yet.</p>
   </div>
-
-  <div id="findPeopleTab" class="hidden">
-    <div class="mb-4">
-      <input id="findSearchInput" type="text" placeholder="Search by name or email…" class="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-sm outline-none focus:border-[var(--color-primary)]">
-    </div>
-    <div id="findResultsList" class="space-y-1"></div>
-    <div id="findStatus" class="text-center text-sm text-gray-400 py-4 hidden"></div>
-  </div>
 </main>
 
+<!-- SETTINGS MODAL -->
 <div id="settingsModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
   <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md">
     <div class="flex justify-between items-center mb-4">
@@ -110,6 +100,7 @@ input, textarea { -webkit-user-select: text; user-select: text; }
   </div>
 </div>
 
+<!-- Chat Drawer -->
 <div id="messageDrawer" class="fixed inset-0 z-50 hidden">
   <div class="absolute inset-0 bg-black/80" onclick="closeMessages()"></div>
   <div class="absolute inset-y-0 right-0 w-full max-w-md bg-gray-900 border-l border-gray-800 flex flex-col">
@@ -129,9 +120,8 @@ input, textarea { -webkit-user-select: text; user-select: text; }
 </div>
 
 <script>
-// ⭐ COPY/SEARCH POPUP FIX
-document.addEventListener('contextmenu', event => event.preventDefault());
-document.addEventListener('selectstart', event => event.preventDefault());
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('selectstart', e => e.preventDefault());
 
 const urlParams = new URLSearchParams(location.search);
 const viewedEmail = (urlParams.get('email') || '').trim().toLowerCase();
@@ -195,9 +185,16 @@ function switchAccount(email) { const savedUsers = JSON.parse(localStorage.getIt
 
 async function loadProfileStats() {
   try {
-    const [mediaR, friendsR] = await Promise.all([ fetch('/api/media' + (me ? `?me=${encodeURIComponent(me.email)}` : '')), targetEmail ? fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`) : Promise.resolve({ ok:false }) ]);
-    const allMedia = mediaR.ok ? await mediaR.json() : []; const friends = friendsR.ok ? await friendsR.json() : [];
-    document.getElementById('friendCount').textContent = friends.length;
+    const [mediaR, statsR] = await Promise.all([ 
+        fetch('/api/media' + (me ? `?me=${encodeURIComponent(me.email)}` : '')), 
+        targetEmail ? fetch(`/api/users/stats?email=${encodeURIComponent(targetEmail)}`) : Promise.resolve({ok:false}) 
+    ]);
+    const allMedia = mediaR.ok ? await mediaR.json() : []; 
+    const stats = statsR.ok ? await statsR.json() : { friends: 0, followers: 0 };
+    
+    document.getElementById('friendCount').textContent = stats.friends;
+    document.getElementById('followerCount').textContent = stats.followers;
+
     const userVideos = allMedia.filter(m => m.type === 'video' && ((targetEmail && m.creatorEmail && m.creatorEmail.toLowerCase() === targetEmail) || (targetName && m.creator && m.creator.toLowerCase() === targetName.toLowerCase())));
     document.getElementById('videoCount').textContent = userVideos.length; document.getElementById('loadingState').classList.add('hidden');
     const grid = document.getElementById('userVideosGrid'), empty = document.getElementById('noVideosState'); grid.innerHTML = '';
@@ -270,26 +267,6 @@ async function loadFriendButton() {
   } catch {}
 }
 
-async function loadFindPeople() { 
-  if (!me || !me.email) return; const search = document.getElementById('findSearchInput').value.trim(), statusEl = document.getElementById('findStatus'), listEl = document.getElementById('findResultsList');
-  statusEl.textContent = 'Loading…'; statusEl.classList.remove('hidden'); listEl.innerHTML = '';
-  try { const r = await fetch(`/api/users/list?me=${encodeURIComponent(me.email)}&q=${encodeURIComponent(search)}`); if (!r.ok) throw new Error('failed'); const users = await r.json(); statusEl.classList.add('hidden');
-    if (!users.length) { statusEl.textContent = 'No users found.'; statusEl.classList.remove('hidden'); return; }
-    users.forEach(u => {
-      const row = document.createElement('div'); row.className = 'flex items-center gap-3 py-2 border-b border-gray-800'; let actionHtml = '';
-      if (u.status === 'friends') actionHtml = '<span class="text-xs text-[var(--color-primary)] font-bold">✓ Friends</span>';
-      else if (u.status === 'following') actionHtml = '<span class="text-xs text-gray-400">Following</span>';
-      else if (u.status === 'follower') actionHtml = `<button data-followback="${u.email}" class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">Follow Back</button>`;
-      else actionHtml = `<button data-follow="${u.email}" class="text-xs border border-gray-700 px-3 py-1 rounded-full hover:border-[var(--color-primary)]">+ Follow</button>`;
-      row.innerHTML = `<img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full"><div class="flex-1 min-w-0"><p class="font-semibold text-sm truncate">${u.name || u.email}</p><p class="text-xs text-gray-400 truncate">${u.email}</p></div>${actionHtml}<button data-msg="${u.email}" data-name="${(u.name || '').replace(/"/g,'&quot;')}" data-pic="${u.picture || ''}" class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">💬</button>`;
-      listEl.appendChild(row);
-    });
-    listEl.querySelectorAll('[data-follow]').forEach(b => b.onclick = async () => { b.disabled = true; await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: b.dataset.follow }) }); loadFindPeople(); });
-    listEl.querySelectorAll('[data-followback]').forEach(b => b.onclick = async () => { b.disabled = true; await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: b.dataset.followback }) }); loadFindPeople(); loadFriendsList(); });
-    listEl.querySelectorAll('[data-msg]').forEach(b => b.onclick = () => { openMessages({ email: b.dataset.msg, name: b.dataset.name, picture: b.dataset.pic }); });
-  } catch { statusEl.textContent = 'Could not load users.'; statusEl.classList.remove('hidden'); }
-}
-
 function openMessages(friend) { if (!me) { alert('Sign in first'); return; } currentChatWith = friend; document.getElementById('messageDrawer').classList.remove('hidden'); document.getElementById('msgWithName').textContent = friend.name || friend.email; document.getElementById('msgWithEmail').textContent = friend.email; const picEl = document.getElementById('msgWithPic'); if (friend.picture) { picEl.src = friend.picture; picEl.classList.remove('hidden'); } else picEl.classList.add('hidden'); loadMessages(); if (chatPollInterval) clearInterval(chatPollInterval); chatPollInterval = setInterval(loadMessages, 5000); }
 function closeMessages() { document.getElementById('messageDrawer').classList.add('hidden'); currentChatWith = null; if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; } if (isOwnProfile) { loadConversations(); } }
 
@@ -306,24 +283,21 @@ document.getElementById('msgForm').onsubmit = async (e) => {
 };
 
 function setTab(name) {
-  ['videos', 'friends', 'messages', 'findPeople'].forEach(t => {
+  ['videos', 'friends', 'messages'].forEach(t => {
     const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)), content = document.getElementById(t + 'Tab'); if (!el || !content) return;
     if (t === name) { content.classList.remove('hidden'); el.classList.add('border-[var(--color-primary)]'); el.classList.remove('border-transparent', 'text-gray-400'); }
     else { content.classList.add('hidden'); el.classList.add('border-transparent', 'text-gray-400'); el.classList.remove('border-[var(--color-primary)]'); }
   });
-  if (name === 'findPeople') loadFindPeople(); if (name === 'messages') loadConversations();
+  if (name === 'messages') loadConversations();
 }
 
 document.getElementById('tabVideos').onclick = () => setTab('videos');
 document.getElementById('tabFriends').onclick = () => setTab('friends');
 document.getElementById('tabMessages').onclick = () => setTab('messages');
-document.getElementById('tabFindPeople').onclick = () => setTab('findPeople');
-
-let searchTimeout; document.getElementById('findSearchInput').addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(loadFindPeople, 300); });
 
 (async () => {
   await resolveTarget(); document.getElementById('profileName').textContent = targetName || 'User'; document.getElementById('profileEmail').textContent = targetEmail || ''; document.getElementById('profileBio').textContent = targetBio || ''; document.getElementById('profilePic').src = targetPic || `https://ui-avatars.com/api/?name=${encodeURIComponent(targetName || 'U')}&background=random&color=fff&size=128`;
-  if (isOwnProfile && me) { document.getElementById('tabFindPeople').classList.remove('hidden'); document.getElementById('settingsBtn').classList.remove('hidden'); }
+  if (isOwnProfile && me) { document.getElementById('settingsBtn').classList.remove('hidden'); }
   loadProfileStats(); loadFriendButton(); loadFriendsList(); if (isOwnProfile) loadConversations();
 })();
 </script>
