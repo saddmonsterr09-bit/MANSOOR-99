@@ -121,7 +121,6 @@
     <div id="reportModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/80 px-4"><div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm"><h3 class="text-xl font-bold mb-4 text-white">Report Copyright Violation</h3><form id="reportForm"><input type="hidden" id="reportMediaId"><input type="hidden" id="reportMediaUrl"><div class="mb-4"><label class="block text-sm text-gray-400 mb-2">Reason</label><select id="reportReason" required class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white"><option value="">Select a reason...</option><option value="Copyright Infringement">Copyright Infringement</option><option value="Unauthorized Use">Unauthorized Use of Content</option><option value="Other">Other</option></select></div><div class="flex gap-2 justify-end"><button type="button" onclick="document.getElementById('reportModal').classList.add('hidden')" class="px-4 py-2 text-sm text-gray-400">Cancel</button><button type="submit" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg font-bold">Submit</button></div></form></div></div>
 
 <script>
-// SAFE PARSING (No Crash if local storage is bad)
 const authStorageKey = 'fullMastiGoogleCredential';
 let googleCredential = '';
 try { googleCredential = localStorage.getItem(authStorageKey) || ''; } catch(e) {}
@@ -139,7 +138,26 @@ const visitorId = (() => {
 })();
 const $ = (id) => document.getElementById(id);
 
-// NOTIFICATIONS
+// ⭐ SMART LAZY LOADING
+let thumbnailObserver = null;
+function setupThumbnailObserver() {
+  if (thumbnailObserver) thumbnailObserver.disconnect();
+  if (!('IntersectionObserver' in window)) return;
+  thumbnailObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const vid = entry.target;
+        if (vid.dataset.src && !vid.src) { 
+            vid.src = vid.dataset.src + '#t=0.1'; 
+            vid.preload = 'metadata'; 
+        }
+        thumbnailObserver.unobserve(vid);
+      }
+    });
+  }, { rootMargin: '300px' }); 
+}
+
+// --- NOTIFICATIONS ---
 async function loadNotifications() { 
   if (!googleUser) return;
   try {
@@ -165,7 +183,7 @@ function openNotif() { if (!googleUser) { alert('Please sign in first.'); return
 function closeNotif() { $('notifModal').classList.add('hidden'); }
 $('notifBtn').onclick = openNotif;
 
-// LIKES & COMMENTS
+// --- LIKES & COMMENTS ---
 function updateLikeBtnHtml(btn, count, liked) { btn.innerHTML = `<span style="color:${liked ? '#ec4899' : '#a1a1aa'};font-size:1.2rem;line-height:1">${liked ? '♥' : '♡'}</span> <span>${count}</span>`; btn.setAttribute('aria-pressed', String(liked)); }
 async function fetchLikeState(mediaId, btn) { try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}`); if (r.ok) { const d = await r.json(); updateLikeBtnHtml(btn, d.count, d.liked); } } catch {} }
 function toggleLike(mediaId, btn) { btn.disabled = true; fetch('/api/likes', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mediaId, visitorId }) }).then(r => r.json()).then(d => { if (d.count !== undefined) updateLikeBtnHtml(btn, d.count, d.liked); }).catch(()=>{}).finally(() => { btn.disabled = false; }); }
@@ -184,7 +202,7 @@ $('commentForm').onsubmit = async (e) => {
   try { await fetch('/api/comments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mediaId: currentCommentMediaId, authorName: googleUser.name, authorEmail: googleUser.email, body }) }); loadComments(); } catch (err) {}
 };
 
-// REPORT
+// --- REPORT ---
 function openReportModal(mediaId, mediaUrl) { document.getElementById('reportMediaId').value = mediaId; document.getElementById('reportMediaUrl').value = mediaUrl; document.getElementById('reportModal').classList.remove('hidden'); }
 document.getElementById('reportForm').onsubmit = async (e) => {
   e.preventDefault();
@@ -192,11 +210,10 @@ document.getElementById('reportForm').onsubmit = async (e) => {
   try { const res = await fetch('/api/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }); if (res.ok) { alert('Report submitted successfully.'); document.getElementById('reportModal').classList.add('hidden'); } } catch { alert('Network error.'); }
 };
 
-// RENDER VIDEOS (No Lazy Load - Guaranteed Display but only 3 videos)
+// --- RENDER VIDEOS ---
 function renderClips(items) {
   const grid = $('clipsGrid'); const status = $('clipsStatus'); grid.innerHTML = '';
-  // Only load 3 videos to avoid freeze
-  const videos = (items || []).filter(i => i.type === 'video').slice(0, 3);
+  const videos = (items || []).filter(i => i.type === 'video').slice(0, 10);
   
   if (!videos.length) { 
     status.textContent = items ? 'No clips yet — be the first!' : ''; 
@@ -205,18 +222,23 @@ function renderClips(items) {
   }
   status.classList.add('hidden');
 
+  setupThumbnailObserver(); // Activate lazy loader
+
   videos.forEach(v => {
     const card = document.createElement('div'); card.className = 'feed-card';
     const mediaWrap = document.createElement('div'); mediaWrap.className = 'feed-media-wrap'; 
     mediaWrap.onclick = (e) => { e.preventDefault(); window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
     
-    // Direct load for first 3 videos
     const vid = document.createElement('video'); 
-    vid.src = v.url + '#t=0.1';
+    vid.dataset.src = v.url; // Don't load yet
     vid.muted = true; 
     vid.playsInline = true; 
-    vid.preload = 'metadata'; 
+    vid.preload = 'none'; 
     
+    // Attach observer
+    if (thumbnailObserver) { thumbnailObserver.observe(vid); } 
+    else { vid.src = v.url + '#t=0.1'; } // Fallback
+
     const play = document.createElement('div'); play.className = 'feed-play-overlay'; play.textContent = '▶';
     const views = document.createElement('div'); views.className = 'feed-view-badge'; views.textContent = `👁 ${v.views || 0}`;
     mediaWrap.append(vid, play, views);
@@ -252,7 +274,7 @@ function renderStories(items) {
   });
 }
 
-// LOAD DATA
+// --- LOAD DATA ---
 async function loadClips() {
   try { 
     const url = '/api/media' + (googleUser ? `?me=${encodeURIComponent(googleUser.email)}` : '');
@@ -268,7 +290,7 @@ async function loadClips() {
   }
 }
 
-// UPLOAD
+// --- UPLOAD ---
 $('bottomPlus').onclick = () => { if (!googleUser) { openAccountDialog(); return; } $('globalMediaInput').click(); };
 $('addStoryBtn').onclick = () => { if (!googleUser) { openAccountDialog(); return; } $('globalMediaInput').click(); };
 
@@ -327,7 +349,7 @@ $('globalPublishBtn').onclick = () => {
   req.send(fd);
 };
 
-// AUTH
+// --- AUTH ---
 function showSignedInUser(user) {
   googleUser = user; const users = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); users[user.email] = user; localStorage.setItem('reelsBookUsers', JSON.stringify(users)); localStorage.setItem('currentReelsUser', JSON.stringify(user));
   $('accountButton').textContent = 'My Account'; $('authStatus').textContent = 'Signed in.'; $('authAccount').textContent = user.name || user.email;
