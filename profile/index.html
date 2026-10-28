@@ -8,7 +8,18 @@
 <link rel="stylesheet" href="/theme.css">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
+/* ⭐ TEXT SELECTION FIX */
+body {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    background:#000; color:#fff; font-family:'Inter',sans-serif;
+}
+input, textarea { -webkit-user-select: text; user-select: text; }
+
 .video-card { position:relative; aspect-ratio:9/16; background:#121212; border-radius:12px; overflow:hidden; cursor:pointer; }
 .video-card video { width:100%; height:100%; object-fit:cover; }
 .video-card .play-icon { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:2rem; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.7); pointer-events:none; }
@@ -32,7 +43,6 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
 </header>
 
 <main class="max-w-3xl mx-auto px-4 py-6">
-
   <section class="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-8">
     <img id="profilePic" src="" alt="" class="w-24 h-24 rounded-full object-cover border-4 border-[var(--color-primary)] bg-gray-800">
     <div class="flex-1 text-center sm:text-left">
@@ -79,43 +89,27 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
     <div id="findResultsList" class="space-y-1"></div>
     <div id="findStatus" class="text-center text-sm text-gray-400 py-4 hidden"></div>
   </div>
-
 </main>
 
-<!-- SETTINGS MODAL -->
 <div id="settingsModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
   <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md">
     <div class="flex justify-between items-center mb-4">
       <h3 class="text-xl font-bold text-white">Settings</h3>
       <button onclick="document.getElementById('settingsModal').classList.add('hidden')" class="text-2xl text-gray-400">×</button>
     </div>
-    
     <div class="space-y-4">
-      <div>
-        <label class="block text-sm text-gray-400 mb-1">Name</label>
-        <input id="setName" type="text" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white">
-      </div>
-      <div>
-        <label class="block text-sm text-gray-400 mb-1">Bio</label>
-        <textarea id="setBio" rows="2" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white" placeholder="Tell us about yourself..."></textarea>
-      </div>
-      <div>
-        <label class="block text-sm text-gray-400 mb-1">Profile Pic URL</label>
-        <input id="setPic" type="text" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white" placeholder="https://...">
-      </div>
-      
+      <div><label class="block text-sm text-gray-400 mb-1">Name</label><input id="setName" type="text" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white"></div>
+      <div><label class="block text-sm text-gray-400 mb-1">Bio</label><textarea id="setBio" rows="2" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white"></textarea></div>
+      <div><label class="block text-sm text-gray-400 mb-1">Profile Pic URL</label><input id="setPic" type="text" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white"></div>
       <button id="saveSettingsBtn" class="w-full bg-[var(--color-primary)] text-white font-bold py-3 rounded-lg mt-2">Save Profile</button>
     </div>
-
     <hr class="border-gray-800 my-6">
-
     <h4 class="font-bold text-sm mb-3">Saved Accounts</h4>
     <div id="accountSwitcherList" class="space-y-2 mb-4"></div>
     <a href="/" class="block text-center w-full border border-gray-700 text-white font-bold py-2 rounded-lg">Add Another Account</a>
   </div>
 </div>
 
-<!-- Chat Drawer -->
 <div id="messageDrawer" class="fixed inset-0 z-50 hidden">
   <div class="absolute inset-0 bg-black/80" onclick="closeMessages()"></div>
   <div class="absolute inset-y-0 right-0 w-full max-w-md bg-gray-900 border-l border-gray-800 flex flex-col">
@@ -135,451 +129,189 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
 </div>
 
 <script>
+// ⭐ COPY/SEARCH POPUP FIX
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.addEventListener('selectstart', event => event.preventDefault());
+
 const urlParams = new URLSearchParams(location.search);
 const viewedEmail = (urlParams.get('email') || '').trim().toLowerCase();
 const viewedName = (urlParams.get('name') || '').trim();
 const viewedPic = urlParams.get('pic') || '';
-let me = JSON.parse(localStorage.getItem('currentReelsUser') || 'null');
+let me = null;
+try { const stored = localStorage.getItem('currentReelsUser'); if (stored && stored !== 'undefined') me = JSON.parse(stored); } catch(e) {}
 
-let targetEmail = '';
-let targetName = '';
-let targetPic = '';
-let targetBio = '';
-let isOwnProfile = false;
-let currentChatWith = null;
-let chatPollInterval = null;
+let targetEmail = '', targetName = '', targetPic = '', targetBio = '', isOwnProfile = false;
+let currentChatWith = null, chatPollInterval = null;
 
-// ⭐ FIX FOR "5h ago" TIME BUG
 function formatTime(iso) {
-    if (!iso) return '';
-    let dateStr = iso;
-    if (!dateStr.includes('Z') && !dateStr.includes('+')) {
-        dateStr = dateStr.replace(' ', 'T') + 'Z';
-    }
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diff = (now - d) / 1000;
-    if (diff < 60) return 'now';
-    if (diff < 3600) return Math.floor(diff/60) + 'm';
-    if (diff < 86400) return Math.floor(diff/3600) + 'h';
-    if (diff < 604800) return Math.floor(diff/86400) + 'd';
+    if (!iso) return ''; let dateStr = iso;
+    if (!dateStr.includes('Z') && !dateStr.includes('+')) dateStr = dateStr.replace(' ', 'T') + 'Z';
+    const d = new Date(dateStr), now = new Date(), diff = (now - d) / 1000;
+    if (diff < 60) return 'now'; if (diff < 3600) return Math.floor(diff/60) + 'm';
+    if (diff < 86400) return Math.floor(diff/3600) + 'h'; if (diff < 604800) return Math.floor(diff/86400) + 'd';
     return d.toLocaleDateString();
 }
 
 async function resolveTarget() {
   if (viewedEmail) {
-    targetEmail = viewedEmail;
-    targetName = viewedName || viewedEmail;
-    targetPic = viewedPic;
+    targetEmail = viewedEmail; targetName = viewedName || viewedEmail; targetPic = viewedPic;
     isOwnProfile = !!(me && me.email && me.email.toLowerCase() === viewedEmail);
   } else if (viewedName) {
     if (me && me.name && me.name.toLowerCase() === viewedName.toLowerCase()) {
-      isOwnProfile = true;
-      targetEmail = (me.email || '').toLowerCase();
-      targetName = me.name;
-      targetPic = me.picture || viewedPic;
+      isOwnProfile = true; targetEmail = (me.email || '').toLowerCase(); targetName = me.name; targetPic = me.picture || viewedPic;
     } else {
-      isOwnProfile = false;
-      targetName = viewedName;
-      targetPic = viewedPic;
-      try {
-        const r = await fetch(`/api/users/find?name=${encodeURIComponent(viewedName)}`);
-        if (r.ok) {
-          const u = await r.json();
-          if (u && u.email) {
-            targetEmail = u.email.toLowerCase();
-            if (!targetPic && u.picture) targetPic = u.picture;
-          }
-        }
-      } catch {}
+      isOwnProfile = false; targetName = viewedName; targetPic = viewedPic;
+      try { const r = await fetch(`/api/users/find?name=${encodeURIComponent(viewedName)}`); if (r.ok) { const u = await r.json(); if (u && u.email) { targetEmail = u.email.toLowerCase(); if (!targetPic && u.picture) targetPic = u.picture; } } } catch {}
     }
   } else {
-    isOwnProfile = true;
-    targetEmail = (me?.email || '').toLowerCase();
-    targetName = me?.name || 'User';
-    targetPic = me?.picture || '';
+    isOwnProfile = true; targetEmail = (me?.email || '').toLowerCase(); targetName = me?.name || 'User'; targetPic = me?.picture || '';
   }
-  
   if (isOwnProfile && targetEmail) {
-    try {
-      const r = await fetch(`/api/users/find?name=${encodeURIComponent(targetName)}`);
-      if (r.ok) {
-        const u = await r.json();
-        if (u && u.bio) targetBio = u.bio;
-      }
-    } catch {}
+    try { const r = await fetch(`/api/users/find?name=${encodeURIComponent(targetName)}`); if (r.ok) { const u = await r.json(); if (u && u.bio) targetBio = u.bio; } } catch {}
   }
 }
 
 document.getElementById('settingsBtn').onclick = () => {
   if (!isOwnProfile) return;
-  document.getElementById('setName').value = me.name || '';
-  document.getElementById('setBio').value = targetBio || '';
-  document.getElementById('setPic').value = me.picture || '';
-  
-  const savedUsers = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}');
-  const list = document.getElementById('accountSwitcherList');
-  list.innerHTML = '';
+  document.getElementById('setName').value = me.name || ''; document.getElementById('setBio').value = targetBio || ''; document.getElementById('setPic').value = me.picture || '';
+  const savedUsers = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); const list = document.getElementById('accountSwitcherList'); list.innerHTML = '';
   Object.values(savedUsers).forEach(u => {
     if (u.email === me.email) return;
-    list.innerHTML += `
-      <div class="flex justify-between items-center bg-gray-800 p-2 rounded-lg cursor-pointer hover:bg-gray-700" onclick="switchAccount('${u.email}')">
-        <div class="flex items-center gap-2">
-          <img src="${u.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(u.name)}" class="w-8 h-8 rounded-full">
-          <span class="text-sm font-bold">${u.name}</span>
-        </div>
-        <span class="text-xs text-[var(--color-primary)]">Switch</span>
-      </div>
-    `;
+    list.innerHTML += `<div class="flex justify-between items-center bg-gray-800 p-2 rounded-lg cursor-pointer hover:bg-gray-700" onclick="switchAccount('${u.email}')"><div class="flex items-center gap-2"><img src="${u.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(u.name)}" class="w-8 h-8 rounded-full"><span class="text-sm font-bold">${u.name}</span></div><span class="text-xs text-[var(--color-primary)]">Switch</span></div>`;
   });
   if (list.innerHTML === '') list.innerHTML = '<p class="text-xs text-gray-500">No other accounts saved.</p>';
-  
-  document.getElementById('settingsModal').classList.remove('hidden');
-  document.getElementById('settingsModal').classList.add('flex');
+  document.getElementById('settingsModal').classList.remove('hidden'); document.getElementById('settingsModal').classList.add('flex');
 };
 
 document.getElementById('saveSettingsBtn').onclick = async () => {
-  const newName = document.getElementById('setName').value.trim();
-  const newBio = document.getElementById('setBio').value.trim();
-  const newPic = document.getElementById('setPic').value.trim();
-  
+  const newName = document.getElementById('setName').value.trim(), newBio = document.getElementById('setBio').value.trim(), newPic = document.getElementById('setPic').value.trim();
   if (!newName) return alert('Name cannot be empty');
-  
-  try {
-    const res = await fetch('/api/user/update', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ email: me.email, name: newName, picture: newPic, bio: newBio })
-    });
-    if (res.ok) {
-      alert('Profile updated successfully!');
-      me.name = newName;
-      me.picture = newPic;
-      localStorage.setItem('currentReelsUser', JSON.stringify(me));
-      window.location.reload();
-    }
+  try { const res = await fetch('/api/user/update', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: me.email, name: newName, picture: newPic, bio: newBio }) });
+    if (res.ok) { alert('Profile updated successfully!'); me.name = newName; me.picture = newPic; localStorage.setItem('currentReelsUser', JSON.stringify(me)); window.location.reload(); }
   } catch { alert('Failed to update'); }
 };
 
-function switchAccount(email) {
-  const savedUsers = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}');
-  if (savedUsers[email]) {
-    localStorage.setItem('currentReelsUser', JSON.stringify(savedUsers[email]));
-    window.location.reload();
-  }
-}
+function switchAccount(email) { const savedUsers = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); if (savedUsers[email]) { localStorage.setItem('currentReelsUser', JSON.stringify(savedUsers[email])); window.location.reload(); } }
 
 async function loadProfileStats() {
   try {
-    const [mediaR, friendsR] = await Promise.all([
-      fetch('/api/media' + (me ? `?me=${encodeURIComponent(me.email)}` : '')),
-      targetEmail ? fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`) : Promise.resolve({ ok:false })
-    ]);
-    const allMedia = mediaR.ok ? await mediaR.json() : [];
-    const friends = friendsR.ok ? await friendsR.json() : [];
+    const [mediaR, friendsR] = await Promise.all([ fetch('/api/media' + (me ? `?me=${encodeURIComponent(me.email)}` : '')), targetEmail ? fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`) : Promise.resolve({ ok:false }) ]);
+    const allMedia = mediaR.ok ? await mediaR.json() : []; const friends = friendsR.ok ? await friendsR.json() : [];
     document.getElementById('friendCount').textContent = friends.length;
-
-    const userVideos = allMedia.filter(m => m.type === 'video' && (
-      (targetEmail && m.creatorEmail && m.creatorEmail.toLowerCase() === targetEmail) ||
-      (targetName && m.creator && m.creator.toLowerCase() === targetName.toLowerCase())
-    ));
-    document.getElementById('videoCount').textContent = userVideos.length;
-    document.getElementById('loadingState').classList.add('hidden');
-
-    const grid = document.getElementById('userVideosGrid');
-    const empty = document.getElementById('noVideosState');
-    grid.innerHTML = '';
+    const userVideos = allMedia.filter(m => m.type === 'video' && ((targetEmail && m.creatorEmail && m.creatorEmail.toLowerCase() === targetEmail) || (targetName && m.creator && m.creator.toLowerCase() === targetName.toLowerCase())));
+    document.getElementById('videoCount').textContent = userVideos.length; document.getElementById('loadingState').classList.add('hidden');
+    const grid = document.getElementById('userVideosGrid'), empty = document.getElementById('noVideosState'); grid.innerHTML = '';
     if (!userVideos.length) { empty.classList.remove('hidden'); return; }
-
     userVideos.forEach(v => {
-      const card = document.createElement('div');
-      card.className = 'video-card';
-      card.onclick = () => { location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
-      const vid = document.createElement('video');
-      vid.src = v.url + '#t=0.1';
-      vid.muted = true; vid.playsInline = true; vid.preload = 'metadata';
+      const card = document.createElement('div'); card.className = 'video-card'; card.onclick = () => { location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
+      const vid = document.createElement('video'); vid.src = v.url + '#t=0.1'; vid.muted = true; vid.playsInline = true; vid.preload = 'metadata';
       const play = document.createElement('div'); play.className = 'play-icon'; play.textContent = '▶';
-      const badges = document.createElement('div'); badges.className = 'badges';
-      badges.innerHTML = `<span class="badge">👁 ${v.views || 0}</span><span class="badge">♥ ${v.likes || 0}</span>`;
-      card.append(vid, play, badges);
-      grid.appendChild(card);
+      const badges = document.createElement('div'); badges.className = 'badges'; badges.innerHTML = `<span class="badge">👁 ${v.views || 0}</span><span class="badge">♥ ${v.likes || 0}</span>`;
+      card.append(vid, play, badges); grid.appendChild(card);
     });
   } catch { document.getElementById('loadingState').textContent = 'Failed to load.'; }
 }
 
 async function loadFriendsList() { 
-  if (!targetEmail) return;
-  const list = document.getElementById('friendsList');
-  const incoming = document.getElementById('incomingList');
-  list.innerHTML = ''; incoming.innerHTML = '';
-  
+  if (!targetEmail) return; const list = document.getElementById('friendsList'), incoming = document.getElementById('incomingList'); list.innerHTML = ''; incoming.innerHTML = '';
   if (isOwnProfile) {
-    try {
-      const r = await fetch(`/api/friends/pending?me=${encodeURIComponent(targetEmail)}`);
-      if (r.ok) {
-        const data = await r.json();
-        if (data.incoming?.length) {
+    try { const r = await fetch(`/api/friends/pending?me=${encodeURIComponent(targetEmail)}`);
+      if (r.ok) { const data = await r.json(); if (data.incoming?.length) {
           incoming.innerHTML = `<h3 class="font-bold mb-2">New Followers</h3>`;
           data.incoming.forEach(u => {
-            const row = document.createElement('div');
-            row.className = 'flex items-center gap-3 py-2 border-b border-gray-800';
+            const row = document.createElement('div'); row.className = 'flex items-center gap-3 py-2 border-b border-gray-800';
             row.innerHTML = `<img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full"><div class="flex-1"><p class="font-semibold text-sm">${u.name || u.email}</p></div><button class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold" data-followback="${u.email}">Follow Back</button>`;
             incoming.appendChild(row);
           });
-          incoming.querySelectorAll('[data-followback]').forEach(b => b.onclick = async () => {
-            await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: targetEmail, target: b.dataset.followback }) });
-            loadFriendsList(); loadProfileStats();
-          });
+          incoming.querySelectorAll('[data-followback]').forEach(b => b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: targetEmail, target: b.dataset.followback }) }); loadFriendsList(); loadProfileStats(); });
         }
       }
     } catch {}
   }
-
-  try {
-    const r = await fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`);
-    if (!r.ok) return;
-    const friends = await r.json();
-    if (!friends.length) {
-      if (list.innerHTML === '') list.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">No friends yet.</p>';
-      return;
-    }
-    const header = document.createElement('h3');
-    header.className = 'font-bold mb-2';
-    header.textContent = 'Friends';
-    list.appendChild(header);
+  try { const r = await fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`); if (!r.ok) return; const friends = await r.json();
+    if (!friends.length) { if (list.innerHTML === '') list.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">No friends yet.</p>'; return; }
+    const header = document.createElement('h3'); header.className = 'font-bold mb-2'; header.textContent = 'Friends'; list.appendChild(header);
     friends.forEach(f => {
-      const row = document.createElement('div');
-      row.className = 'flex items-center gap-3 py-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 px-2 rounded';
+      const row = document.createElement('div'); row.className = 'flex items-center gap-3 py-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 px-2 rounded';
       row.innerHTML = `<img src="${f.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(f.name || f.email)}" class="w-10 h-10 rounded-full"><div class="flex-1 min-w-0"><p class="font-semibold text-sm truncate">${f.name || f.email}</p></div><button class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">💬</button>`;
-      row.onclick = () => openMessages(f);
-      list.appendChild(row);
+      row.onclick = () => openMessages(f); list.appendChild(row);
     });
   } catch {}
 }
 
 async function loadConversations() { 
-  if (!isOwnProfile || !me) return;
-  const list = document.getElementById('conversationsList');
-  const empty = document.getElementById('messagesEmpty');
-  try {
-    const r = await fetch(`/api/conversations?me=${encodeURIComponent(me.email)}`);
-    if (!r.ok) return;
-    const convs = await r.json();
-    list.innerHTML = '';
-    if (!convs.length) {
-      empty.classList.remove('hidden');
-      updateMessagesBadge(0);
-      return;
-    }
-    empty.classList.add('hidden');
-    let totalUnread = 0;
+  if (!isOwnProfile || !me) return; const list = document.getElementById('conversationsList'), empty = document.getElementById('messagesEmpty');
+  try { const r = await fetch(`/api/conversations?me=${encodeURIComponent(me.email)}`); if (!r.ok) return; const convs = await r.json(); list.innerHTML = '';
+    if (!convs.length) { empty.classList.remove('hidden'); updateMessagesBadge(0); return; } empty.classList.add('hidden'); let totalUnread = 0;
     convs.forEach(c => {
-      totalUnread += c.unread || 0;
-      const row = document.createElement('div');
-      row.className = 'flex items-center gap-3 py-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 px-2 rounded';
-      row.innerHTML = `
-        <img src="${c.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.name || c.email)}" class="w-12 h-12 rounded-full">
-        <div class="flex-1 min-w-0">
-          <div class="flex justify-between items-baseline gap-2">
-            <p class="font-semibold text-sm truncate">${c.name || c.email}</p>
-            <span class="text-xs text-gray-500 whitespace-nowrap">${formatTime(c.lastAt)}</span>
-          </div>
-          <div class="flex justify-between items-center gap-2 mt-0.5">
-            <p class="text-xs text-gray-400 truncate">${c.lastFromMe ? 'You: ' : ''}${c.lastMessage || ''}</p>
-            ${c.unread > 0 ? `<span class="unread-dot">${c.unread}</span>` : ''}
-          </div>
-        </div>
-      `;
-      row.onclick = () => openMessages({ email: c.email, name: c.name, picture: c.picture });
-      list.appendChild(row);
+      totalUnread += c.unread || 0; const row = document.createElement('div'); row.className = 'flex items-center gap-3 py-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 px-2 rounded';
+      row.innerHTML = `<img src="${c.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.name || c.email)}" class="w-12 h-12 rounded-full"><div class="flex-1 min-w-0"><div class="flex justify-between items-baseline gap-2"><p class="font-semibold text-sm truncate">${c.name || c.email}</p><span class="text-xs text-gray-500 whitespace-nowrap">${formatTime(c.lastAt)}</span></div><div class="flex justify-between items-center gap-2 mt-0.5"><p class="text-xs text-gray-400 truncate">${c.lastFromMe ? 'You: ' : ''}${c.lastMessage || ''}</p>${c.unread > 0 ? `<span class="unread-dot">${c.unread}</span>` : ''}</div></div>`;
+      row.onclick = () => openMessages({ email: c.email, name: c.name, picture: c.picture }); list.appendChild(row);
     });
     updateMessagesBadge(totalUnread);
   } catch {}
 }
 
-function updateMessagesBadge(count) {
-  const badge = document.getElementById('msgTabBadge');
-  if (!badge) return;
-  if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
-  else badge.classList.add('hidden');
-}
+function updateMessagesBadge(count) { const badge = document.getElementById('msgTabBadge'); if (!badge) return; if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); } else badge.classList.add('hidden'); }
 
 async function loadFriendButton() { 
-  const actions = document.getElementById('profileActions');
-  actions.innerHTML = '';
-  if (isOwnProfile) return;
+  const actions = document.getElementById('profileActions'); actions.innerHTML = ''; if (isOwnProfile) return;
   if (!me) { actions.innerHTML = '<a href="/" class="text-sm text-[var(--color-primary)] underline">Sign in to follow →</a>'; return; }
   if (!targetEmail) { actions.innerHTML = '<span class="text-sm text-gray-400">Cannot find this user.</span>'; return; }
-  
-  try {
-    const r = await fetch(`/api/follow/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`);
-    const data = await r.json();
+  try { const r = await fetch(`/api/follow/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`); const data = await r.json();
+    const msgBtn = document.createElement('button'); msgBtn.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold'; msgBtn.textContent = '💬 Message'; msgBtn.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
+    const blockBtn = document.createElement('button'); blockBtn.className = 'rounded-full border border-red-700 text-red-500 px-4 py-2 text-sm font-bold ml-2'; blockBtn.textContent = 'Block';
+    blockBtn.onclick = async () => { if (confirm('Block this user?')) { await fetch('/api/block', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ me: me.email, target: targetEmail }) }); alert('User Blocked!'); window.location.href = '/'; } };
     
-    const msgBtn = document.createElement('button');
-    msgBtn.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
-    msgBtn.textContent = '💬 Message';
-    msgBtn.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
-    
-    const blockBtn = document.createElement('button');
-    blockBtn.className = 'rounded-full border border-red-700 text-red-500 px-4 py-2 text-sm font-bold ml-2';
-    blockBtn.textContent = 'Block';
-    blockBtn.onclick = async () => {
-      if (confirm('Are you sure you want to block this user?')) {
-        await fetch('/api/block', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ me: me.email, target: targetEmail }) });
-        alert('User Blocked!');
-        window.location.href = '/'; 
-      }
-    };
-
-    if (data.status === 'friends') {
-      const b = document.createElement('button'); b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold'; b.textContent = 'Friends ✓';
-      actions.append(b, msgBtn, blockBtn);
-    } else if (data.status === 'following') {
-      const b = document.createElement('button'); b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold'; b.textContent = 'Following';
-      b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); };
-      actions.append(b, msgBtn, blockBtn);
-    } else if (data.status === 'follower') {
-      const b = document.createElement('button'); b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold'; b.textContent = 'Follow Back';
-      b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); };
-      actions.append(b, msgBtn, blockBtn);
-    } else {
-      const b = document.createElement('button'); b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold'; b.textContent = '+ Follow';
-      b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); };
-      actions.append(b, msgBtn, blockBtn);
-    }
+    if (data.status === 'friends') { const b = document.createElement('button'); b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold'; b.textContent = 'Friends ✓'; actions.append(b, msgBtn, blockBtn); }
+    else if (data.status === 'following') { const b = document.createElement('button'); b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold'; b.textContent = 'Following'; b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); }; actions.append(b, msgBtn, blockBtn); }
+    else if (data.status === 'follower') { const b = document.createElement('button'); b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold'; b.textContent = 'Follow Back'; b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); }; actions.append(b, msgBtn, blockBtn); }
+    else { const b = document.createElement('button'); b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold'; b.textContent = '+ Follow'; b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); }; actions.append(b, msgBtn, blockBtn); }
   } catch {}
 }
 
 async function loadFindPeople() { 
-  if (!me || !me.email) return;
-  const search = document.getElementById('findSearchInput').value.trim();
-  const statusEl = document.getElementById('findStatus');
-  const listEl = document.getElementById('findResultsList');
-  statusEl.textContent = 'Loading…'; statusEl.classList.remove('hidden');
-  listEl.innerHTML = '';
-  try {
-    const r = await fetch(`/api/users/list?me=${encodeURIComponent(me.email)}&q=${encodeURIComponent(search)}`);
-    if (!r.ok) throw new Error('failed');
-    const users = await r.json();
-    statusEl.classList.add('hidden');
-    if (!users.length) {
-      statusEl.textContent = 'No users found.';
-      statusEl.classList.remove('hidden');
-      return;
-    }
+  if (!me || !me.email) return; const search = document.getElementById('findSearchInput').value.trim(), statusEl = document.getElementById('findStatus'), listEl = document.getElementById('findResultsList');
+  statusEl.textContent = 'Loading…'; statusEl.classList.remove('hidden'); listEl.innerHTML = '';
+  try { const r = await fetch(`/api/users/list?me=${encodeURIComponent(me.email)}&q=${encodeURIComponent(search)}`); if (!r.ok) throw new Error('failed'); const users = await r.json(); statusEl.classList.add('hidden');
+    if (!users.length) { statusEl.textContent = 'No users found.'; statusEl.classList.remove('hidden'); return; }
     users.forEach(u => {
-      const row = document.createElement('div');
-      row.className = 'flex items-center gap-3 py-2 border-b border-gray-800';
-      let actionHtml = '';
+      const row = document.createElement('div'); row.className = 'flex items-center gap-3 py-2 border-b border-gray-800'; let actionHtml = '';
       if (u.status === 'friends') actionHtml = '<span class="text-xs text-[var(--color-primary)] font-bold">✓ Friends</span>';
       else if (u.status === 'following') actionHtml = '<span class="text-xs text-gray-400">Following</span>';
       else if (u.status === 'follower') actionHtml = `<button data-followback="${u.email}" class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">Follow Back</button>`;
       else actionHtml = `<button data-follow="${u.email}" class="text-xs border border-gray-700 px-3 py-1 rounded-full hover:border-[var(--color-primary)]">+ Follow</button>`;
-      row.innerHTML = `
-        <img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full">
-        <div class="flex-1 min-w-0">
-          <p class="font-semibold text-sm truncate">${u.name || u.email}</p>
-          <p class="text-xs text-gray-400 truncate">${u.email}</p>
-        </div>
-        ${actionHtml}
-        <button data-msg="${u.email}" data-name="${(u.name || '').replace(/"/g,'&quot;')}" data-pic="${u.picture || ''}" class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">💬</button>
-      `;
+      row.innerHTML = `<img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full"><div class="flex-1 min-w-0"><p class="font-semibold text-sm truncate">${u.name || u.email}</p><p class="text-xs text-gray-400 truncate">${u.email}</p></div>${actionHtml}<button data-msg="${u.email}" data-name="${(u.name || '').replace(/"/g,'&quot;')}" data-pic="${u.picture || ''}" class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">💬</button>`;
       listEl.appendChild(row);
     });
-    listEl.querySelectorAll('[data-follow]').forEach(b => b.onclick = async () => {
-      b.disabled = true;
-      await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: b.dataset.follow }) });
-      loadFindPeople();
-    });
-    listEl.querySelectorAll('[data-followback]').forEach(b => b.onclick = async () => {
-      b.disabled = true;
-      await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: b.dataset.followback }) });
-      loadFindPeople(); loadFriendsList();
-    });
-    listEl.querySelectorAll('[data-msg]').forEach(b => b.onclick = () => {
-      openMessages({ email: b.dataset.msg, name: b.dataset.name, picture: b.dataset.pic });
-    });
-  } catch {
-    statusEl.textContent = 'Could not load users.'; statusEl.classList.remove('hidden');
-  }
+    listEl.querySelectorAll('[data-follow]').forEach(b => b.onclick = async () => { b.disabled = true; await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: b.dataset.follow }) }); loadFindPeople(); });
+    listEl.querySelectorAll('[data-followback]').forEach(b => b.onclick = async () => { b.disabled = true; await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: b.dataset.followback }) }); loadFindPeople(); loadFriendsList(); });
+    listEl.querySelectorAll('[data-msg]').forEach(b => b.onclick = () => { openMessages({ email: b.dataset.msg, name: b.dataset.name, picture: b.dataset.pic }); });
+  } catch { statusEl.textContent = 'Could not load users.'; statusEl.classList.remove('hidden'); }
 }
 
-function openMessages(friend) {
-  if (!me) { alert('Sign in first'); return; }
-  currentChatWith = friend;
-  document.getElementById('messageDrawer').classList.remove('hidden');
-  document.getElementById('msgWithName').textContent = friend.name || friend.email;
-  document.getElementById('msgWithEmail').textContent = friend.email;
-  const picEl = document.getElementById('msgWithPic');
-  if (friend.picture) { picEl.src = friend.picture; picEl.classList.remove('hidden'); }
-  else picEl.classList.add('hidden');
-  loadMessages();
-  if (chatPollInterval) clearInterval(chatPollInterval);
-  chatPollInterval = setInterval(loadMessages, 5000);
-}
-
-function closeMessages() {
-  document.getElementById('messageDrawer').classList.add('hidden');
-  currentChatWith = null;
-  if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
-  if (isOwnProfile) { loadConversations(); }
-}
+function openMessages(friend) { if (!me) { alert('Sign in first'); return; } currentChatWith = friend; document.getElementById('messageDrawer').classList.remove('hidden'); document.getElementById('msgWithName').textContent = friend.name || friend.email; document.getElementById('msgWithEmail').textContent = friend.email; const picEl = document.getElementById('msgWithPic'); if (friend.picture) { picEl.src = friend.picture; picEl.classList.remove('hidden'); } else picEl.classList.add('hidden'); loadMessages(); if (chatPollInterval) clearInterval(chatPollInterval); chatPollInterval = setInterval(loadMessages, 5000); }
+function closeMessages() { document.getElementById('messageDrawer').classList.add('hidden'); currentChatWith = null; if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; } if (isOwnProfile) { loadConversations(); } }
 
 async function loadMessages() {
-  if (!currentChatWith || !me) return;
-  const r = await fetch(`/api/messages?me=${encodeURIComponent(me.email)}&with=${encodeURIComponent(currentChatWith.email)}`);
-  if (!r.ok) return;
-  const msgs = await r.json();
-  const list = document.getElementById('msgList');
-  list.innerHTML = '';
-  msgs.forEach(m => {
-    const mine = m.sender === me.email;
-    const wrap = document.createElement('div');
-    wrap.className = 'flex flex-col ' + (mine ? 'items-end' : 'items-start');
-    const bubble = document.createElement('div');
-    bubble.className = 'chat-bubble ' + (mine ? 'mine' : 'theirs');
-    bubble.textContent = m.body;
-    const time = document.createElement('div');
-    time.className = 'chat-time';
-    time.textContent = formatTime(m.created_at);
-    wrap.appendChild(bubble);
-    wrap.appendChild(time);
-    list.appendChild(wrap);
-  });
+  if (!currentChatWith || !me) return; const r = await fetch(`/api/messages?me=${encodeURIComponent(me.email)}&with=${encodeURIComponent(currentChatWith.email)}`); if (!r.ok) return;
+  const msgs = await r.json(), list = document.getElementById('msgList'); list.innerHTML = '';
+  msgs.forEach(m => { const mine = m.sender === me.email; const wrap = document.createElement('div'); wrap.className = 'flex flex-col ' + (mine ? 'items-end' : 'items-start'); const bubble = document.createElement('div'); bubble.className = 'chat-bubble ' + (mine ? 'mine' : 'theirs'); bubble.textContent = m.body; const time = document.createElement('div'); time.className = 'chat-time'; time.textContent = formatTime(m.created_at); wrap.appendChild(bubble); wrap.appendChild(time); list.appendChild(wrap); });
   list.scrollTop = list.scrollHeight;
 }
 
 document.getElementById('msgForm').onsubmit = async (e) => {
-  e.preventDefault();
-  if (!currentChatWith || !me) return;
-  const input = document.getElementById('msgInput');
-  const body = input.value.trim();
-  if (!body) return;
-  input.value = '';
-  try {
-    const r = await fetch('/api/messages', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from: me.email, to: currentChatWith.email, body }) });
-    if (!r.ok) { const d = await r.json().catch(()=>({})); alert('Could not send: ' + (d.error || r.status)); return; }
-    loadMessages();
-    if (isOwnProfile) loadConversations();
-  } catch (err) { alert('Network error: ' + err.message); }
+  e.preventDefault(); if (!currentChatWith || !me) return; const input = document.getElementById('msgInput'); const body = input.value.trim(); if (!body) return; input.value = '';
+  try { const r = await fetch('/api/messages', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from: me.email, to: currentChatWith.email, body }) }); if (!r.ok) { const d = await r.json().catch(()=>({})); alert('Could not send: ' + (d.error || r.status)); return; } loadMessages(); if (isOwnProfile) loadConversations(); } catch (err) { alert('Network error: ' + err.message); }
 };
 
 function setTab(name) {
   ['videos', 'friends', 'messages', 'findPeople'].forEach(t => {
-    const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
-    const content = document.getElementById(t + 'Tab');
-    if (!el || !content) return;
-    if (t === name) {
-      content.classList.remove('hidden');
-      el.classList.add('border-[var(--color-primary)]');
-      el.classList.remove('border-transparent', 'text-gray-400');
-    } else {
-      content.classList.add('hidden');
-      el.classList.add('border-transparent', 'text-gray-400');
-      el.classList.remove('border-[var(--color-primary)]');
-    }
+    const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)), content = document.getElementById(t + 'Tab'); if (!el || !content) return;
+    if (t === name) { content.classList.remove('hidden'); el.classList.add('border-[var(--color-primary)]'); el.classList.remove('border-transparent', 'text-gray-400'); }
+    else { content.classList.add('hidden'); el.classList.add('border-transparent', 'text-gray-400'); el.classList.remove('border-[var(--color-primary)]'); }
   });
-  if (name === 'findPeople') loadFindPeople();
-  if (name === 'messages') loadConversations();
+  if (name === 'findPeople') loadFindPeople(); if (name === 'messages') loadConversations();
 }
 
 document.getElementById('tabVideos').onclick = () => setTab('videos');
@@ -587,32 +319,12 @@ document.getElementById('tabFriends').onclick = () => setTab('friends');
 document.getElementById('tabMessages').onclick = () => setTab('messages');
 document.getElementById('tabFindPeople').onclick = () => setTab('findPeople');
 
-function switchToFindPeople() {
-  document.getElementById('tabFindPeople')?.click();
-}
-
-let searchTimeout;
-document.getElementById('findSearchInput').addEventListener('input', () => {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(loadFindPeople, 300);
-});
+let searchTimeout; document.getElementById('findSearchInput').addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(loadFindPeople, 300); });
 
 (async () => {
-  await resolveTarget();
-  document.getElementById('profileName').textContent = targetName || 'User';
-  document.getElementById('profileEmail').textContent = targetEmail || '';
-  document.getElementById('profileBio').textContent = targetBio || '';
-  document.getElementById('profilePic').src = targetPic || `https://ui-avatars.com/api/?name=${encodeURIComponent(targetName || 'U')}&background=random&color=fff&size=128`;
-
-  if (isOwnProfile && me) {
-    document.getElementById('tabFindPeople').classList.remove('hidden');
-    document.getElementById('settingsBtn').classList.remove('hidden');
-  }
-
-  loadProfileStats();
-  loadFriendButton();
-  loadFriendsList();
-  if (isOwnProfile) loadConversations();
+  await resolveTarget(); document.getElementById('profileName').textContent = targetName || 'User'; document.getElementById('profileEmail').textContent = targetEmail || ''; document.getElementById('profileBio').textContent = targetBio || ''; document.getElementById('profilePic').src = targetPic || `https://ui-avatars.com/api/?name=${encodeURIComponent(targetName || 'U')}&background=random&color=fff&size=128`;
+  if (isOwnProfile && me) { document.getElementById('tabFindPeople').classList.remove('hidden'); document.getElementById('settingsBtn').classList.remove('hidden'); }
+  loadProfileStats(); loadFriendButton(); loadFriendsList(); if (isOwnProfile) loadConversations();
 })();
 </script>
 </body>
