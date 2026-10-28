@@ -121,6 +121,7 @@
     <div id="reportModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/80 px-4"><div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm"><h3 class="text-xl font-bold mb-4 text-white">Report Copyright Violation</h3><form id="reportForm"><input type="hidden" id="reportMediaId"><input type="hidden" id="reportMediaUrl"><div class="mb-4"><label class="block text-sm text-gray-400 mb-2">Reason</label><select id="reportReason" required class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white"><option value="">Select a reason...</option><option value="Copyright Infringement">Copyright Infringement</option><option value="Unauthorized Use">Unauthorized Use of Content</option><option value="Other">Other</option></select></div><div class="flex gap-2 justify-end"><button type="button" onclick="document.getElementById('reportModal').classList.add('hidden')" class="px-4 py-2 text-sm text-gray-400">Cancel</button><button type="submit" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg font-bold">Submit</button></div></form></div></div>
 
 <script>
+// 🛡️ CRASH-PROOF LOCAL STORAGE PARSING
 const authStorageKey = 'fullMastiGoogleCredential';
 let googleCredential = '';
 try { googleCredential = localStorage.getItem(authStorageKey) || ''; } catch(e) {}
@@ -138,26 +139,7 @@ const visitorId = (() => {
 })();
 const $ = (id) => document.getElementById(id);
 
-// ⭐ SMART LAZY LOADING
-let thumbnailObserver = null;
-function setupThumbnailObserver() {
-  if (thumbnailObserver) thumbnailObserver.disconnect();
-  if (!('IntersectionObserver' in window)) return;
-  thumbnailObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const vid = entry.target;
-        if (vid.dataset.src && !vid.src) { 
-            vid.src = vid.dataset.src + '#t=0.1'; 
-            vid.preload = 'metadata'; 
-        }
-        thumbnailObserver.unobserve(vid);
-      }
-    });
-  }, { rootMargin: '300px' }); 
-}
-
-// --- NOTIFICATIONS ---
+// ⭐ NOTIFICATIONS
 async function loadNotifications() { 
   if (!googleUser) return;
   try {
@@ -183,7 +165,7 @@ function openNotif() { if (!googleUser) { alert('Please sign in first.'); return
 function closeNotif() { $('notifModal').classList.add('hidden'); }
 $('notifBtn').onclick = openNotif;
 
-// --- LIKES & COMMENTS ---
+// ⭐ LIKES & COMMENTS
 function updateLikeBtnHtml(btn, count, liked) { btn.innerHTML = `<span style="color:${liked ? '#ec4899' : '#a1a1aa'};font-size:1.2rem;line-height:1">${liked ? '♥' : '♡'}</span> <span>${count}</span>`; btn.setAttribute('aria-pressed', String(liked)); }
 async function fetchLikeState(mediaId, btn) { try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}`); if (r.ok) { const d = await r.json(); updateLikeBtnHtml(btn, d.count, d.liked); } } catch {} }
 function toggleLike(mediaId, btn) { btn.disabled = true; fetch('/api/likes', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mediaId, visitorId }) }).then(r => r.json()).then(d => { if (d.count !== undefined) updateLikeBtnHtml(btn, d.count, d.liked); }).catch(()=>{}).finally(() => { btn.disabled = false; }); }
@@ -202,7 +184,7 @@ $('commentForm').onsubmit = async (e) => {
   try { await fetch('/api/comments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mediaId: currentCommentMediaId, authorName: googleUser.name, authorEmail: googleUser.email, body }) }); loadComments(); } catch (err) {}
 };
 
-// --- REPORT ---
+// ⭐ REPORT
 function openReportModal(mediaId, mediaUrl) { document.getElementById('reportMediaId').value = mediaId; document.getElementById('reportMediaUrl').value = mediaUrl; document.getElementById('reportModal').classList.remove('hidden'); }
 document.getElementById('reportForm').onsubmit = async (e) => {
   e.preventDefault();
@@ -210,19 +192,21 @@ document.getElementById('reportForm').onsubmit = async (e) => {
   try { const res = await fetch('/api/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }); if (res.ok) { alert('Report submitted successfully.'); document.getElementById('reportModal').classList.add('hidden'); } } catch { alert('Network error.'); }
 };
 
-// --- RENDER VIDEOS ---
+// ⭐ RENDER VIDEOS
 function renderClips(items) {
   const grid = $('clipsGrid'); const status = $('clipsStatus'); grid.innerHTML = '';
-  const videos = (items || []).filter(i => i.type === 'video').slice(0, 10);
+  
+  // Ensure items is an array. If not, fallback to empty array to prevent crash.
+  if (!Array.isArray(items)) items = [];
+  
+  const videos = items.filter(i => i.type === 'video').slice(0, 3); // Load only 3 to prevent freeze
   
   if (!videos.length) { 
-    status.textContent = items ? 'No clips yet — be the first!' : ''; 
-    status.classList.toggle('hidden', !items); 
+    status.textContent = 'No clips yet — be the first!'; 
+    status.classList.remove('hidden'); 
     return; 
   }
   status.classList.add('hidden');
-
-  setupThumbnailObserver(); // Activate lazy loader
 
   videos.forEach(v => {
     const card = document.createElement('div'); card.className = 'feed-card';
@@ -230,14 +214,13 @@ function renderClips(items) {
     mediaWrap.onclick = (e) => { e.preventDefault(); window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
     
     const vid = document.createElement('video'); 
-    vid.dataset.src = v.url; // Don't load yet
+    vid.src = v.url + '#t=0.1';
     vid.muted = true; 
     vid.playsInline = true; 
-    vid.preload = 'none'; 
+    vid.preload = 'metadata'; 
     
-    // Attach observer
-    if (thumbnailObserver) { thumbnailObserver.observe(vid); } 
-    else { vid.src = v.url + '#t=0.1'; } // Fallback
+    // Agar video load na ho toh fallback background
+    vid.onerror = () => { vid.style.display = 'none'; mediaWrap.style.background = '#121212'; };
 
     const play = document.createElement('div'); play.className = 'feed-play-overlay'; play.textContent = '▶';
     const views = document.createElement('div'); views.className = 'feed-view-badge'; views.textContent = `👁 ${v.views || 0}`;
@@ -261,36 +244,46 @@ function renderClips(items) {
   });
 }
 
+// ⭐ RENDER STORIES
 function renderStories(items) {
   const stories = $('storiesContainer'); stories.innerHTML = '';
-  if (!items || !items.length) return;
+  if (!Array.isArray(items) || !items.length) return;
   const creators = [...new Map(items.map(i => [i.creator, i])).values()];
   creators.forEach(u => {
     if (!u.creator || u.creator === 'Anonymous') return;
     const d = document.createElement('div'); d.className = 'flex flex-col items-center gap-1 cursor-pointer shrink-0';
-    d.innerHTML = `<div class="w-[62px] h-[62px] rounded-full p-[2.5px]" style="background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)"><div class="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden border-2 border-black">${u.creatorPic ? `<img src="${u.creatorPic}" class="w-full h-full object-cover rounded-full">` : `<span class="font-bold text-lg">${u.creator[0]}</span>`}</div></div><span class="text-xs text-gray-300 w-16 truncate text-center">${u.creator}</span>`;
+    d.innerHTML = `<div class="w-[62px] h-[62px] rounded-full p-[2.5px]" style="background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)"><div class="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden border-2 border-black">${u.creatorPic ? `<img src="${u.creatorPic}" class="w-full h-full object-cover rounded-full" onerror="this.style.display='none'">` : `<span class="font-bold text-lg">${u.creator[0]}</span>`}</div></div><span class="text-xs text-gray-300 w-16 truncate text-center">${u.creator}</span>`;
     d.onclick = () => { const params = new URLSearchParams(); params.set('name', u.creator || ''); if (u.creatorPic) params.set('pic', u.creatorPic); if (u.creatorEmail) params.set('email', u.creatorEmail); window.location.href = `/profile/index.html?${params.toString()}`; };
     stories.appendChild(d);
   });
 }
 
-// --- LOAD DATA ---
+// ⭐ LOAD DATA (CRASH PROOF)
 async function loadClips() {
   try { 
     const url = '/api/media' + (googleUser ? `?me=${encodeURIComponent(googleUser.email)}` : '');
     const r = await fetch(url); 
-    if (!r.ok) throw new Error('load failed'); 
-    const galleryItems = await r.json(); 
-    renderClips(galleryItems); 
-    renderStories(galleryItems); 
-  } catch { 
-    $('clipsStatus').textContent = 'Could not load clips. Check internet or worker logs.'; 
+    if (!r.ok) throw new Error('Network load failed'); 
+    const responseData = await r.json(); 
+    
+    // API response might be array or object depending on DB structure
+    let items = Array.isArray(responseData) ? responseData : (responseData.data || []);
+    
+    if (items.length === 0) {
+       $('clipsStatus').textContent = 'No clips uploaded yet. Be the first!'; 
+       $('clipsStatus').classList.remove('hidden');
+    }
+    
+    renderClips(items); 
+    renderStories(items); 
+  } catch (err) { 
+    $('clipsStatus').textContent = 'Could not load clips. Check Worker logs.'; 
     $('clipsStatus').classList.remove('hidden'); 
     renderClips([]); 
   }
 }
 
-// --- UPLOAD ---
+// ⭐ UPLOAD
 $('bottomPlus').onclick = () => { if (!googleUser) { openAccountDialog(); return; } $('globalMediaInput').click(); };
 $('addStoryBtn').onclick = () => { if (!googleUser) { openAccountDialog(); return; } $('globalMediaInput').click(); };
 
@@ -349,7 +342,7 @@ $('globalPublishBtn').onclick = () => {
   req.send(fd);
 };
 
-// --- AUTH ---
+// ⭐ AUTH
 function showSignedInUser(user) {
   googleUser = user; const users = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); users[user.email] = user; localStorage.setItem('reelsBookUsers', JSON.stringify(users)); localStorage.setItem('currentReelsUser', JSON.stringify(user));
   $('accountButton').textContent = 'My Account'; $('authStatus').textContent = 'Signed in.'; $('authAccount').textContent = user.name || user.email;
