@@ -141,10 +141,11 @@
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
             <span class="text-[10px]">Home</span>
         </a>
-        <button id="navFind" class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
+        <!-- ⭐ SEARCH ICON CHANGED TO NEW PAGE LINK -->
+        <a href="/search/index.html" id="navSearch" class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-            <span class="text-[10px]">Find</span>
-        </button>
+            <span class="text-[10px]">Search</span>
+        </a>
         <button id="bottomPlus" class="bg-[var(--color-primary)] text-white rounded-lg p-2">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         </button>
@@ -165,18 +166,6 @@
                 <button onclick="closeNotif()" class="text-2xl text-gray-400 px-2">×</button>
             </div>
             <div id="notifList" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm"></div>
-        </div>
-    </div>
-
-    <div id="findModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
-        <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md h-[80vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-white">Find People</h3>
-                <button onclick="closeFind()" class="text-2xl text-gray-400">×</button>
-            </div>
-            <input id="findSearchInput" type="text" placeholder="Search by name or email…" class="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] mb-4">
-            <div id="findResultsList" class="flex-1 overflow-y-auto space-y-1"></div>
-            <div id="findStatus" class="text-center text-sm text-gray-400 py-4 hidden"></div>
         </div>
     </div>
 
@@ -218,7 +207,6 @@
     </div>
 
     <script>
-        // ⭐ TEXT SELECTION FIX
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('selectstart', e => e.preventDefault());
 
@@ -297,56 +285,6 @@
         function closeNotif() { $('notifModal').classList.add('hidden'); }
         bindClick('notifBtn', openNotif);
 
-        bindClick('navFind', () => {
-            if (!googleUser) { openAccountDialog(); return; }
-            $('findModal').classList.remove('hidden');
-            $('findModal').classList.add('flex');
-            loadFindPeople();
-        });
-        function closeFind() { $('findModal').classList.add('hidden'); $('findModal').classList.remove('flex'); }
-        
-        async function loadFindPeople() { 
-            if (!googleUser) return;
-            const search = $('findSearchInput').value.trim();
-            const statusEl = $('findStatus'), listEl = $('findResultsList');
-            statusEl.textContent = 'Loading…'; statusEl.classList.remove('hidden'); listEl.innerHTML = '';
-            
-            try { 
-                const r = await fetch(`/api/users/list?me=${encodeURIComponent(googleUser.email)}&q=${encodeURIComponent(search)}`); 
-                if (!r.ok) throw new Error('failed'); 
-                const users = await r.json(); 
-                statusEl.classList.add('hidden');
-                
-                if (!users.length) { statusEl.textContent = 'No users found.'; statusEl.classList.remove('hidden'); return; }
-                
-                users.forEach(u => {
-                    const row = document.createElement('div'); row.className = 'flex items-center gap-3 py-2 border-b border-gray-800';
-                    let actionHtml = '';
-                    if (u.status === 'friends') actionHtml = '<span class="text-xs text-[var(--color-primary)] font-bold">✓ Friends</span>';
-                    else if (u.status === 'following') actionHtml = '<span class="text-xs text-gray-400">Following</span>';
-                    else if (u.status === 'follower') actionHtml = `<button data-followback="${u.email}" class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">Follow Back</button>`;
-                    else actionHtml = `<button data-follow="${u.email}" class="text-xs border border-gray-700 px-3 py-1 rounded-full hover:border-[var(--color-primary)]">+ Follow</button>`;
-                    
-                    row.innerHTML = `
-                        <img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full">
-                        <div class="flex-1 min-w-0">
-                            <p class="font-semibold text-sm truncate">${u.name || u.email}</p>
-                            <p class="text-xs text-gray-400 truncate">${u.email}</p>
-                        </div>
-                        ${actionHtml}
-                    `;
-                    listEl.appendChild(row);
-                });
-                
-                listEl.querySelectorAll('[data-follow]').forEach(b => b.onclick = async () => { b.disabled = true; await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: googleUser.email, target: b.dataset.follow }) }); loadFindPeople(); });
-                listEl.querySelectorAll('[data-followback]').forEach(b => b.onclick = async () => { b.disabled = true; await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: googleUser.email, target: b.dataset.followback }) }); loadFindPeople(); });
-            } catch { statusEl.textContent = 'Could not load users.'; statusEl.classList.remove('hidden'); }
-        }
-        
-        let searchTimeout;
-        const fsi = $('findSearchInput');
-        if (fsi) fsi.addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(loadFindPeople, 300); });
-
         function updateLikeBtnHtml(btn, count, liked) { btn.innerHTML = `<span style="color:${liked ? '#ec4899' : '#a1a1aa'};font-size:1.2rem;line-height:1">${liked ? '♥' : '♡'}</span> <span>${count}</span>`; btn.setAttribute('aria-pressed', String(liked)); }
         async function fetchLikeState(mediaId, btn) { try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}`); if (r.ok) { const d = await r.json(); updateLikeBtnHtml(btn, d.count, d.liked); } } catch {} }
         function toggleLike(mediaId, btn) { 
@@ -389,7 +327,6 @@
             try { const res = await fetch('/api/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }); if (res.ok) { alert('Report submitted successfully.'); document.getElementById('reportModal').classList.add('hidden'); } } catch { alert('Network error.'); }
         };
 
-        // ⭐ RENDER SINGLE VIDEO (THUMBNAIL FIX)
         function renderSingleVideo(v) {
             const grid = $('clipsGrid');
             if (!grid) return;
@@ -399,20 +336,14 @@
             mediaWrap.onclick = (e) => { e.preventDefault(); window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
             
             const vid = document.createElement('video'); 
-            vid.src = v.url; // ⭐ Direct URL
+            vid.src = v.url; 
             vid.muted = true; 
             vid.playsInline = true; 
             vid.preload = 'metadata'; 
             
-            // ⭐ THUMBNAIL FIX: Force browser to show the first frame
-            vid.addEventListener('loadeddata', () => {
-                vid.currentTime = 0.1; 
-            });
+            vid.addEventListener('loadeddata', () => { vid.currentTime = 0.1; });
 
-            vid.onerror = () => { 
-                vid.style.display = 'none'; 
-                mediaWrap.style.background = '#121212'; 
-            };
+            vid.onerror = () => { vid.style.display = 'none'; mediaWrap.style.background = '#121212'; };
             
             const play = document.createElement('div'); play.className = 'feed-play-overlay'; play.textContent = '▶';
             const views = document.createElement('div'); views.className = 'feed-view-badge'; views.textContent = `👁 ${v.views || 0}`;
