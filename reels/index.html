@@ -62,15 +62,8 @@ let currentCommentMediaId = null;
 const googleUser = JSON.parse(localStorage.getItem('currentReelsUser') || 'null');
 const visitorId = (() => { let v = localStorage.getItem('ReelsbookVisitorId'); if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); } return v; })();
 
-async function openComments(mediaId) {
-  currentCommentMediaId = mediaId;
-  document.getElementById('commentModal').classList.remove('hidden');
-  loadComments();
-}
-function closeComments() {
-  document.getElementById('commentModal').classList.add('hidden');
-  currentCommentMediaId = null;
-}
+async function openComments(mediaId) { currentCommentMediaId = mediaId; document.getElementById('commentModal').classList.remove('hidden'); loadComments(); }
+function closeComments() { document.getElementById('commentModal').classList.add('hidden'); currentCommentMediaId = null; }
 async function loadComments() {
   if (!currentCommentMediaId) return;
   const list = document.getElementById('modalCommentsList');
