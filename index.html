@@ -122,14 +122,26 @@
     <div id="reportModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/80 px-4"><div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm"><h3 class="text-xl font-bold mb-4 text-white">Report Copyright Violation</h3><form id="reportForm"><input type="hidden" id="reportMediaId"><input type="hidden" id="reportMediaUrl"><div class="mb-4"><label class="block text-sm text-gray-400 mb-2">Reason</label><select id="reportReason" required class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white"><option value="">Select a reason...</option><option value="Copyright Infringement">Copyright Infringement</option><option value="Unauthorized Use">Unauthorized Use of Content</option><option value="Other">Other</option></select></div><div class="flex gap-2 justify-end"><button type="button" onclick="document.getElementById('reportModal').classList.add('hidden')" class="px-4 py-2 text-sm text-gray-400">Cancel</button><button type="submit" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg font-bold">Submit</button></div></form></div></div>
 
 <script>
+// ⭐ SAFE PARSE (Fixes crash if local storage is corrupted)
 const authStorageKey = 'fullMastiGoogleCredential';
-let googleCredential = localStorage.getItem(authStorageKey) || '';
-let googleUser = JSON.parse(localStorage.getItem('currentReelsUser') || 'null');
+let googleCredential = '';
+try { googleCredential = localStorage.getItem(authStorageKey) || ''; } catch(e) {}
+
+let googleUser = null;
+try {
+    const stored = localStorage.getItem('currentReelsUser');
+    if (stored && stored !== 'undefined') googleUser = JSON.parse(stored);
+} catch(e) { localStorage.removeItem('currentReelsUser'); }
+
 let galleryItems = [];
 let currentCommentMediaId = null;
 let selectedUploadFile = null;
 
-const visitorId = (() => { let v = localStorage.getItem('ReelsbookVisitorId'); if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); } return v; })();
+const visitorId = (() => { 
+  let v = localStorage.getItem('ReelsbookVisitorId'); 
+  if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); } 
+  return v; 
+})();
 const $ = (id) => document.getElementById(id);
 
 let thumbnailObserver = null;
@@ -164,7 +176,6 @@ async function loadNotifications() {
     const list = $('notifList'); list.innerHTML = '';
     if (convList.length === 0 && pendList.length === 0) { list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>'; return; }
     
-    // ⭐ CHANGED "Friend Request" to "Started following"
     pendList.forEach(r => { 
       list.innerHTML += `
         <div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html?name=${encodeURIComponent(r.name||r.email)}&email=${encodeURIComponent(r.email)}'">
@@ -263,7 +274,6 @@ async function loadClips() {
   } catch { if (!cached) { $('clipsStatus').textContent = 'Could not load clips.'; $('clipsStatus').classList.remove('hidden'); renderClips([]); } }
 }
 
-// DIRECT UPLOAD LOGIC
 $('bottomPlus').onclick = () => {
   if (!googleUser) { openAccountDialog(); return; }
   $('globalMediaInput').click();
@@ -337,7 +347,6 @@ $('globalPublishBtn').onclick = () => {
   req.send(fd);
 };
 
-// AUTH & INIT
 function showSignedInUser(user) {
   googleUser = user; const users = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); users[user.email] = user; localStorage.setItem('reelsBookUsers', JSON.stringify(users)); localStorage.setItem('currentReelsUser', JSON.stringify(user));
   $('accountButton').textContent = 'My Account'; $('authStatus').textContent = 'Signed in.'; $('authAccount').textContent = user.name || user.email;
@@ -367,15 +376,6 @@ $('accountDialog').addEventListener('click', e => { if (e.target === $('accountD
 initializeGoogleSignIn();
 loadClips();
 if (googleUser) loadNotifications();
-
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then((reg) => {
-      if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
-      reg.addEventListener('updatefound', () => { const nw = reg.installing; if (nw) nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) { nw.postMessage('SKIP_WAITING'); } }); });
-    }).catch(() => {});
-  });
-}
 </script>
 </body>
 </html>
