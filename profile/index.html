@@ -14,9 +14,7 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
 .video-card .play-icon { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:2rem; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.7); pointer-events:none; }
 .video-card .badges { position:absolute; left:4px; bottom:4px; display:flex; gap:4px; }
 .video-card .badge { background:rgba(0,0,0,.7); font-size:11px; padding:2px 6px; border-radius:6px; }
-
 .unread-dot { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:#ef4444; color:#fff; font-size:11px; font-weight:700; }
-
 .chat-bubble { max-width:80%; border-radius:16px; padding:8px 12px; font-size:14px; line-height:1.4; word-wrap:break-word; }
 .chat-bubble.mine { background:#ef4444; color:#fff; margin-left:auto; border-bottom-right-radius:4px; }
 .chat-bubble.theirs { background:#27272a; color:#fff; margin-right:auto; border-bottom-left-radius:4px; }
@@ -161,7 +159,7 @@ async function resolveTarget() {
 async function loadProfileStats() {
   try {
     const [mediaR, friendsR] = await Promise.all([
-      fetch('/api/media'),
+      fetch('/api/media' + (me ? `?me=${encodeURIComponent(me.email)}` : '')),
       targetEmail ? fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`) : Promise.resolve({ ok:false })
     ]);
     const allMedia = mediaR.ok ? await mediaR.json() : [];
@@ -352,11 +350,25 @@ async function loadFriendButton() {
     msgBtn.textContent = '💬 Message';
     msgBtn.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
 
+    // ⭐ BLOCK BUTTON ADDED HERE
+    const blockBtn = document.createElement('button');
+    blockBtn.className = 'rounded-full border border-red-700 text-red-500 px-4 py-2 text-sm font-bold ml-2';
+    blockBtn.textContent = 'Block';
+    blockBtn.onclick = async () => {
+      if (confirm('Are you sure you want to block this user? You will not see their videos anymore.')) {
+        await fetch('/api/block', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ me: me.email, target: targetEmail }) });
+        alert('User Blocked!');
+        window.location.href = '/'; 
+      }
+    };
+
     if (data.status === 'friends') {
       actions.appendChild(msgBtn);
+      actions.appendChild(blockBtn);
     } else if (data.status === 'outgoing') {
       actions.innerHTML = '<span class="text-sm text-gray-400">Friend request sent ✓</span>';
       actions.appendChild(msgBtn);
+      actions.appendChild(blockBtn);
     } else if (data.status === 'incoming') {
       const b = document.createElement('button');
       b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
@@ -367,6 +379,7 @@ async function loadFriendButton() {
       };
       actions.appendChild(b);
       actions.appendChild(msgBtn);
+      actions.appendChild(blockBtn);
     } else {
       const addBtn = document.createElement('button');
       addBtn.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold';
@@ -385,6 +398,7 @@ async function loadFriendButton() {
       };
       actions.appendChild(addBtn);
       actions.appendChild(msgBtn);
+      actions.appendChild(blockBtn);
     }
   } catch {
     actions.innerHTML = '<span class="text-sm text-red-400">Could not check friend status</span>';
