@@ -15,7 +15,18 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     
     <style>
-        body { background: #000; color: #fff; font-family: 'Inter', sans-serif; padding-bottom: 75px; }
+        /* ⭐ TEXT SELECTION FIX */
+        body {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            background: #000; color: #fff; font-family: 'Inter', sans-serif; padding-bottom: 75px; 
+        }
+        input, textarea { -webkit-user-select: text; user-select: text; } /* Inputs mein type karne ki ijazat */
+
         .font-logo { font-family: 'Pacifico', cursive; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         
@@ -205,9 +216,10 @@
     </div>
 
     <script>
-        // ==========================================
-        // 1. INITIALIZATION & SAFE PARSING
-        // ==========================================
+        // ⭐ COPY/SEARCH POPUP FIX
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.addEventListener('selectstart', event => event.preventDefault());
+
         const authStorageKey = 'fullMastiGoogleCredential';
         let googleCredential = '';
         try { googleCredential = localStorage.getItem(authStorageKey) || ''; } catch(e) {}
@@ -220,25 +232,18 @@
 
         const visitorId = (() => { 
             let v = localStorage.getItem('ReelsbookVisitorId'); 
-            if (!v) { 
-                v = crypto.randomUUID(); 
-                localStorage.setItem('ReelsbookVisitorId', v); 
-            } 
+            if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); } 
             return v; 
         })();
 
         const $ = (id) => document.getElementById(id);
         let currentCommentMediaId = null; 
 
-        // ⭐ SAFE CLICK BINDING (Fixes the crash)
         function bindClick(id, fn) {
             const el = $(id);
             if (el) el.onclick = fn;
         }
 
-        // ==========================================
-        // 2. NOTIFICATIONS
-        // ==========================================
         async function loadNotifications() { 
             if (!googleUser) return;
             try {
@@ -266,522 +271,224 @@
                 if (convList.length === 0 && pendList.length === 0) { list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>'; return; }
                 
                 pendList.forEach(r => { 
-                    list.innerHTML += `
-                        <div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html?name=${encodeURIComponent(r.name||r.email)}&email=${encodeURIComponent(r.email)}'">
-                            <img src="${r.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(r.name||r.email)}" class="w-8 h-8 rounded-full">
-                            <div>
-                                <p class="font-bold text-[var(--color-primary)]">${r.name || r.email}</p>
-                                <p class="text-gray-400 text-xs">Started following you.</p>
-                            </div>
-                        </div>
-                    `; 
+                    list.innerHTML += `<div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html?name=${encodeURIComponent(r.name||r.email)}&email=${encodeURIComponent(r.email)}'"><img src="${r.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(r.name||r.email)}" class="w-8 h-8 rounded-full"><div><p class="font-bold text-[var(--color-primary)]">${r.name || r.email}</p><p class="text-gray-400 text-xs">Started following you.</p></div></div>`; 
                 });
                 
                 convList.forEach(c => { 
                     if (c.unread > 0) { 
-                        list.innerHTML += `
-                            <div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html?tab=messages'">
-                                <img src="${c.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(c.name||c.email)}" class="w-8 h-8 rounded-full">
-                                <div>
-                                    <p class="font-bold text-[var(--color-primary)]">${c.name || c.email}</p>
-                                    <p class="text-gray-400 text-xs">${c.unread} new message${c.unread>1?'s':''}.</p>
-                                </div>
-                            </div>
-                        `; 
+                        list.innerHTML += `<div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html?tab=messages'"><img src="${c.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(c.name||c.email)}" class="w-8 h-8 rounded-full"><div><p class="font-bold text-[var(--color-primary)]">${c.name || c.email}</p><p class="text-gray-400 text-xs">${c.unread} new message${c.unread>1?'s':''}.</p></div></div>`; 
                     } 
                 });
             } catch (err) {}
         }
         
-        function openNotif() { 
-            if (!googleUser) { alert('Please sign in first.'); return; } 
-            $('notifModal').classList.remove('hidden'); 
-            loadNotifications(); 
-        }
-        
-        function closeNotif() { 
-            $('notifModal').classList.add('hidden'); 
-        }
+        function openNotif() { if (!googleUser) { alert('Please sign in first.'); return; } $('notifModal').classList.remove('hidden'); loadNotifications(); }
+        function closeNotif() { $('notifModal').classList.add('hidden'); }
         bindClick('notifBtn', openNotif);
 
-        // ==========================================
-        // 3. LIKES & COMMENTS
-        // ==========================================
-        function updateLikeBtnHtml(btn, count, liked) { 
-            btn.innerHTML = `<span style="color:${liked ? '#ec4899' : '#a1a1aa'};font-size:1.2rem;line-height:1">${liked ? '♥' : '♡'}</span> <span>${count}</span>`; 
-            btn.setAttribute('aria-pressed', String(liked)); 
-        }
-        
-        async function fetchLikeState(mediaId, btn) { 
-            try { 
-                const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}`); 
-                if (r.ok) { 
-                    const d = await r.json(); 
-                    updateLikeBtnHtml(btn, d.count, d.liked); 
-                } 
-            } catch {} 
-        }
-        
-        function toggleLike(mediaId, btn) { 
-            btn.disabled = true; 
-            fetch('/api/likes', { 
-                method:'POST', 
-                headers:{'content-type':'application/json'}, 
-                body: JSON.stringify({ mediaId, visitorId }) 
-            })
-            .then(r => r.json())
-            .then(d => { 
-                if (d.count !== undefined) updateLikeBtnHtml(btn, d.count, d.liked); 
-            })
-            .catch(()=>{})
-            .finally(() => { btn.disabled = false; }); 
-        }
+        function updateLikeBtnHtml(btn, count, liked) { btn.innerHTML = `<span style="color:${liked ? '#ec4899' : '#a1a1aa'};font-size:1.2rem;line-height:1">${liked ? '♥' : '♡'}</span> <span>${count}</span>`; btn.setAttribute('aria-pressed', String(liked)); }
+        async function fetchLikeState(mediaId, btn) { try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}`); if (r.ok) { const d = await r.json(); updateLikeBtnHtml(btn, d.count, d.liked); } } catch {} }
+        function toggleLike(mediaId, btn) { btn.disabled = true; fetch('/api/likes', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mediaId, visitorId }) }).then(r => r.json()).then(d => { if (d.count !== undefined) updateLikeBtnHtml(btn, d.count, d.liked); }).catch(()=>{}).finally(() => { btn.disabled = false; }); }
 
-        async function openComments(mediaId) { 
-            currentCommentMediaId = mediaId; 
-            $('commentModal').classList.remove('hidden'); 
-            loadComments(); 
-        }
-        
-        function closeComments() { 
-            $('commentModal').classList.add('hidden'); 
-            currentCommentMediaId = null; 
-        }
-        
+        async function openComments(mediaId) { currentCommentMediaId = mediaId; $('commentModal').classList.remove('hidden'); loadComments(); }
+        function closeComments() { $('commentModal').classList.add('hidden'); currentCommentMediaId = null; }
         async function loadComments() {
             if (!currentCommentMediaId) return; 
-            const list = $('modalCommentsList'); 
-            list.innerHTML = '<p class="text-gray-500 text-center py-4">Loading...</p>';
+            const list = $('modalCommentsList'); list.innerHTML = '<p class="text-gray-500 text-center py-4">Loading...</p>';
             try { 
                 const r = await fetch(`/api/comments?mediaId=${encodeURIComponent(currentCommentMediaId)}`); 
-                const comments = await r.json(); 
-                list.innerHTML = ''; 
-                if (!comments.length) { 
-                    list.innerHTML = '<p class="text-gray-500 text-center py-4">No comments yet. Be the first!</p>'; 
-                    return; 
-                }
-                comments.forEach(c => { 
-                    const div = document.createElement('div'); 
-                    div.className = 'flex gap-2'; 
-                    div.innerHTML = `<p class="font-bold text-[var(--color-primary)]">${c.author_name}</p><p class="text-white">${c.body}</p>`; 
-                    list.appendChild(div); 
-                }); 
+                const comments = await r.json(); list.innerHTML = ''; 
+                if (!comments.length) { list.innerHTML = '<p class="text-gray-500 text-center py-4">No comments yet. Be the first!</p>'; return; }
+                comments.forEach(c => { const div = document.createElement('div'); div.className = 'flex gap-2'; div.innerHTML = `<p class="font-bold text-[var(--color-primary)]">${c.author_name}</p><p class="text-white">${c.body}</p>`; list.appendChild(div); }); 
                 list.scrollTop = list.scrollHeight;
-            } catch { 
-                list.innerHTML = '<p class="text-red-400 text-center py-4">Failed to load comments.</p>'; 
-            }
+            } catch { list.innerHTML = '<p class="text-red-400 text-center py-4">Failed to load comments.</p>'; }
         }
-        
-        bindClick('commentForm', null); // Form handles its own submit
         const cf = $('commentForm');
         if (cf) cf.onsubmit = async (e) => {
-            e.preventDefault(); 
-            if (!currentCommentMediaId) return; 
-            const input = $('commentInput'); 
-            const body = input.value.trim(); 
-            if (!body) return;
-            if (!googleUser) { 
-                alert('Please sign in to comment.'); 
-                return; 
-            } 
+            e.preventDefault(); if (!currentCommentMediaId) return; 
+            const input = $('commentInput'); const body = input.value.trim(); if (!body) return;
+            if (!googleUser) { alert('Please sign in to comment.'); return; } 
             input.value = '';
-            try { 
-                await fetch('/api/comments', { 
-                    method: 'POST', 
-                    headers: { 'content-type': 'application/json' }, 
-                    body: JSON.stringify({ mediaId: currentCommentMediaId, authorName: googleUser.name, authorEmail: googleUser.email, body }) 
-                }); 
-                loadComments(); 
-            } catch (err) {}
+            try { await fetch('/api/comments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mediaId: currentCommentMediaId, authorName: googleUser.name, authorEmail: googleUser.email, body }) }); loadComments(); } catch (err) {}
         };
 
-        // ==========================================
-        // 4. REPORT SYSTEM
-        // ==========================================
         function openReportModal(mediaId, mediaUrl) { 
-            const rId = document.getElementById('reportMediaId');
-            const rUrl = document.getElementById('reportMediaUrl');
-            const rModal = document.getElementById('reportModal');
-            if (rId) rId.value = mediaId; 
-            if (rUrl) rUrl.value = mediaUrl; 
-            if (rModal) rModal.classList.remove('hidden'); 
+            const rId = document.getElementById('reportMediaId'); const rUrl = document.getElementById('reportMediaUrl'); const rModal = document.getElementById('reportModal');
+            if (rId) rId.value = mediaId; if (rUrl) rUrl.value = mediaUrl; if (rModal) rModal.classList.remove('hidden'); 
         }
-        
         const rf = document.getElementById('reportForm');
         if (rf) rf.onsubmit = async (e) => {
             e.preventDefault();
-            const data = { 
-                mediaId: document.getElementById('reportMediaId').value, 
-                mediaUrl: document.getElementById('reportMediaUrl').value, 
-                reporterEmail: googleUser ? googleUser.email : '', 
-                reporterName: googleUser ? googleUser.name : 'Anonymous', 
-                reason: document.getElementById('reportReason').value 
-            };
-            try { 
-                const res = await fetch('/api/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }); 
-                if (res.ok) { 
-                    alert('Report submitted successfully.'); 
-                    document.getElementById('reportModal').classList.add('hidden'); 
-                } 
-            } catch { 
-                alert('Network error.'); 
-            }
+            const data = { mediaId: document.getElementById('reportMediaId').value, mediaUrl: document.getElementById('reportMediaUrl').value, reporterEmail: googleUser ? googleUser.email : '', reporterName: googleUser ? googleUser.name : 'Anonymous', reason: document.getElementById('reportReason').value };
+            try { const res = await fetch('/api/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }); if (res.ok) { alert('Report submitted successfully.'); document.getElementById('reportModal').classList.add('hidden'); } } catch { alert('Network error.'); }
         };
 
-        // ==========================================
-        // 5. RENDER VIDEOS
-        // ==========================================
         function renderClips(items) {
-            const grid = $('clipsGrid'); 
-            const status = $('clipsStatus'); 
-            if (!grid) return;
-            grid.innerHTML = '';
-            
+            const grid = $('clipsGrid'); const status = $('clipsStatus'); 
+            if (!grid) return; grid.innerHTML = '';
             if (!Array.isArray(items)) items = [];
             const videos = items.filter(i => i.type === 'video').slice(0, 3); 
             
-            if (!videos.length) { 
-                if (status) {
-                    status.textContent = 'No clips yet — be the first!'; 
-                    status.classList.remove('hidden'); 
-                }
-                return; 
-            }
+            if (!videos.length) { if (status) { status.textContent = 'No clips yet — be the first!'; status.classList.remove('hidden'); } return; }
             if (status) status.classList.add('hidden');
 
             videos.forEach(v => {
-                const card = document.createElement('div'); 
-                card.className = 'feed-card';
+                const card = document.createElement('div'); card.className = 'feed-card';
+                const mediaWrap = document.createElement('div'); mediaWrap.className = 'feed-media-wrap'; 
+                mediaWrap.onclick = (e) => { e.preventDefault(); window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
                 
-                const mediaWrap = document.createElement('div'); 
-                mediaWrap.className = 'feed-media-wrap'; 
-                mediaWrap.onclick = (e) => { 
-                    e.preventDefault(); 
-                    window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; 
-                };
+                const vid = document.createElement('video'); vid.src = v.url + '#t=0.1'; vid.muted = true; vid.playsInline = true; vid.preload = 'metadata'; 
+                vid.onerror = () => { vid.style.display = 'none'; mediaWrap.style.background = '#121212'; };
                 
-                const vid = document.createElement('video'); 
-                vid.src = v.url + '#t=0.1';
-                vid.muted = true; 
-                vid.playsInline = true; 
-                vid.preload = 'metadata'; 
-                vid.onerror = () => { 
-                    vid.style.display = 'none'; 
-                    mediaWrap.style.background = '#121212'; 
-                };
-                
-                const play = document.createElement('div'); 
-                play.className = 'feed-play-overlay'; 
-                play.textContent = '▶';
-                
-                const views = document.createElement('div'); 
-                views.className = 'feed-view-badge'; 
-                views.textContent = `👁 ${v.views || 0}`;
+                const play = document.createElement('div'); play.className = 'feed-play-overlay'; play.textContent = '▶';
+                const views = document.createElement('div'); views.className = 'feed-view-badge'; views.textContent = `👁 ${v.views || 0}`;
                 mediaWrap.append(vid, play, views);
 
-                const details = document.createElement('div'); 
-                details.className = 'p-3';
+                const details = document.createElement('div'); details.className = 'p-3';
+                const title = document.createElement('p'); title.className = 'text-sm text-white font-semibold mb-1'; title.textContent = v.title || 'Untitled';
                 
-                const title = document.createElement('p'); 
-                title.className = 'text-sm text-white font-semibold mb-1'; 
-                title.textContent = v.title || 'Untitled';
-                
-                const creator = document.createElement('p'); 
-                creator.className = 'text-xs text-gray-400 mb-3 cursor-pointer hover:underline'; 
-                creator.textContent = `by ${v.creator || 'Anonymous'}`;
-                creator.onclick = () => { 
-                    const params = new URLSearchParams(); 
-                    params.set('name', v.creator || ''); 
-                    if (v.creatorPic) params.set('pic', v.creatorPic); 
-                    if (v.creatorEmail) params.set('email', v.creatorEmail); 
-                    window.location.href = `/profile/index.html?${params.toString()}`; 
-                };
+                const creator = document.createElement('p'); creator.className = 'text-xs text-gray-400 mb-3 cursor-pointer hover:underline'; creator.textContent = `by ${v.creator || 'Anonymous'}`;
+                creator.onclick = () => { const params = new URLSearchParams(); params.set('name', v.creator || ''); if (v.creatorPic) params.set('pic', v.creatorPic); if (v.creatorEmail) params.set('email', v.creatorEmail); window.location.href = `/profile/index.html?${params.toString()}`; };
 
-                const actions = document.createElement('div'); 
-                actions.className = 'flex items-center gap-4 text-sm';
+                const actions = document.createElement('div'); actions.className = 'flex items-center gap-4 text-sm';
+                const likeBtn = document.createElement('button'); likeBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-[var(--color-primary)] transition'; 
+                updateLikeBtnHtml(likeBtn, v.likes || 0, false); fetchLikeState(v.key, likeBtn); likeBtn.onclick = () => toggleLike(v.key, likeBtn);
                 
-                const likeBtn = document.createElement('button'); 
-                likeBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-[var(--color-primary)] transition'; 
-                updateLikeBtnHtml(likeBtn, v.likes || 0, false); 
-                fetchLikeState(v.key, likeBtn); 
-                likeBtn.onclick = () => toggleLike(v.key, likeBtn);
+                const commentBtn = document.createElement('button'); commentBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-white transition'; 
+                commentBtn.innerHTML = `<span style="font-size:1.2rem;line-height:1">💬</span> <span>${v.comments || 0}</span>`; commentBtn.onclick = () => openComments(v.key);
                 
-                const commentBtn = document.createElement('button'); 
-                commentBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-white transition'; 
-                commentBtn.innerHTML = `<span style="font-size:1.2rem;line-height:1">💬</span> <span>${v.comments || 0}</span>`; 
-                commentBtn.onclick = () => openComments(v.key);
+                const reportBtn = document.createElement('button'); reportBtn.className = 'flex items-center gap-1 text-gray-400 hover:text-red-500 transition ml-auto text-xs font-bold'; 
+                reportBtn.innerHTML = '⚠️ Report'; reportBtn.onclick = () => openReportModal(v.key, v.url);
                 
-                const reportBtn = document.createElement('button'); 
-                reportBtn.className = 'flex items-center gap-1 text-gray-400 hover:text-red-500 transition ml-auto text-xs font-bold'; 
-                reportBtn.innerHTML = '⚠️ Report'; 
-                reportBtn.onclick = () => openReportModal(v.key, v.url);
-                
-                actions.append(likeBtn, commentBtn, reportBtn); 
-                details.append(title, creator, actions); 
-                card.append(mediaWrap, details); 
-                grid.appendChild(card);
+                actions.append(likeBtn, commentBtn, reportBtn); details.append(title, creator, actions); card.append(mediaWrap, details); grid.appendChild(card);
             });
         }
 
-        // ==========================================
-        // 6. RENDER STORIES
-        // ==========================================
         function renderStories(items) {
-            const stories = $('storiesContainer'); 
-            if (!stories) return;
-            stories.innerHTML = '';
+            const stories = $('storiesContainer'); if (!stories) return; stories.innerHTML = '';
             if (!Array.isArray(items) || !items.length) return;
             const creators = [...new Map(items.map(i => [i.creator, i])).values()];
             creators.forEach(u => {
                 if (!u.creator || u.creator === 'Anonymous') return;
-                const d = document.createElement('div'); 
-                d.className = 'flex flex-col items-center gap-1 cursor-pointer shrink-0';
-                d.innerHTML = `
-                    <div class="w-[62px] h-[62px] rounded-full p-[2.5px]" style="background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)">
-                        <div class="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden border-2 border-black">
-                            ${u.creatorPic ? `<img src="${u.creatorPic}" class="w-full h-full object-cover rounded-full">` : `<span class="font-bold text-lg">${u.creator[0]}</span>`}
-                        </div>
-                    </div>
-                    <span class="text-xs text-gray-300 w-16 truncate text-center">${u.creator}</span>
-                `;
-                d.onclick = () => { 
-                    const params = new URLSearchParams(); 
-                    params.set('name', u.creator || ''); 
-                    if (u.creatorPic) params.set('pic', u.creatorPic); 
-                    if (u.creatorEmail) params.set('email', u.creatorEmail); 
-                    window.location.href = `/profile/index.html?${params.toString()}`; 
-                };
+                const d = document.createElement('div'); d.className = 'flex flex-col items-center gap-1 cursor-pointer shrink-0';
+                d.innerHTML = `<div class="w-[62px] h-[62px] rounded-full p-[2.5px]" style="background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)"><div class="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden border-2 border-black">${u.creatorPic ? `<img src="${u.creatorPic}" class="w-full h-full object-cover rounded-full">` : `<span class="font-bold text-lg">${u.creator[0]}</span>`}</div></div><span class="text-xs text-gray-300 w-16 truncate text-center">${u.creator}</span>`;
+                d.onclick = () => { const params = new URLSearchParams(); params.set('name', u.creator || ''); if (u.creatorPic) params.set('pic', u.creatorPic); if (u.creatorEmail) params.set('email', u.creatorEmail); window.location.href = `/profile/index.html?${params.toString()}`; };
                 stories.appendChild(d);
             });
         }
 
-        // ==========================================
-        // 7. LOAD DATA
-        // ==========================================
         async function loadClips() {
             try { 
                 const url = '/api/media' + (googleUser ? `?me=${encodeURIComponent(googleUser.email)}` : '');
-                const r = await fetch(url); 
-                if (!r.ok) throw new Error('load failed'); 
+                const r = await fetch(url); if (!r.ok) throw new Error('load failed'); 
                 const galleryItems = await r.json(); 
                 let items = Array.isArray(galleryItems) ? galleryItems : (galleryItems.data || []);
-                renderClips(items); 
-                renderStories(items); 
-            } catch { 
-                const status = $('clipsStatus');
-                if (status) {
-                    status.textContent = 'Could not load clips. Check Worker logs.'; 
-                    status.classList.remove('hidden'); 
-                }
-                renderClips([]); 
-            }
+                renderClips(items); renderStories(items); 
+            } catch { const status = $('clipsStatus'); if (status) { status.textContent = 'Could not load clips. Check Worker logs.'; status.classList.remove('hidden'); } renderClips([]); }
         }
 
-        // ==========================================
-        // 8. UPLOAD SYSTEM
-        // ==========================================
-        bindClick('bottomPlus', () => { 
-            if (!googleUser) { openAccountDialog(); return; } 
-            $('globalMediaInput').click(); 
-        });
-        bindClick('addStoryBtn', () => { 
-            if (!googleUser) { openAccountDialog(); return; } 
-            $('globalMediaInput').click(); 
-        });
-        bindClick('toggleUploadTop', () => {
-            if (!googleUser) { openAccountDialog(); return; } 
-            $('globalMediaInput').click(); 
-        });
+        bindClick('bottomPlus', () => { if (!googleUser) { openAccountDialog(); return; } $('globalMediaInput').click(); });
+        bindClick('addStoryBtn', () => { if (!googleUser) { openAccountDialog(); return; } $('globalMediaInput').click(); });
+        bindClick('toggleUploadTop', () => { if (!googleUser) { openAccountDialog(); return; } $('globalMediaInput').click(); });
 
         const gmi = $('globalMediaInput');
         if (gmi) gmi.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+            const file = e.target.files[0]; if (!file) return;
             if (file.size > 90 * 1024 * 1024) return alert('File must be ≤ 90 MB.');
             $('globalFileName').textContent = file.name;
             $('globalFileSize').textContent = `${(file.size / (1024 * 1024)).toFixed(1)} MB · ${file.type.startsWith('video/') ? 'Video' : 'Photo'}`;
-            $('globalMediaTitle').value = '';
-            $('globalUploadStatus').classList.add('hidden');
-            $('globalFilePanel').classList.remove('hidden'); 
-            $('globalFilePanel').classList.add('flex');
+            $('globalMediaTitle').value = ''; $('globalUploadStatus').classList.add('hidden');
+            $('globalFilePanel').classList.remove('hidden'); $('globalFilePanel').classList.add('flex');
         };
 
-        bindClick('globalCancelUpload', () => {
-            $('globalMediaInput').value = '';
-            $('globalFilePanel').classList.add('hidden'); 
-            $('globalFilePanel').classList.remove('flex');
-        });
+        bindClick('globalCancelUpload', () => { $('globalMediaInput').value = ''; $('globalFilePanel').classList.add('hidden'); $('globalFilePanel').classList.remove('flex'); });
 
         bindClick('globalPublishBtn', () => {
-            const file = $('globalMediaInput').files[0];
-            if (!file) return;
-            const btn = $('globalPublishBtn');
-            const title = $('globalMediaTitle').value.trim() || file.name.replace(/\.[^/.]+$/, '');
+            const file = $('globalMediaInput').files[0]; if (!file) return;
+            const btn = $('globalPublishBtn'); const title = $('globalMediaTitle').value.trim() || file.name.replace(/\.[^/.]+$/, '');
+            const fd = new FormData(); fd.append('media', file); fd.append('title', title); fd.append('creator', googleUser.name || 'Anonymous'); fd.append('creatorEmail', googleUser.email || ''); fd.append('creatorPic', googleUser.picture || '');
+            btn.disabled = true; btn.textContent = 'Uploading… 0%'; $('globalUploadStatus').textContent = 'Uploading…'; $('globalUploadStatus').classList.remove('hidden');
             
-            const fd = new FormData();
-            fd.append('media', file);
-            fd.append('title', title);
-            fd.append('creator', googleUser.name || 'Anonymous');
-            fd.append('creatorEmail', googleUser.email || '');
-            fd.append('creatorPic', googleUser.picture || '');
-            
-            btn.disabled = true; 
-            btn.textContent = 'Uploading… 0%';
-            $('globalUploadStatus').textContent = 'Uploading…'; 
-            $('globalUploadStatus').classList.remove('hidden');
-            
-            const req = new XMLHttpRequest();
-            req.open('POST', '/api/upload');
-            req.setRequestHeader('Authorization', `Bearer ${googleCredential}`);
-            
-            req.upload.addEventListener('progress', e => {
-                if (!e.lengthComputable) return;
-                const p = Math.round((e.loaded/e.total)*100);
-                btn.textContent = `Uploading… ${p}%`;
-                $('globalUploadStatus').textContent = `Uploading… ${p}%`;
-            });
-            
+            const req = new XMLHttpRequest(); req.open('POST', '/api/upload'); req.setRequestHeader('Authorization', `Bearer ${googleCredential}`);
+            req.upload.addEventListener('progress', e => { if (!e.lengthComputable) return; const p = Math.round((e.loaded/e.total)*100); btn.textContent = `Uploading… ${p}%`; $('globalUploadStatus').textContent = `Uploading… ${p}%`; });
             req.addEventListener('load', async () => {
-                try {
-                    const result = JSON.parse(req.responseText);
-                    if (req.status < 200 || req.status >= 300) throw new Error(result.error || 'Upload failed');
-                    $('globalUploadStatus').textContent = 'Published successfully!';
-                    setTimeout(() => { 
-                        $('globalFilePanel').classList.add('hidden'); 
-                        $('globalFilePanel').classList.remove('flex'); 
-                        $('globalMediaInput').value = ''; 
-                        loadClips(); 
-                    }, 1000);
-                } catch (e) { 
-                    $('globalUploadStatus').textContent = e.message; 
-                    btn.disabled = false; 
-                    btn.textContent = 'Publish'; 
-                }
+                try { const result = JSON.parse(req.responseText); if (req.status < 200 || req.status >= 300) throw new Error(result.error || 'Upload failed'); $('globalUploadStatus').textContent = 'Published successfully!'; setTimeout(() => { $('globalFilePanel').classList.add('hidden'); $('globalFilePanel').classList.remove('flex'); $('globalMediaInput').value = ''; loadClips(); }, 1000); } catch (e) { $('globalUploadStatus').textContent = e.message; btn.disabled = false; btn.textContent = 'Publish'; }
             });
-            
-            req.addEventListener('error', () => { 
-                $('globalUploadStatus').textContent = 'Network error.'; 
-                btn.disabled = false; 
-                btn.textContent = 'Publish'; 
-            });
-            
+            req.addEventListener('error', () => { $('globalUploadStatus').textContent = 'Network error.'; btn.disabled = false; btn.textContent = 'Publish'; });
             req.send(fd);
         });
 
-        // ==========================================
-        // 9. AUTHENTICATION
-        // ==========================================
+        // ⭐ LOGIN SUCCESS FIX
         function showSignedInUser(user) {
             googleUser = user; 
-            const users = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); 
-            users[user.email] = user; 
-            localStorage.setItem('reelsBookUsers', JSON.stringify(users)); 
-            localStorage.setItem('currentReelsUser', JSON.stringify(user));
+            const users = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); users[user.email] = user; 
+            localStorage.setItem('reelsBookUsers', JSON.stringify(users)); localStorage.setItem('currentReelsUser', JSON.stringify(user));
             
-            $('accountButton').textContent = 'My Account'; 
-            $('authStatus').textContent = 'Signed in.'; 
-            $('authAccount').textContent = user.name || user.email;
-            $('googleSignInButton').classList.add('hidden'); 
-            $('signOutButton').classList.remove('hidden'); 
-            $('accountDialogStatus').textContent = 'Signed in.'; 
-            closeAccountDialog(); 
-            loadNotifications();
+            const accBtn = $('accountButton');
+            if (accBtn) accBtn.textContent = 'My Account';
+            
+            const g1 = $('googleContinueButton'); const g2 = $('googleSignupButton');
+            if (g1) g1.classList.add('hidden');
+            if (g2) g2.classList.add('hidden');
+
+            const statusEl = $('accountDialogStatus');
+            if (statusEl) {
+                statusEl.textContent = `Signed in as ${user.name || user.email}`;
+                statusEl.classList.add('text-green-500'); statusEl.classList.remove('text-red-400');
+            }
+            closeAccountDialog(); loadNotifications();
         }
         
         function showSignedOutUser(msg) { 
             googleUser = null; 
-            $('accountButton').textContent = 'Log in'; 
-            $('authStatus').textContent = msg || 'Sign in with Google to upload.'; 
-            $('authAccount').textContent = ''; 
-            $('googleSignInButton').classList.remove('hidden'); 
-            $('signOutButton').classList.add('hidden'); 
-            $('accountDialogStatus').textContent = msg || ''; 
+            const accBtn = $('accountButton'); if (accBtn) accBtn.textContent = 'Log in';
+            
+            const g1 = $('googleContinueButton'); const g2 = $('googleSignupButton');
+            if (g1) g1.classList.remove('hidden'); if (g2) g2.classList.remove('hidden');
+
+            const statusEl = $('accountDialogStatus');
+            if (statusEl) { statusEl.textContent = msg || ''; statusEl.classList.add('text-red-400'); statusEl.classList.remove('text-green-500'); }
         }
 
         async function verifyGoogleCredential(credential) { 
-            const r = await fetch('/api/auth/google', { 
-                method:'POST', 
-                headers:{'content-type':'application/json'}, 
-                body: JSON.stringify({ credential }) 
-            }); 
+            const r = await fetch('/api/auth/google', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ credential }) }); 
             const data = await r.json(); 
             if (!r.ok) throw new Error(data.error || 'Sign-in failed'); 
-            googleCredential = credential; 
-            localStorage.setItem(authStorageKey, credential); 
-            showSignedInUser(data); 
+            googleCredential = credential; localStorage.setItem(authStorageKey, credential); showSignedInUser(data); 
         }
 
         async function initializeGoogleSignIn() {
             try {
-                const r = await fetch('/api/auth/config'); 
-                const cfg = await r.json(); 
-                
-                if (!cfg.googleClientId) { 
-                    showSignedOutUser('Google sign-in not configured.'); 
-                    return; 
-                }
+                const r = await fetch('/api/auth/config'); const cfg = await r.json(); 
+                if (!cfg.googleClientId) { showSignedOutUser('Google sign-in not configured.'); return; }
                 
                 let attempts = 0; 
                 const wait = setInterval(() => { 
                     attempts++; 
                     if (window.google?.accounts?.id) { 
                         clearInterval(wait);
-                        google.accounts.id.initialize({ 
-                            client_id: cfg.googleClientId, 
-                            callback: async (res) => { 
-                                try { await verifyGoogleCredential(res.credential); } 
-                                catch (e) { showSignedOutUser(e.message); } 
-                            } 
-                        });
+                        google.accounts.id.initialize({ client_id: cfg.googleClientId, callback: async (res) => { try { await verifyGoogleCredential(res.credential); } catch (e) { showSignedOutUser(e.message); } }});
                         
                         const g1 = $('googleSignInButton'), g2 = $('googleContinueButton'), g3 = $('googleSignupButton');
                         if (g1) google.accounts.id.renderButton(g1, { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill' });
                         if (g2) google.accounts.id.renderButton(g2, { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill', width:280 });
                         if (g3) google.accounts.id.renderButton(g3, { type:'standard', theme:'outline', size:'large', text:'signup_with', shape:'pill', width:280 });
                         
-                        if (googleCredential) verifyGoogleCredential(googleCredential).catch(() => { 
-                            googleCredential=''; 
-                            localStorage.removeItem(authStorageKey); 
-                            showSignedOutUser('Sign-in expired.'); 
-                        });
-                    } else if (attempts >= 100) { 
-                        clearInterval(wait); 
-                        showSignedOutUser('Could not load Google sign-in script.'); 
-                    } 
+                        if (googleCredential) verifyGoogleCredential(googleCredential).catch(() => { googleCredential=''; localStorage.removeItem(authStorageKey); showSignedOutUser('Sign-in expired.'); });
+                    } else if (attempts >= 100) { clearInterval(wait); showSignedOutUser('Could not load Google sign-in script.'); } 
                 }, 100);
-            } catch { 
-                showSignedOutUser('Could not reach backend for login config.'); 
-            }
+            } catch { showSignedOutUser('Could not reach backend for login config.'); }
         }
 
-        bindClick('signOutButton', () => { 
-            googleCredential=''; 
-            localStorage.removeItem(authStorageKey); 
-            window.google?.accounts?.id?.disableAutoSelect(); 
-            showSignedOutUser(); 
-        });
+        bindClick('signOutButton', () => { googleCredential=''; localStorage.removeItem(authStorageKey); window.google?.accounts?.id?.disableAutoSelect(); showSignedOutUser(); });
 
-        function openAccountDialog() { 
-            $('accountDialog').classList.remove('hidden'); 
-            $('accountDialog').classList.add('flex'); 
-        }
-        
-        function closeAccountDialog() { 
-            $('accountDialog').classList.add('hidden'); 
-            $('accountDialog').classList.remove('flex'); 
-        }
-        
-        bindClick('accountButton', openAccountDialog); 
-        bindClick('closeAccountDialog', closeAccountDialog);
+        function openAccountDialog() { $('accountDialog').classList.remove('hidden'); $('accountDialog').classList.add('flex'); }
+        function closeAccountDialog() { $('accountDialog').classList.add('hidden'); $('accountDialog').classList.remove('flex'); }
+        bindClick('accountButton', openAccountDialog); bindClick('closeAccountDialog', closeAccountDialog);
         
         const ad = $('accountDialog');
-        if (ad) ad.addEventListener('click', e => { 
-            if (e.target === $('accountDialog')) closeAccountDialog(); 
-        });
+        if (ad) ad.addEventListener('click', e => { if (e.target === $('accountDialog')) closeAccountDialog(); });
 
-        // ==========================================
-        // 10. BOOTSTRAP
-        // ==========================================
         initializeGoogleSignIn();
         loadClips();
         if (googleUser) loadNotifications();
