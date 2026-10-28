@@ -15,17 +15,11 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     
     <style>
-        /* ⭐ TEXT SELECTION FIX */
         body {
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            -khtml-user-select: none;
-            -moz-user-select: none;
-            -ms-user-select: none;
-            user-select: none;
+            -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none;
             background: #000; color: #fff; font-family: 'Inter', sans-serif; padding-bottom: 75px; 
         }
-        input, textarea { -webkit-user-select: text; user-select: text; } /* Inputs mein type karne ki ijazat */
+        input, textarea { -webkit-user-select: text; user-select: text; }
 
         .font-logo { font-family: 'Pacifico', cursive; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -49,10 +43,6 @@
 </head>
 <body class="antialiased">
 
-    <div id="offlineBanner" class="fixed top-14 inset-x-0 z-50 bg-yellow-500 text-black text-center text-sm font-bold py-2 hidden">
-        📡 You're offline — showing cached content
-    </div>
-
     <header class="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-gray-800 px-4 py-3 flex justify-between items-center">
         <a href="/" class="text-2xl font-logo pr-4 sm:pr-8">ReelsBook</a>
         
@@ -72,9 +62,7 @@
             </button>
             
             <button id="toggleUploadTop" class="text-white hover:text-[var(--color-primary)]">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             </button>
             
             <button id="accountButton" class="rounded-full border border-gray-700 px-3 py-1.5 text-sm font-semibold hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">
@@ -89,7 +77,6 @@
             <p class="mb-3 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">Your account</p>
             <h2 class="text-2xl font-black">Welcome to the wall</h2>
             <p class="mt-3 text-sm text-gray-400">Sign in with Google to upload, add friends, and send messages.</p>
-            
             <div class="mt-7 grid gap-3">
                 <div id="googleContinueButton" class="flex justify-center"></div>
                 <div id="googleSignupButton" class="flex justify-center"></div>
@@ -103,9 +90,7 @@
             <div class="flex gap-4 overflow-x-auto hide-scrollbar">
                 <div id="addStoryBtn" class="flex flex-col items-center gap-1 cursor-pointer shrink-0">
                     <div class="relative w-[62px] h-[62px] rounded-full border border-gray-700 bg-gray-800 flex items-center justify-center">
-                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
+                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                     </div>
                     <span class="text-xs text-gray-400">Your Story</span>
                 </div>
@@ -155,6 +140,10 @@
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
             <span class="text-[10px]">Home</span>
         </a>
+        <button id="navFind" class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <span class="text-[10px]">Find</span>
+        </button>
         <button id="bottomPlus" class="bg-[var(--color-primary)] text-white rounded-lg p-2">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         </button>
@@ -168,6 +157,7 @@
         </a>
     </nav>
 
+    <!-- Notifications Modal -->
     <div id="notifModal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
@@ -177,7 +167,21 @@
             <div id="notifList" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm"></div>
         </div>
     </div>
-    
+
+    <!-- Find People Modal -->
+    <div id="findModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
+        <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-white">Find People</h3>
+                <button onclick="closeFind()" class="text-2xl text-gray-400">×</button>
+            </div>
+            <input id="findSearchInput" type="text" placeholder="Search by name or email…" class="w-full rounded-lg bg-gray-800 border border-gray-700 px-4 py-2.5 text-sm outline-none focus:border-[var(--color-primary)] mb-4">
+            <div id="findResultsList" class="flex-1 overflow-y-auto space-y-1"></div>
+            <div id="findStatus" class="text-center text-sm text-gray-400 py-4 hidden"></div>
+        </div>
+    </div>
+
+    <!-- Comments Modal -->
     <div id="commentModal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
@@ -192,6 +196,7 @@
         </div>
     </div>
     
+    <!-- Report Modal -->
     <div id="reportModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/80 px-4">
         <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
             <h3 class="text-xl font-bold mb-4 text-white">Report Copyright Violation</h3>
@@ -216,9 +221,8 @@
     </div>
 
     <script>
-        // ⭐ COPY/SEARCH POPUP FIX
-        document.addEventListener('contextmenu', event => event.preventDefault());
-        document.addEventListener('selectstart', event => event.preventDefault());
+        document.addEventListener('contextmenu', e => e.preventDefault());
+        document.addEventListener('selectstart', e => e.preventDefault());
 
         const authStorageKey = 'fullMastiGoogleCredential';
         let googleCredential = '';
@@ -244,51 +248,116 @@
             if (el) el.onclick = fn;
         }
 
+        // ⭐ NOTIFICATIONS (New Backend Logic)
         async function loadNotifications() { 
             if (!googleUser) return;
             try {
-                const [convRes, pendRes] = await Promise.all([
-                    fetch(`/api/conversations?me=${encodeURIComponent(googleUser.email)}`),
-                    fetch(`/api/friends/pending?me=${encodeURIComponent(googleUser.email)}`)
-                ]);
-                let totalMsgs = 0, totalReqs = 0, convList = [], pendList = [];
-                if (convRes.ok) { convList = await convRes.json(); totalMsgs = convList.reduce((s, c) => s + (c.unread || 0), 0); }
-                if (pendRes.ok) { const p = await pendRes.json(); pendList = p.incoming || []; totalReqs = pendList.length; }
+                const res = await fetch(`/api/notifications?me=${encodeURIComponent(googleUser.email)}`);
+                const notifs = res.ok ? await res.json() : [];
+                const notifBadge = $('headerNotifBadge');
                 
-                const msgBadge = $('headerMsgBadge'), notifBadge = $('headerNotifBadge');
-                const totalNotifs = totalMsgs + totalReqs;
-                
-                if (msgBadge) {
-                    if (totalMsgs > 0) { msgBadge.textContent = totalMsgs > 9 ? '9+' : totalMsgs; msgBadge.classList.remove('hidden'); } else msgBadge.classList.add('hidden');
-                }
                 if (notifBadge) {
-                    if (totalNotifs > 0) { notifBadge.textContent = totalNotifs > 9 ? '9+' : totalNotifs; notifBadge.classList.remove('hidden'); } else notifBadge.classList.add('hidden');
+                    if (notifs.length > 0) { notifBadge.textContent = notifs.length > 9 ? '9+' : notifs.length; notifBadge.classList.remove('hidden'); } else notifBadge.classList.add('hidden');
                 }
                 
                 const list = $('notifList'); 
                 if (!list) return;
                 list.innerHTML = '';
-                if (convList.length === 0 && pendList.length === 0) { list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>'; return; }
                 
-                pendList.forEach(r => { 
-                    list.innerHTML += `<div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html?name=${encodeURIComponent(r.name||r.email)}&email=${encodeURIComponent(r.email)}'"><img src="${r.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(r.name||r.email)}" class="w-8 h-8 rounded-full"><div><p class="font-bold text-[var(--color-primary)]">${r.name || r.email}</p><p class="text-gray-400 text-xs">Started following you.</p></div></div>`; 
-                });
+                if (!notifs.length) { list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>'; return; }
                 
-                convList.forEach(c => { 
-                    if (c.unread > 0) { 
-                        list.innerHTML += `<div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html?tab=messages'"><img src="${c.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(c.name||c.email)}" class="w-8 h-8 rounded-full"><div><p class="font-bold text-[var(--color-primary)]">${c.name || c.email}</p><p class="text-gray-400 text-xs">${c.unread} new message${c.unread>1?'s':''}.</p></div></div>`; 
-                    } 
+                notifs.forEach(n => { 
+                    let text = "";
+                    if (n.type === 'follow') text = "started following you.";
+                    else if (n.type === 'like') text = "liked your video.";
+                    else if (n.type === 'comment') text = `commented: "${n.content}"`;
+
+                    list.innerHTML += `
+                        <div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html?name=${encodeURIComponent(n.from_name)}&email=${encodeURIComponent(n.from_email)}'">
+                            <img src="${n.from_pic || 'https://ui-avatars.com/api/?name='+encodeURIComponent(n.from_name)}" class="w-8 h-8 rounded-full">
+                            <div>
+                                <p class="font-bold text-[var(--color-primary)]">${n.from_name}</p>
+                                <p class="text-gray-400 text-xs">${text}</p>
+                            </div>
+                        </div>
+                    `; 
                 });
             } catch (err) {}
         }
         
-        function openNotif() { if (!googleUser) { alert('Please sign in first.'); return; } $('notifModal').classList.remove('hidden'); loadNotifications(); }
+        async function openNotif() { 
+            if (!googleUser) { alert('Please sign in first.'); return; } 
+            $('notifModal').classList.remove('hidden'); 
+            await loadNotifications(); 
+            // Mark as read
+            fetch('/api/notifications/read', { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify({ me: googleUser.email }) }).then(() => {
+                const b = $('headerNotifBadge'); if (b) b.classList.add('hidden');
+            });
+        }
         function closeNotif() { $('notifModal').classList.add('hidden'); }
         bindClick('notifBtn', openNotif);
 
+        // ⭐ FIND PEOPLE LOGIC
+        bindClick('navFind', () => {
+            if (!googleUser) { openAccountDialog(); return; }
+            $('findModal').classList.remove('hidden');
+            $('findModal').classList.add('flex');
+            loadFindPeople();
+        });
+        function closeFind() { $('findModal').classList.add('hidden'); $('findModal').classList.remove('flex'); }
+        
+        async function loadFindPeople() { 
+            if (!googleUser) return;
+            const search = $('findSearchInput').value.trim();
+            const statusEl = $('findStatus'), listEl = $('findResultsList');
+            statusEl.textContent = 'Loading…'; statusEl.classList.remove('hidden'); listEl.innerHTML = '';
+            
+            try { 
+                const r = await fetch(`/api/users/list?me=${encodeURIComponent(googleUser.email)}&q=${encodeURIComponent(search)}`); 
+                if (!r.ok) throw new Error('failed'); 
+                const users = await r.json(); 
+                statusEl.classList.add('hidden');
+                
+                if (!users.length) { statusEl.textContent = 'No users found.'; statusEl.classList.remove('hidden'); return; }
+                
+                users.forEach(u => {
+                    const row = document.createElement('div'); row.className = 'flex items-center gap-3 py-2 border-b border-gray-800';
+                    let actionHtml = '';
+                    if (u.status === 'friends') actionHtml = '<span class="text-xs text-[var(--color-primary)] font-bold">✓ Friends</span>';
+                    else if (u.status === 'following') actionHtml = '<span class="text-xs text-gray-400">Following</span>';
+                    else if (u.status === 'follower') actionHtml = `<button data-followback="${u.email}" class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">Follow Back</button>`;
+                    else actionHtml = `<button data-follow="${u.email}" class="text-xs border border-gray-700 px-3 py-1 rounded-full hover:border-[var(--color-primary)]">+ Follow</button>`;
+                    
+                    row.innerHTML = `
+                        <img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-sm truncate">${u.name || u.email}</p>
+                            <p class="text-xs text-gray-400 truncate">${u.email}</p>
+                        </div>
+                        ${actionHtml}
+                    `;
+                    listEl.appendChild(row);
+                });
+                
+                listEl.querySelectorAll('[data-follow]').forEach(b => b.onclick = async () => { b.disabled = true; await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: googleUser.email, target: b.dataset.follow }) }); loadFindPeople(); });
+                listEl.querySelectorAll('[data-followback]').forEach(b => b.onclick = async () => { b.disabled = true; await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: googleUser.email, target: b.dataset.followback }) }); loadFindPeople(); });
+            } catch { statusEl.textContent = 'Could not load users.'; statusEl.classList.remove('hidden'); }
+        }
+        
+        let searchTimeout;
+        bindClick('findSearchInput', null); // reset
+        const fsi = $('findSearchInput');
+        if (fsi) fsi.addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(loadFindPeople, 300); });
+
+        // LIKES & COMMENTS
         function updateLikeBtnHtml(btn, count, liked) { btn.innerHTML = `<span style="color:${liked ? '#ec4899' : '#a1a1aa'};font-size:1.2rem;line-height:1">${liked ? '♥' : '♡'}</span> <span>${count}</span>`; btn.setAttribute('aria-pressed', String(liked)); }
         async function fetchLikeState(mediaId, btn) { try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}`); if (r.ok) { const d = await r.json(); updateLikeBtnHtml(btn, d.count, d.liked); } } catch {} }
-        function toggleLike(mediaId, btn) { btn.disabled = true; fetch('/api/likes', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mediaId, visitorId }) }).then(r => r.json()).then(d => { if (d.count !== undefined) updateLikeBtnHtml(btn, d.count, d.liked); }).catch(()=>{}).finally(() => { btn.disabled = false; }); }
+        function toggleLike(mediaId, btn) { 
+            btn.disabled = true; 
+            fetch('/api/likes', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mediaId, visitorId, authorEmail: googleUser ? googleUser.email : "" }) })
+            .then(r => r.json()).then(d => { if (d.count !== undefined) updateLikeBtnHtml(btn, d.count, d.liked); })
+            .catch(()=>{}).finally(() => { btn.disabled = false; }); 
+        }
 
         async function openComments(mediaId) { currentCommentMediaId = mediaId; $('commentModal').classList.remove('hidden'); loadComments(); }
         function closeComments() { $('commentModal').classList.add('hidden'); currentCommentMediaId = null; }
@@ -418,18 +487,15 @@
             req.send(fd);
         });
 
-        // ⭐ LOGIN SUCCESS FIX
+        // AUTHENTICATION
         function showSignedInUser(user) {
             googleUser = user; 
             const users = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); users[user.email] = user; 
             localStorage.setItem('reelsBookUsers', JSON.stringify(users)); localStorage.setItem('currentReelsUser', JSON.stringify(user));
             
-            const accBtn = $('accountButton');
-            if (accBtn) accBtn.textContent = 'My Account';
-            
+            const accBtn = $('accountButton'); if (accBtn) accBtn.textContent = 'My Account';
             const g1 = $('googleContinueButton'); const g2 = $('googleSignupButton');
-            if (g1) g1.classList.add('hidden');
-            if (g2) g2.classList.add('hidden');
+            if (g1) g1.classList.add('hidden'); if (g2) g2.classList.add('hidden');
 
             const statusEl = $('accountDialogStatus');
             if (statusEl) {
@@ -442,7 +508,6 @@
         function showSignedOutUser(msg) { 
             googleUser = null; 
             const accBtn = $('accountButton'); if (accBtn) accBtn.textContent = 'Log in';
-            
             const g1 = $('googleContinueButton'); const g2 = $('googleSignupButton');
             if (g1) g1.classList.remove('hidden'); if (g2) g2.classList.remove('hidden');
 
