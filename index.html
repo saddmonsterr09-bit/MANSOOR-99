@@ -1,1078 +1,421 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#000000">
-    
-    <link rel="manifest" href="/manifest.json">
-    <link rel="apple-touch-icon" href="/icon.png">
-    
-    <title>ReelsBook — Modern Social Platform</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="/theme.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-    
-    <style>
-        body { 
-            background: #000; 
-            color: #fff; 
-            font-family: 'Inter', sans-serif; 
-            padding-bottom: 75px; 
-        }
-        
-        .font-logo { 
-            font-family: 'Pacifico', cursive; 
-        }
-        
-        .hide-scrollbar::-webkit-scrollbar { 
-            display: none; 
-        }
-        
-        /* Feed Card Design */
-        .feed-card { 
-            background: #0f0f0f; 
-            border: 1px solid #27272a; 
-            border-radius: 16px; 
-            overflow: hidden; 
-            margin: 0 auto; 
-            max-width: 400px; 
-            width: 100%; 
-        }
-        
-        .feed-media-wrap { 
-            position: relative; 
-            aspect-ratio: 9/16; 
-            background: #000; 
-            overflow: hidden; 
-            cursor: pointer; 
-        }
-        
-        .feed-media-wrap video, 
-        .feed-media-wrap img { 
-            width: 100%; 
-            height: 100%; 
-            object-fit: cover; 
-            display: block; 
-            pointer-events: none; 
-        }
-        
-        .feed-play-overlay { 
-            position: absolute; 
-            inset: 0; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-size: 2rem; 
-            text-shadow: 0 2px 10px rgba(0,0,0,.7); 
-            pointer-events: none; 
-            user-select: none; 
-        }
-        
-        .feed-view-badge { 
-            position: absolute; 
-            left: 8px; 
-            bottom: 8px; 
-            background: rgba(0,0,0,.7); 
-            font-size: 11px; 
-            padding: 2px 8px; 
-            border-radius: 6px; 
-            pointer-events: none; 
-        }
-
-        /* Skeleton Loaders */
-        .skeleton-card { 
-            background: #0f0f0f; 
-            border: 1px solid #27272a; 
-            border-radius: 16px; 
-            overflow: hidden; 
-            margin: 0 auto; 
-            max-width: 400px; 
-            width: 100%; 
-        }
-        
-        .skeleton-media { 
-            position: relative; 
-            aspect-ratio: 9/16; 
-            background: linear-gradient(90deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%); 
-            background-size: 200% 100%; 
-            animation: shimmer 1.2s infinite; 
-        }
-        
-        .skeleton-text { 
-            height: 16px; 
-            background: #1a1a1a; 
-            border-radius: 4px; 
-            margin: 8px 16px; 
-        }
-        
-        @keyframes shimmer { 
-            0% { background-position: 200% 0; } 
-            100% { background-position: -200% 0; } 
-        }
-
-        /* Modals */
-        .modal-overlay { 
-            position: fixed; 
-            inset: 0; 
-            z-index: 100; 
-            background: rgba(0,0,0,.85); 
-            display: flex; 
-            align-items: flex-end; 
-            justify-content: center; 
-        }
-        
-        .modal-content { 
-            background: #18181b; 
-            width: 100%; 
-            max-width: 500px; 
-            max-height: 80vh; 
-            border-radius: 16px 16px 0 0; 
-            display: flex; 
-            flex-direction: column; 
-        }
-
-        /* Header Badges */
-        .icon-badge { 
-            position: absolute; 
-            top: -4px; 
-            right: -6px; 
-            background: #ef4444; 
-            color: #fff; 
-            font-size: 10px; 
-            font-weight: bold; 
-            min-width: 16px; 
-            height: 16px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            border-radius: 8px; 
-            padding: 0 4px; 
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon.png">
+<title>ReelsBook — Modern Social Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+body { background:#000; color:#fff; font-family:'Inter',sans-serif; padding-bottom:75px; }
+.font-logo { font-family:'Pacifico',cursive; }
+.hide-scrollbar::-webkit-scrollbar { display:none; }
+.feed-card { background:#0f0f0f; border:1px solid #27272a; border-radius:16px; overflow:hidden; margin:0 auto; max-width:400px; width:100%; }
+.feed-media-wrap { position:relative; aspect-ratio:9/16; background:#000; overflow:hidden; cursor:pointer; }
+.feed-media-wrap video, .feed-media-wrap img { width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; }
+.feed-play-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:2rem; text-shadow:0 2px 10px rgba(0,0,0,.7); pointer-events:none; user-select:none; }
+.feed-view-badge { position:absolute; left:8px; bottom:8px; background:rgba(0,0,0,.7); font-size:11px; padding:2px 8px; border-radius:6px; pointer-events:none; }
+.skeleton-card { background:#0f0f0f; border:1px solid #27272a; border-radius:16px; overflow:hidden; margin:0 auto; max-width:400px; width:100%; }
+.skeleton-media { position:relative; aspect-ratio:9/16; background:linear-gradient(90deg,#1a1a1a 0%,#2a2a2a 50%,#1a1a1a 100%); background-size:200% 100%; animation:shimmer 1.2s infinite; }
+.skeleton-text { height:16px; background:#1a1a1a; border-radius:4px; margin:8px 16px; }
+@keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+.modal-overlay { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.85); display:flex; align-items:flex-end; justify-content:center; }
+.modal-content { background:#18181b; width:100%; max-width:500px; max-height:80vh; border-radius:16px 16px 0 0; display:flex; flex-direction:column; }
+.icon-badge { position:absolute; top:-4px; right:-6px; background:#ef4444; color:#fff; font-size:10px; font-weight:bold; min-width:16px; height:16px; display:flex; align-items:center; justify-content:center; border-radius:8px; padding:0 4px; }
+</style>
 </head>
 <body class="antialiased">
 
-    <!-- Offline Banner -->
-    <div id="offlineBanner" class="fixed top-14 inset-x-0 z-50 bg-yellow-500 text-black text-center text-sm font-bold py-2 hidden">
-        📡 You're offline — showing cached content
-    </div>
+<div id="offlineBanner" class="fixed top-14 inset-x-0 z-50 bg-yellow-500 text-black text-center text-sm font-bold py-2 hidden">📡 You're offline — showing cached content</div>
 
-    <!-- Header -->
-    <header class="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-gray-800 px-4 py-3 flex justify-between items-center">
-        <a href="/" class="text-2xl font-logo pr-4 sm:pr-8">ReelsBook</a>
-        
-        <div class="flex items-center gap-4 sm:gap-5">
-            <!-- Messages Icon -->
-            <a href="/profile/index.html?tab=messages" class="relative text-white hover:text-[var(--color-primary)] transition">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
-                </svg>
-                <span id="headerMsgBadge" class="icon-badge hidden">0</span>
-            </a>
+<header class="sticky top-0 z-40 bg-black/90 backdrop-blur border-b border-gray-800 px-4 py-3 flex justify-between items-center">
+  <a href="/" class="text-2xl font-logo pr-4 sm:pr-8">ReelsBook</a>
+  <div class="flex items-center gap-4 sm:gap-5">
+    <a href="/profile/index.html?tab=messages" class="relative text-white hover:text-[var(--color-primary)] transition">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      <span id="headerMsgBadge" class="icon-badge hidden">0</span>
+    </a>
+    <button id="notifBtn" class="relative text-white hover:text-[var(--color-primary)] transition">
+      <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+      <span id="headerNotifBadge" class="icon-badge hidden">0</span>
+    </button>
+    <button id="toggleUploadTop" class="text-white hover:text-[var(--color-primary)]"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></button>
+    <button id="accountButton" class="rounded-full border border-gray-700 px-3 py-1.5 text-sm font-semibold hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">Log in</button>
+  </div>
+</header>
 
-            <!-- Notifications Icon -->
-            <button id="notifBtn" class="relative text-white hover:text-[var(--color-primary)] transition">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
-                </svg>
-                <span id="headerNotifBadge" class="icon-badge hidden">0</span>
-            </button>
+<div id="accountDialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-5 backdrop-blur-sm">
+  <section class="relative w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6">
+    <button id="closeAccountDialog" class="absolute right-4 top-4 w-9 h-9 rounded-full border border-gray-700 text-xl text-gray-400">×</button>
+    <p class="mb-3 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">Your account</p>
+    <h2 class="text-2xl font-black">Welcome to the wall</h2>
+    <p class="mt-3 text-sm text-gray-400">Sign in with Google to upload, add friends, and send messages.</p>
+    <div class="mt-7 grid gap-3"><div id="googleContinueButton" class="flex justify-center"></div><div id="googleSignupButton" class="flex justify-center"></div></div>
+    <p id="accountDialogStatus" class="mt-4 text-center text-sm text-gray-400"></p>
+  </section>
+</div>
 
-            <!-- Upload Icon -->
-            <button id="toggleUploadTop" class="text-white hover:text-[var(--color-primary)]">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                </svg>
-            </button>
-            
-            <!-- Account Button -->
-            <button id="accountButton" class="rounded-full border border-gray-700 px-3 py-1.5 text-sm font-semibold hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">
-                Log in
-            </button>
+<main class="relative z-10 mx-auto max-w-xl px-4 pb-20">
+  <section class="mb-6 border-b border-gray-800 pb-4 pt-4">
+    <div class="flex gap-4 overflow-x-auto hide-scrollbar">
+      <div id="addStoryBtn" class="flex flex-col items-center gap-1 cursor-pointer shrink-0">
+        <div class="relative w-[62px] h-[62px] rounded-full border border-gray-700 bg-gray-800 flex items-center justify-center">
+          <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
         </div>
-    </header>
-
-    <!-- Account Modal -->
-    <div id="accountDialog" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-5 backdrop-blur-sm">
-        <section class="relative w-full max-w-md rounded-2xl border border-gray-800 bg-gray-900 p-6">
-            <button id="closeAccountDialog" class="absolute right-4 top-4 w-9 h-9 rounded-full border border-gray-700 text-xl text-gray-400">×</button>
-            <p class="mb-3 text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">Your account</p>
-            <h2 class="text-2xl font-black">Welcome to the wall</h2>
-            <p class="mt-3 text-sm text-gray-400">Sign in with Google to upload, add friends, and send messages.</p>
-            <div class="mt-7 grid gap-3">
-                <div id="googleContinueButton" class="flex justify-center"></div>
-                <div id="googleSignupButton" class="flex justify-center"></div>
-            </div>
-            <p id="accountDialogStatus" class="mt-4 text-center text-sm text-gray-400"></p>
-        </section>
+        <span class="text-xs text-gray-400">Your Story</span>
+      </div>
+      <div id="storiesContainer" class="flex gap-4"></div>
     </div>
+  </section>
 
-    <!-- Main Content -->
-    <main class="relative z-10 mx-auto max-w-xl px-4 pb-20">
+  <section id="upload" class="mb-10 rounded-2xl border border-gray-800 bg-gray-900 p-3">
+    <button id="toggleUpload" class="flex w-full items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold hover:bg-[var(--color-primary)]/10">
+      <span class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl text-white">+</span> Share a moment
+    </button>
+    <p class="text-center text-xs text-gray-500 mt-2">
+        By uploading, you agree to our <a href="/terms.html" target="_blank" class="text-red-400 underline">Terms of Service</a> and <a href="/privacy.html" target="_blank" class="text-red-400 underline">Privacy Policy</a>.
+    </p>
 
-        <!-- Stories Section -->
-        <section class="mb-6 border-b border-gray-800 pb-4 pt-4">
-            <div class="flex gap-4 overflow-x-auto hide-scrollbar">
-                <div id="addStoryBtn" class="flex flex-col items-center gap-1 cursor-pointer shrink-0">
-                    <div class="relative w-[62px] h-[62px] rounded-full border border-gray-700 bg-gray-800 flex items-center justify-center">
-                        <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
-                    </div>
-                    <span class="text-xs text-gray-400">Your Story</span>
-                </div>
-                <div id="storiesContainer" class="flex gap-4"></div>
-            </div>
-        </section>
-
-        <!-- Upload Section -->
-        <section id="upload" class="mb-10 rounded-2xl border border-gray-800 bg-gray-900 p-3">
-            <button id="toggleUpload" class="flex w-full items-center justify-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold hover:bg-[var(--color-primary)]/10">
-                <span class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl text-white">+</span> Share a moment
-            </button>
-            
-            <!-- Terms of Service Link -->
-            <p class="text-center text-xs text-gray-500 mt-2">
-                By uploading, you agree to our <a href="/terms.html" target="_blank" class="text-red-400 underline">Terms of Service</a>.
-            </p>
-
-            <div id="uploadOptions" class="mt-5 hidden">
-                <div class="mb-4 flex justify-between items-center rounded-2xl border border-gray-800 bg-black p-4">
-                    <div>
-                        <p id="authStatus" class="font-semibold">Sign in to upload.</p>
-                        <p id="authAccount" class="mt-1 text-sm text-gray-400"></p>
-                    </div>
-                    <div class="flex gap-2">
-                        <div id="googleSignInButton"></div>
-                        <button id="signOutButton" class="hidden rounded-full border border-gray-700 px-4 py-2 text-sm">Sign out</button>
-                    </div>
-                </div>
-                
-                <div class="mb-4 flex justify-between">
-                    <h2 class="text-2xl font-black">Drop something real.</h2>
-                    <button id="closeUpload" class="w-9 h-9 rounded-full border border-gray-700 text-xl text-gray-400">×</button>
-                </div>
-
-                <div class="mb-4 grid grid-cols-3 gap-3">
-                    <button class="upload-type-option rounded-xl border border-gray-700 bg-[var(--color-primary)] px-4 py-3 text-sm font-bold" data-upload-type="photo">📷 Photo</button>
-                    <button class="upload-type-option rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 text-sm font-bold" data-upload-type="video">▶ Video</button>
-                    <button class="upload-type-option rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 text-sm font-bold" data-upload-type="gif">✨ GIF</button>
-                </div>
-
-                <label id="dropZone" class="upload-zone flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 p-6 text-center hover:border-[var(--color-primary)]">
-                    <input id="mediaInput" type="file" accept="image/*" class="sr-only">
-                    <span class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl text-white">↑</span>
-                    <span id="dropTitle" class="text-lg font-bold">Drag & drop a photo</span>
-                    <span id="dropHint" class="mt-2 text-sm text-gray-400">or click to browse · up to 90 MB</span>
-                </label>
-
-                <div id="filePanel" class="mt-5 hidden rounded-xl border border-gray-800 bg-black p-5">
-                    <div class="flex justify-between items-center">
-                        <div class="flex items-center gap-3 min-w-0">
-                            <div id="fileTypeIcon" class="w-12 h-12 rounded-xl bg-[var(--color-primary)]/15 flex items-center justify-center text-xl text-[var(--color-primary)]">✦</div>
-                            <div class="min-w-0">
-                                <p id="fileName" class="truncate font-bold"></p>
-                                <p id="fileSize" class="text-sm text-gray-400"></p>
-                            </div>
-                        </div>
-                        <button id="clearFile" class="text-sm text-gray-400 underline">Remove</button>
-                    </div>
-                    
-                    <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
-                        <input id="mediaTitle" class="rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm" placeholder="Give it a title">
-                        <button id="publishButton" class="rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold">Publish</button>
-                    </div>
-                    
-                    <p id="uploadStatus" class="mt-4 hidden text-sm text-[var(--color-primary)]"></p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Recent Clips Section -->
-        <section class="mb-10">
-            <div class="mb-4 flex justify-between items-center">
-                <div>
-                    <p class="text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">RECENT CLIPS</p>
-                    <h2 class="text-2xl font-black">FRESH ON REELS BOOK</h2>
-                </div>
-                <a href="/reels/index.html" class="text-sm text-[var(--color-primary)] font-bold">See all →</a>
-            </div>
-
-            <div id="clipsGrid" class="flex flex-col gap-6">
-                <!-- Skeletons (Will be replaced by JS) -->
-                <div class="skeleton-card"><div class="skeleton-media"></div><div class="skeleton-text w-1/3"></div><div class="skeleton-text w-2/3"></div><div class="h-10"></div></div>
-                <div class="skeleton-card"><div class="skeleton-media"></div><div class="skeleton-text w-1/3"></div><div class="skeleton-text w-2/3"></div><div class="h-10"></div></div>
-            </div>
-            <p id="clipsStatus" class="mt-3 text-center text-sm text-gray-400 hidden"></p>
-        </section>
-
-    </main>
-
-    <!-- Bottom Navigation -->
-    <nav class="fixed bottom-0 inset-x-0 z-40 bg-black border-t border-gray-800 flex justify-around items-center py-2" style="padding-bottom:max(.75rem,env(safe-area-inset-bottom))">
-        <a href="/" class="text-white flex flex-col items-center gap-1">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
-            <span class="text-[10px]">Home</span>
-        </a>
-        <button id="bottomPlus" class="bg-[var(--color-primary)] text-white rounded-lg p-2">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-        </button>
-        <a href="/reels/index.html" class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><circle cx="12" cy="12" r="9" stroke-width="2"/></svg>
-            <span class="text-[10px]">Reels</span>
-        </a>
-        <a href="/profile/index.html" class="text-gray-400 hover:text-white flex flex-col items-center gap-1">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-            <span class="text-[10px]">Profile</span>
-        </a>
-    </nav>
-
-    <!-- Notifications Modal -->
-    <div id="notifModal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
-                <h3 class="text-lg font-bold">Notifications</h3>
-                <button onclick="closeNotif()" class="text-2xl text-gray-400 px-2">×</button>
-            </div>
-            <div id="notifList" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm"></div>
+    <div id="uploadOptions" class="mt-5 hidden">
+      <div class="mb-4 flex justify-between items-center rounded-2xl border border-gray-800 bg-black p-4">
+        <div>
+          <p id="authStatus" class="font-semibold">Sign in to upload.</p>
+          <p id="authAccount" class="mt-1 text-sm text-gray-400"></p>
         </div>
-    </div>
-
-    <!-- Comments Modal -->
-    <div id="commentModal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
-                <h3 class="text-lg font-bold">Comments</h3>
-                <button onclick="closeComments()" class="text-2xl text-gray-400 px-2">×</button>
+        <div class="flex gap-2">
+          <div id="googleSignInButton"></div>
+          <button id="signOutButton" class="hidden rounded-full border border-gray-700 px-4 py-2 text-sm">Sign out</button>
+        </div>
+      </div>
+      <div class="mb-4 flex justify-between">
+        <h2 class="text-2xl font-black">Drop something real.</h2>
+        <button id="closeUpload" class="w-9 h-9 rounded-full border border-gray-700 text-xl text-gray-400">×</button>
+      </div>
+      <div class="mb-4 grid grid-cols-3 gap-3">
+        <button class="upload-type-option rounded-xl border border-gray-700 bg-[var(--color-primary)] px-4 py-3 text-sm font-bold" data-upload-type="photo">📷 Photo</button>
+        <button class="upload-type-option rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 text-sm font-bold" data-upload-type="video">▶ Video</button>
+        <button class="upload-type-option rounded-xl border border-gray-700 bg-gray-800 px-4 py-3 text-sm font-bold" data-upload-type="gif">✨ GIF</button>
+      </div>
+      <label id="dropZone" class="upload-zone flex min-h-56 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-gray-700 p-6 text-center hover:border-[var(--color-primary)]">
+        <input id="mediaInput" type="file" accept="image/*" class="sr-only">
+        <span class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-primary)] text-2xl text-white">↑</span>
+        <span id="dropTitle" class="text-lg font-bold">Drag & drop a photo</span>
+        <span id="dropHint" class="mt-2 text-sm text-gray-400">or click to browse · up to 90 MB</span>
+      </label>
+      <div id="filePanel" class="mt-5 hidden rounded-xl border border-gray-800 bg-black p-5">
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-3 min-w-0">
+            <div id="fileTypeIcon" class="w-12 h-12 rounded-xl bg-[var(--color-primary)]/15 flex items-center justify-center text-xl text-[var(--color-primary)]">✦</div>
+            <div class="min-w-0">
+              <p id="fileName" class="truncate font-bold"></p>
+              <p id="fileSize" class="text-sm text-gray-400"></p>
             </div>
-            <div id="modalCommentsList" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm"></div>
-            <form id="commentForm" class="border-t border-gray-800 p-3 flex gap-2">
-                <input id="commentInput" class="flex-1 rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm" placeholder="Add a comment..." autocomplete="off">
-                <button type="submit" class="bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg font-bold text-sm">Post</button>
-            </form>
+          </div>
+          <button id="clearFile" class="text-sm text-gray-400 underline">Remove</button>
         </div>
-    </div>
-
-    <!-- Copyright Report Modal -->
-    <div id="reportModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/80 px-4">
-        <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
-            <h3 class="text-xl font-bold mb-4 text-white">Report Copyright Violation</h3>
-            <form id="reportForm">
-                <input type="hidden" id="reportMediaId">
-                <input type="hidden" id="reportMediaUrl">
-                <div class="mb-4">
-                    <label class="block text-sm text-gray-400 mb-2">Reason</label>
-                    <select id="reportReason" required class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white">
-                        <option value="">Select a reason...</option>
-                        <option value="Copyright Infringement">Copyright Infringement</option>
-                        <option value="Unauthorized Use">Unauthorized Use of Content</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="flex gap-2 justify-end">
-                    <button type="button" onclick="document.getElementById('reportModal').classList.add('hidden')" class="px-4 py-2 text-sm text-gray-400">Cancel</button>
-                    <button type="submit" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg font-bold">Submit</button>
-                </div>
-            </form>
+        <div class="mt-4 grid gap-3 sm:grid-cols-[1fr_auto]">
+          <input id="mediaTitle" class="rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm" placeholder="Give it a title">
+          <button id="publishButton" class="rounded-xl bg-[var(--color-primary)] px-5 py-3 font-bold">Publish</button>
         </div>
+        <p id="uploadStatus" class="mt-4 hidden text-sm text-[var(--color-primary)]"></p>
+      </div>
     </div>
+  </section>
 
-    <!-- ========================================== -->
-    <!-- JAVASCRIPT LOGIC START                     -->
-    <!-- ========================================== -->
-    <script>
-        const authStorageKey = 'fullMastiGoogleCredential';
-        let googleCredential = localStorage.getItem(authStorageKey) || '';
-        let googleUser = JSON.parse(localStorage.getItem('currentReelsUser') || 'null');
-        let galleryItems = [];
-        let currentCommentMediaId = null;
+  <section class="mb-10">
+    <div class="mb-4 flex justify-between items-center">
+      <div>
+        <p class="text-xs font-bold uppercase tracking-[.2em] text-[var(--color-primary)]">RECENT CLIPS</p>
+        <h2 class="text-2xl font-black">FRESH ON REELS BOOK</h2>
+      </div>
+      <a href="/reels/index.html" class="text-sm text-[var(--color-primary)] font-bold">See all →</a>
+    </div>
+    <div id="clipsGrid" class="flex flex-col gap-6">
+      <div class="skeleton-card"><div class="skeleton-media"></div><div class="skeleton-text w-1/3"></div><div class="skeleton-text w-2/3"></div><div class="h-10"></div></div>
+      <div class="skeleton-card"><div class="skeleton-media"></div><div class="skeleton-text w-1/3"></div><div class="skeleton-text w-2/3"></div><div class="h-10"></div></div>
+    </div>
+    <p id="clipsStatus" class="mt-3 text-center text-sm text-gray-400 hidden"></p>
+  </section>
+</main>
 
-        const visitorId = (() => {
-            let v = localStorage.getItem('ReelsbookVisitorId');
-            if (!v) { 
-                v = crypto.randomUUID(); 
-                localStorage.setItem('ReelsbookVisitorId', v); 
-            }
-            return v;
-        })();
-        
-        const $ = (id) => document.getElementById(id);
+<nav class="fixed bottom-0 inset-x-0 z-40 bg-black border-t border-gray-800 flex justify-around items-center py-2" style="padding-bottom:max(.75rem,env(safe-area-inset-bottom))">
+  <a href="/" class="text-white flex flex-col items-center gap-1"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l9-9 9 9M5 10v10h14V10"/></svg><span class="text-[10px]">Home</span></a>
+  <button id="bottomPlus" class="bg-[var(--color-primary)] text-white rounded-lg p-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></button>
+  <a href="/reels/index.html" class="text-gray-400 hover:text-white flex flex-col items-center gap-1"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><circle cx="12" cy="12" r="9" stroke-width="2"/></svg><span class="text-[10px]">Reels</span></a>
+  <a href="/profile/index.html" class="text-gray-400 hover:text-white flex flex-col items-center gap-1"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg><span class="text-[10px]">Profile</span></a>
+</nav>
 
-        // --- NOTIFICATIONS LOGIC ---
-        async function loadNotifications() {
-            if (!googleUser) return;
-            try {
-                const [convRes, pendRes] = await Promise.all([
-                    fetch(`/api/conversations?me=${encodeURIComponent(googleUser.email)}`),
-                    fetch(`/api/friends/pending?me=${encodeURIComponent(googleUser.email)}`)
-                ]);
-                
-                let totalMsgs = 0, totalReqs = 0, convList = [], pendList = [];
-                if (convRes.ok) { 
-                    convList = await convRes.json(); 
-                    totalMsgs = convList.reduce((s, c) => s + (c.unread || 0), 0); 
-                }
-                if (pendRes.ok) { 
-                    const p = await pendRes.json(); 
-                    pendList = p.incoming || []; 
-                    totalReqs = pendList.length; 
-                }
+<div id="notifModal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
+      <h3 class="text-lg font-bold">Notifications</h3>
+      <button onclick="closeNotif()" class="text-2xl text-gray-400 px-2">×</button>
+    </div>
+    <div id="notifList" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm"></div>
+  </div>
+</div>
 
-                const msgBadge = $('headerMsgBadge'), notifBadge = $('headerNotifBadge');
-                const totalNotifs = totalMsgs + totalReqs;
-                
-                if (totalMsgs > 0) { 
-                    msgBadge.textContent = totalMsgs > 9 ? '9+' : totalMsgs; 
-                    msgBadge.classList.remove('hidden'); 
-                } else {
-                    msgBadge.classList.add('hidden'); 
-                }
-                
-                if (totalNotifs > 0) { 
-                    notifBadge.textContent = totalNotifs > 9 ? '9+' : totalNotifs; 
-                    notifBadge.classList.remove('hidden'); 
-                } else {
-                    notifBadge.classList.add('hidden'); 
-                }
+<div id="commentModal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
+      <h3 class="text-lg font-bold">Comments</h3>
+      <button onclick="closeComments()" class="text-2xl text-gray-400 px-2">×</button>
+    </div>
+    <div id="modalCommentsList" class="flex-1 overflow-y-auto p-4 space-y-3 text-sm"></div>
+    <form id="commentForm" class="border-t border-gray-800 p-3 flex gap-2">
+      <input id="commentInput" class="flex-1 rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-sm" placeholder="Add a comment..." autocomplete="off">
+      <button type="submit" class="bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg font-bold text-sm">Post</button>
+    </form>
+  </div>
+</div>
 
-                const list = $('notifList'); 
-                list.innerHTML = '';
-                
-                if (convList.length === 0 && pendList.length === 0) { 
-                    list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>'; 
-                    return; 
-                }
-                
-                pendList.forEach(r => { 
-                    list.innerHTML += `
-                        <div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html'">
-                            <img src="${r.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(r.name||r.email)}" class="w-8 h-8 rounded-full">
-                            <div>
-                                <p class="font-bold text-[var(--color-primary)]">${r.name || r.email}</p>
-                                <p class="text-gray-400 text-xs">Sent you a friend request.</p>
-                            </div>
-                        </div>
-                    `; 
-                });
-                
-                convList.forEach(c => { 
-                    if (c.unread > 0) { 
-                        list.innerHTML += `
-                            <div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html?tab=messages'">
-                                <img src="${c.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(c.name||c.email)}" class="w-8 h-8 rounded-full">
-                                <div>
-                                    <p class="font-bold text-[var(--color-primary)]">${c.name || c.email}</p>
-                                    <p class="text-gray-400 text-xs">${c.unread} new message${c.unread>1?'s':''}.</p>
-                                </div>
-                            </div>
-                        `; 
-                    } 
-                });
-                
-                if (list.innerHTML === '') { 
-                    list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>'; 
-                }
-            } catch (err) { 
-                console.error("Notif Error:", err); 
-            }
-        }
-        
-        function openNotif() { 
-            if (!googleUser) { alert('Please sign in first.'); return; } 
-            $('notifModal').classList.remove('hidden'); 
-            loadNotifications(); 
-        }
-        
-        function closeNotif() { 
-            $('notifModal').classList.add('hidden'); 
-        }
-        $('notifBtn').onclick = openNotif;
+<div id="reportModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/80 px-4">
+  <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
+    <h3 class="text-xl font-bold mb-4 text-white">Report Copyright Violation</h3>
+    <form id="reportForm">
+      <input type="hidden" id="reportMediaId">
+      <input type="hidden" id="reportMediaUrl">
+      <div class="mb-4">
+        <label class="block text-sm text-gray-400 mb-2">Reason</label>
+        <select id="reportReason" required class="w-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-white">
+          <option value="">Select a reason...</option>
+          <option value="Copyright Infringement">Copyright Infringement</option>
+          <option value="Unauthorized Use">Unauthorized Use of Content</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="flex gap-2 justify-end">
+        <button type="button" onclick="document.getElementById('reportModal').classList.add('hidden')" class="px-4 py-2 text-sm text-gray-400">Cancel</button>
+        <button type="submit" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg font-bold">Submit</button>
+      </div>
+    </form>
+  </div>
+</div>
 
-        // --- LIKES LOGIC ---
-        function updateLikeBtnHtml(btn, count, liked) { 
-            btn.innerHTML = `<span style="color:${liked ? '#ec4899' : '#a1a1aa'};font-size:1.2rem;line-height:1">${liked ? '♥' : '♡'}</span> <span>${count}</span>`; 
-            btn.setAttribute('aria-pressed', String(liked)); 
-        }
-        
-        async function fetchLikeState(mediaId, btn) { 
-            try { 
-                const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}`); 
-                if (r.ok) { 
-                    const d = await r.json(); 
-                    updateLikeBtnHtml(btn, d.count, d.liked); 
-                } 
-            } catch {} 
-        }
-        
-        function toggleLike(mediaId, btn) { 
-            btn.disabled = true; 
-            fetch('/api/likes', { 
-                method: 'POST', 
-                headers: {'content-type': 'application/json'}, 
-                body: JSON.stringify({ mediaId, visitorId }) 
-            })
-            .then(r => r.json())
-            .then(d => { 
-                if (d.count !== undefined) updateLikeBtnHtml(btn, d.count, d.liked); 
-            })
-            .catch(()=>{})
-            .finally(() => { btn.disabled = false; }); 
-        }
+<script>
+const authStorageKey = 'fullMastiGoogleCredential';
+let googleCredential = localStorage.getItem(authStorageKey) || '';
+let googleUser = JSON.parse(localStorage.getItem('currentReelsUser') || 'null');
+let galleryItems = [];
+let currentCommentMediaId = null;
+const visitorId = (() => { let v = localStorage.getItem('ReelsbookVisitorId'); if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); } return v; })();
+const $ = (id) => document.getElementById(id);
 
-        // --- COMMENTS LOGIC ---
-        async function openComments(mediaId) { 
-            currentCommentMediaId = mediaId; 
-            $('commentModal').classList.remove('hidden'); 
-            loadComments(); 
-        }
-        
-        function closeComments() { 
-            $('commentModal').classList.add('hidden'); 
-            currentCommentMediaId = null; 
-        }
-        
-        async function loadComments() {
-            if (!currentCommentMediaId) return; 
-            const list = $('modalCommentsList'); 
-            list.innerHTML = '<p class="text-gray-500 text-center py-4">Loading...</p>';
-            
-            try { 
-                const r = await fetch(`/api/comments?mediaId=${encodeURIComponent(currentCommentMediaId)}`); 
-                const comments = await r.json(); 
-                list.innerHTML = ''; 
-                
-                if (!comments.length) { 
-                    list.innerHTML = '<p class="text-gray-500 text-center py-4">No comments yet. Be the first!</p>'; 
-                    return; 
-                }
-                
-                comments.forEach(c => { 
-                    const div = document.createElement('div'); 
-                    div.className = 'flex gap-2'; 
-                    div.innerHTML = `<p class="font-bold text-[var(--color-primary)]">${c.author_name}</p><p class="text-white">${c.body}</p>`; 
-                    list.appendChild(div); 
-                }); 
-                list.scrollTop = list.scrollHeight;
-            } catch { 
-                list.innerHTML = '<p class="text-red-400 text-center py-4">Failed to load comments.</p>'; 
-            }
-        }
-        
-        $('commentForm').onsubmit = async (e) => {
-            e.preventDefault(); 
-            if (!currentCommentMediaId) return; 
-            const input = $('commentInput'); 
-            const body = input.value.trim(); 
-            if (!body) return;
-            
-            if (!googleUser) { 
-                alert('Please sign in to comment.'); 
-                return; 
-            } 
-            input.value = '';
-            
-            try { 
-                await fetch('/api/comments', { 
-                    method: 'POST', 
-                    headers: { 'content-type': 'application/json' }, 
-                    body: JSON.stringify({ mediaId: currentCommentMediaId, authorName: googleUser.name, authorEmail: googleUser.email, body }) 
-                }); 
-                loadComments(); 
-            } catch (err) { 
-                alert('Failed to post comment.'); 
-            }
-        };
+async function loadNotifications() {
+  if (!googleUser) return;
+  try {
+    const [convRes, pendRes] = await Promise.all([
+      fetch(`/api/conversations?me=${encodeURIComponent(googleUser.email)}`),
+      fetch(`/api/friends/pending?me=${encodeURIComponent(googleUser.email)}`)
+    ]);
+    let totalMsgs = 0, totalReqs = 0, convList = [], pendList = [];
+    if (convRes.ok) { convList = await convRes.json(); totalMsgs = convList.reduce((s, c) => s + (c.unread || 0), 0); }
+    if (pendRes.ok) { const p = await pendRes.json(); pendList = p.incoming || []; totalReqs = pendList.length; }
+    const msgBadge = $('headerMsgBadge'), notifBadge = $('headerNotifBadge');
+    const totalNotifs = totalMsgs + totalReqs;
+    if (totalMsgs > 0) { msgBadge.textContent = totalMsgs > 9 ? '9+' : totalMsgs; msgBadge.classList.remove('hidden'); } else msgBadge.classList.add('hidden');
+    if (totalNotifs > 0) { notifBadge.textContent = totalNotifs > 9 ? '9+' : totalNotifs; notifBadge.classList.remove('hidden'); } else notifBadge.classList.add('hidden');
+    const list = $('notifList'); list.innerHTML = '';
+    if (convList.length === 0 && pendList.length === 0) { list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>'; return; }
+    pendList.forEach(r => { list.innerHTML += `<div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html'"><img src="${r.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(r.name||r.email)}" class="w-8 h-8 rounded-full"><div><p class="font-bold text-[var(--color-primary)]">${r.name || r.email}</p><p class="text-gray-400 text-xs">Sent you a friend request.</p></div></div>`; });
+    convList.forEach(c => { if (c.unread > 0) { list.innerHTML += `<div class="flex items-center gap-3 border-b border-gray-800 pb-2 cursor-pointer" onclick="window.location.href='/profile/index.html?tab=messages'"><img src="${c.picture || 'https://ui-avatars.com/api/?name='+encodeURIComponent(c.name||c.email)}" class="w-8 h-8 rounded-full"><div><p class="font-bold text-[var(--color-primary)]">${c.name || c.email}</p><p class="text-gray-400 text-xs">${c.unread} new message${c.unread>1?'s':''}.</p></div></div>`; } });
+    if (list.innerHTML === '') { list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>'; }
+  } catch (err) { console.error("Notif Error:", err); }
+}
+function openNotif() { if (!googleUser) { alert('Please sign in first.'); return; } $('notifModal').classList.remove('hidden'); loadNotifications(); }
+function closeNotif() { $('notifModal').classList.add('hidden'); }
+$('notifBtn').onclick = openNotif;
 
-        // --- REPORT SYSTEM LOGIC ---
-        function openReportModal(mediaId, mediaUrl) {
-            document.getElementById('reportMediaId').value = mediaId;
-            document.getElementById('reportMediaUrl').value = mediaUrl;
-            document.getElementById('reportModal').classList.remove('hidden');
-        }
-        
-        document.getElementById('reportForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const data = {
-                mediaId: document.getElementById('reportMediaId').value,
-                mediaUrl: document.getElementById('reportMediaUrl').value,
-                reporterEmail: googleUser ? googleUser.email : '',
-                reporterName: googleUser ? googleUser.name : 'Anonymous',
-                reason: document.getElementById('reportReason').value
-            };
-            
-            try {
-                const res = await fetch('/api/report', { 
-                    method: 'POST', 
-                    headers: { 'content-type': 'application/json' }, 
-                    body: JSON.stringify(data) 
-                });
-                if (res.ok) { 
-                    alert('Report submitted successfully.'); 
-                    document.getElementById('reportModal').classList.add('hidden'); 
-                }
-            } catch { 
-                alert('Network error.'); 
-            }
-        };
+function updateLikeBtnHtml(btn, count, liked) { btn.innerHTML = `<span style="color:${liked ? '#ec4899' : '#a1a1aa'};font-size:1.2rem;line-height:1">${liked ? '♥' : '♡'}</span> <span>${count}</span>`; btn.setAttribute('aria-pressed', String(liked)); }
+async function fetchLikeState(mediaId, btn) { try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}`); if (r.ok) { const d = await r.json(); updateLikeBtnHtml(btn, d.count, d.liked); } } catch {} }
+function toggleLike(mediaId, btn) { btn.disabled = true; fetch('/api/likes', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ mediaId, visitorId }) }).then(r => r.json()).then(d => { if (d.count !== undefined) updateLikeBtnHtml(btn, d.count, d.liked); }).catch(()=>{}).finally(() => { btn.disabled = false; }); }
 
-        // --- RENDER CLIPS ---
-        function renderClips(items) {
-            const grid = $('clipsGrid'); 
-            const status = $('clipsStatus'); 
-            grid.innerHTML = '';
-            
-            const videos = (items || []).filter(i => i.type === 'video').slice(0, 10);
-            
-            if (!videos.length) { 
-                status.textContent = items ? 'No clips yet — be the first!' : ''; 
-                status.classList.toggle('hidden', !items); 
-                return; 
-            }
-            status.classList.add('hidden');
+async function openComments(mediaId) { currentCommentMediaId = mediaId; $('commentModal').classList.remove('hidden'); loadComments(); }
+function closeComments() { $('commentModal').classList.add('hidden'); currentCommentMediaId = null; }
+async function loadComments() {
+  if (!currentCommentMediaId) return; const list = $('modalCommentsList'); list.innerHTML = '<p class="text-gray-500 text-center py-4">Loading...</p>';
+  try { const r = await fetch(`/api/comments?mediaId=${encodeURIComponent(currentCommentMediaId)}`); const comments = await r.json(); list.innerHTML = ''; if (!comments.length) { list.innerHTML = '<p class="text-gray-500 text-center py-4">No comments yet. Be the first!</p>'; return; }
+    comments.forEach(c => { const div = document.createElement('div'); div.className = 'flex gap-2'; div.innerHTML = `<p class="font-bold text-[var(--color-primary)]">${c.author_name}</p><p class="text-white">${c.body}</p>`; list.appendChild(div); }); list.scrollTop = list.scrollHeight;
+  } catch { list.innerHTML = '<p class="text-red-400 text-center py-4">Failed to load comments.</p>'; }
+}
+$('commentForm').onsubmit = async (e) => {
+  e.preventDefault(); if (!currentCommentMediaId) return; const input = $('commentInput'); const body = input.value.trim(); if (!body) return;
+  if (!googleUser) { alert('Please sign in to comment.'); return; } input.value = '';
+  try { await fetch('/api/comments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mediaId: currentCommentMediaId, authorName: googleUser.name, authorEmail: googleUser.email, body }) }); loadComments(); } catch (err) { alert('Failed to post comment.'); }
+};
 
-            videos.forEach(v => {
-                const card = document.createElement('div'); 
-                card.className = 'feed-card';
-                
-                const mediaWrap = document.createElement('div'); 
-                mediaWrap.className = 'feed-media-wrap'; 
-                mediaWrap.style.userSelect = 'none'; 
-                mediaWrap.style.webkitTapHighlightColor = 'transparent'; 
-                mediaWrap.onclick = (e) => { 
-                    e.preventDefault(); 
-                    window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; 
-                };
-                
-                // Video Thumbnail logic
-                const vid = document.createElement('video'); 
-                vid.src = v.url; 
-                vid.muted = true; 
-                vid.playsInline = true; 
-                vid.preload = 'metadata'; 
-                vid.onloadeddata = () => { 
-                    vid.currentTime = 0.1; 
-                }; 
-                vid.onerror = () => { 
-                    const img = document.createElement('img'); 
-                    img.src = '/SAD.jpg'; 
-                    img.alt = ''; 
-                    vid.replaceWith(img); 
-                };
-                
-                const play = document.createElement('div'); 
-                play.className = 'feed-play-overlay'; 
-                play.textContent = '▶';
-                
-                const views = document.createElement('div'); 
-                views.className = 'feed-view-badge'; 
-                views.textContent = `👁 ${v.views || 0}`;
-                
-                mediaWrap.append(vid, play, views);
+function openReportModal(mediaId, mediaUrl) {
+  document.getElementById('reportMediaId').value = mediaId;
+  document.getElementById('reportMediaUrl').value = mediaUrl;
+  document.getElementById('reportModal').classList.remove('hidden');
+}
+document.getElementById('reportForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const data = {
+    mediaId: document.getElementById('reportMediaId').value,
+    mediaUrl: document.getElementById('reportMediaUrl').value,
+    reporterEmail: googleUser ? googleUser.email : '',
+    reporterName: googleUser ? googleUser.name : 'Anonymous',
+    reason: document.getElementById('reportReason').value
+  };
+  try {
+    const res = await fetch('/api/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) });
+    if (res.ok) { alert('Report submitted successfully.'); document.getElementById('reportModal').classList.add('hidden'); }
+  } catch { alert('Network error.'); }
+};
 
-                const details = document.createElement('div'); 
-                details.className = 'p-3';
-                
-                const title = document.createElement('p'); 
-                title.className = 'text-sm text-white font-semibold mb-1'; 
-                title.textContent = v.title || 'Untitled';
-                
-                const creator = document.createElement('p'); 
-                creator.className = 'text-xs text-gray-400 mb-3 cursor-pointer hover:underline'; 
-                creator.textContent = `by ${v.creator || 'Anonymous'}`;
-                creator.onclick = () => { 
-                    const params = new URLSearchParams(); 
-                    params.set('name', v.creator || ''); 
-                    if (v.creatorPic) params.set('pic', v.creatorPic); 
-                    if (v.creatorEmail) params.set('email', v.creatorEmail); 
-                    window.location.href = `/profile/index.html?${params.toString()}`; 
-                };
+function renderClips(items) {
+  const grid = $('clipsGrid'); const status = $('clipsStatus'); grid.innerHTML = '';
+  const videos = (items || []).filter(i => i.type === 'video').slice(0, 10);
+  if (!videos.length) { status.textContent = items ? 'No clips yet — be the first!' : ''; status.classList.toggle('hidden', !items); return; }
+  status.classList.add('hidden');
+  videos.forEach(v => {
+    const card = document.createElement('div'); card.className = 'feed-card';
+    const mediaWrap = document.createElement('div'); mediaWrap.className = 'feed-media-wrap'; mediaWrap.style.userSelect = 'none'; mediaWrap.style.webkitTapHighlightColor = 'transparent'; mediaWrap.onclick = (e) => { e.preventDefault(); window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
+    const vid = document.createElement('video'); vid.src = v.url; vid.muted = true; vid.playsInline = true; vid.preload = 'metadata'; vid.onloadeddata = () => { vid.currentTime = 0.1; }; vid.onerror = () => { const img = document.createElement('img'); img.src = '/SAD.jpg'; img.alt = ''; vid.replaceWith(img); };
+    const play = document.createElement('div'); play.className = 'feed-play-overlay'; play.textContent = '▶';
+    const views = document.createElement('div'); views.className = 'feed-view-badge'; views.textContent = `👁 ${v.views || 0}`;
+    mediaWrap.append(vid, play, views);
+    const details = document.createElement('div'); details.className = 'p-3';
+    const title = document.createElement('p'); title.className = 'text-sm text-white font-semibold mb-1'; title.textContent = v.title || 'Untitled';
+    const creator = document.createElement('p'); creator.className = 'text-xs text-gray-400 mb-3 cursor-pointer hover:underline'; creator.textContent = `by ${v.creator || 'Anonymous'}`;
+    creator.onclick = () => { const params = new URLSearchParams(); params.set('name', v.creator || ''); if (v.creatorPic) params.set('pic', v.creatorPic); if (v.creatorEmail) params.set('email', v.creatorEmail); window.location.href = `/profile/index.html?${params.toString()}`; };
+    const actions = document.createElement('div'); actions.className = 'flex items-center gap-4 text-sm';
+    const likeBtn = document.createElement('button'); likeBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-[var(--color-primary)] transition'; updateLikeBtnHtml(likeBtn, v.likes || 0, false); fetchLikeState(v.key, likeBtn); likeBtn.onclick = () => toggleLike(v.key, likeBtn);
+    const commentBtn = document.createElement('button'); commentBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-white transition'; commentBtn.innerHTML = `<span style="font-size:1.2rem;line-height:1">💬</span> <span>${v.comments || 0}</span>`; commentBtn.onclick = () => openComments(v.key);
+    const reportBtn = document.createElement('button'); reportBtn.className = 'flex items-center gap-1 text-gray-400 hover:text-red-500 transition ml-auto text-xs font-bold'; reportBtn.innerHTML = '⚠️ Report'; reportBtn.onclick = () => openReportModal(v.key, v.url);
+    actions.append(likeBtn, commentBtn, reportBtn); details.append(title, creator, actions); card.append(mediaWrap, details); grid.appendChild(card);
+  });
+}
 
-                const actions = document.createElement('div'); 
-                actions.className = 'flex items-center gap-4 text-sm';
-                
-                const likeBtn = document.createElement('button'); 
-                likeBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-[var(--color-primary)] transition'; 
-                updateLikeBtnHtml(likeBtn, v.likes || 0, false); 
-                fetchLikeState(v.key, likeBtn); 
-                likeBtn.onclick = () => toggleLike(v.key, likeBtn);
-                
-                const commentBtn = document.createElement('button'); 
-                commentBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-white transition'; 
-                commentBtn.innerHTML = `<span style="font-size:1.2rem;line-height:1">💬</span> <span>${v.comments || 0}</span>`; 
-                commentBtn.onclick = () => openComments(v.key);
-                
-                const reportBtn = document.createElement('button'); 
-                reportBtn.className = 'flex items-center gap-1 text-gray-400 hover:text-red-500 transition ml-auto text-xs font-bold'; 
-                reportBtn.innerHTML = '⚠️ Report'; 
-                reportBtn.onclick = () => openReportModal(v.key, v.url);
+function renderStories(items) {
+  const stories = $('storiesContainer'); stories.innerHTML = '';
+  if (!items || !items.length) return;
+  const creators = [...new Map(items.map(i => [i.creator, i])).values()];
+  creators.forEach(u => {
+    if (!u.creator || u.creator === 'Anonymous') return;
+    const d = document.createElement('div'); d.className = 'flex flex-col items-center gap-1 cursor-pointer shrink-0';
+    d.innerHTML = `<div class="w-[62px] h-[62px] rounded-full p-[2.5px]" style="background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)"><div class="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden border-2 border-black">${u.creatorPic ? `<img src="${u.creatorPic}" class="w-full h-full object-cover rounded-full" loading="lazy" onerror="this.style.display='none'">` : `<span class="font-bold text-lg">${u.creator[0]}</span>`}</div></div><span class="text-xs text-gray-300 w-16 truncate text-center">${u.creator}</span>`;
+    d.onclick = () => { const params = new URLSearchParams(); params.set('name', u.creator || ''); if (u.creatorPic) params.set('pic', u.creatorPic); if (u.creatorEmail) params.set('email', u.creatorEmail); window.location.href = `/profile/index.html?${params.toString()}`; };
+    stories.appendChild(d);
+  });
+}
 
-                actions.append(likeBtn, commentBtn, reportBtn);
-                details.append(title, creator, actions);
-                card.append(mediaWrap, details);
-                grid.appendChild(card);
-            });
-        }
+const MEDIA_CACHE_KEY = 'reelsbook_media_cache_v1';
+function getCachedMediaClient() { try { const raw = sessionStorage.getItem(MEDIA_CACHE_KEY); if (!raw) return null; const obj = JSON.parse(raw); if (!obj || !obj.ts || !obj.data) return null; if (Date.now() - obj.ts > 60000) return null; return obj.data; } catch { return null; } }
+function setCachedMediaClient(data) { try { sessionStorage.setItem(MEDIA_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); } catch {} }
 
-        // --- RENDER STORIES ---
-        function renderStories(items) {
-            const stories = $('storiesContainer'); 
-            stories.innerHTML = '';
-            if (!items || !items.length) return;
-            
-            const creators = [...new Map(items.map(i => [i.creator, i])).values()];
-            
-            creators.forEach(u => {
-                if (!u.creator || u.creator === 'Anonymous') return;
-                const d = document.createElement('div'); 
-                d.className = 'flex flex-col items-center gap-1 cursor-pointer shrink-0';
-                d.innerHTML = `
-                    <div class="w-[62px] h-[62px] rounded-full p-[2.5px]" style="background:linear-gradient(45deg,#f09433,#dc2743,#bc1888)">
-                        <div class="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden border-2 border-black">
-                            ${u.creatorPic ? `<img src="${u.creatorPic}" class="w-full h-full object-cover rounded-full" loading="lazy" onerror="this.style.display='none'">` : `<span class="font-bold text-lg">${u.creator[0]}</span>`}
-                        </div>
-                    </div>
-                    <span class="text-xs text-gray-300 w-16 truncate text-center">${u.creator}</span>
-                `;
-                d.onclick = () => { 
-                    const params = new URLSearchParams(); 
-                    params.set('name', u.creator || ''); 
-                    if (u.creatorPic) params.set('pic', u.creatorPic); 
-                    if (u.creatorEmail) params.set('email', u.creatorEmail); 
-                    window.location.href = `/profile/index.html?${params.toString()}`; 
-                };
-                stories.appendChild(d);
-            });
-        }
+async function loadClips() {
+  const cached = getCachedMediaClient();
+  if (cached) { galleryItems = cached; renderClips(galleryItems); renderStories(galleryItems); }
+  try { 
+    const url = '/api/media' + (googleUser ? `?me=${encodeURIComponent(googleUser.email)}` : '');
+    const r = await fetch(url, { cache: 'default' }); 
+    if (!r.ok) throw new Error('load failed'); 
+    galleryItems = await r.json(); 
+    setCachedMediaClient(galleryItems); 
+    renderClips(galleryItems); 
+    renderStories(galleryItems); 
+  } catch { if (!cached) { $('clipsStatus').textContent = 'Could not load clips.'; $('clipsStatus').classList.remove('hidden'); renderClips([]); } }
+}
 
-        // --- LOAD DATA & CACHING ---
-        const MEDIA_CACHE_KEY = 'reelsbook_media_cache_v1';
-        function getCachedMediaClient() { 
-            try { 
-                const raw = sessionStorage.getItem(MEDIA_CACHE_KEY); 
-                if (!raw) return null; 
-                const obj = JSON.parse(raw); 
-                if (!obj || !obj.ts || !obj.data) return null; 
-                if (Date.now() - obj.ts > 60000) return null; 
-                return obj.data; 
-            } catch { 
-                return null; 
-            } 
-        }
-        
-        function setCachedMediaClient(data) { 
-            try { 
-                sessionStorage.setItem(MEDIA_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); 
-            } catch {} 
-        }
+function openUploadPanel() { $('uploadOptions').classList.remove('hidden'); $('upload').scrollIntoView({ behavior:'smooth', block:'start' }); }
+function closeUploadPanel() { $('uploadOptions').classList.add('hidden'); }
+$('toggleUpload').onclick = openUploadPanel; $('toggleUploadTop').onclick = openUploadPanel; $('bottomPlus').onclick = openUploadPanel; $('addStoryBtn').onclick = openUploadPanel; $('closeUpload').onclick = closeUploadPanel;
+document.querySelectorAll('a[href="#upload"]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); openUploadPanel(); }));
 
-        async function loadClips() {
-            const cached = getCachedMediaClient();
-            if (cached) { 
-                galleryItems = cached; 
-                renderClips(galleryItems); 
-                renderStories(galleryItems); 
-            }
-            
-            try { 
-                const url = '/api/media' + (googleUser ? `?me=${encodeURIComponent(googleUser.email)}` : '');
-                const r = await fetch(url, { cache: 'default' }); 
-                if (!r.ok) throw new Error('load failed'); 
-                galleryItems = await r.json(); 
-                setCachedMediaClient(galleryItems); 
-                renderClips(galleryItems); 
-                renderStories(galleryItems); 
-            } catch { 
-                if (!cached) { 
-                    $('clipsStatus').textContent = 'Could not load clips.'; 
-                    $('clipsStatus').classList.remove('hidden'); 
-                    renderClips([]); 
-                } 
-            }
-        }
+const uploadTypes = {
+  photo: { accept:'image/jpeg,image/png,image/webp,image/avif', title:'Drag & drop a photo', hint:'JPG, PNG, WEBP, AVIF · up to 90 MB' },
+  video: { accept:'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska', title:'Drag & drop a video', hint:'MP4, MOV, WEBM, OGG, MKV · up to 90 MB' },
+  gif: { accept:'image/gif', title:'Drag & drop a GIF', hint:'GIF · up to 90 MB' }
+};
+let activeUploadType = 'photo'; let selectedFile = null; const maxUploadSize = 90 * 1024 * 1024;
 
-        // --- UPLOAD LOGIC ---
-        function openUploadPanel() { 
-            $('uploadOptions').classList.remove('hidden'); 
-            $('upload').scrollIntoView({ behavior:'smooth', block:'start' }); 
-        }
-        
-        function closeUploadPanel() { 
-            $('uploadOptions').classList.add('hidden'); 
-        }
-        
-        $('toggleUpload').onclick = openUploadPanel; 
-        $('toggleUploadTop').onclick = openUploadPanel; 
-        $('bottomPlus').onclick = openUploadPanel; 
-        $('addStoryBtn').onclick = openUploadPanel; 
-        $('closeUpload').onclick = closeUploadPanel;
-        
-        document.querySelectorAll('a[href="#upload"]').forEach(a => a.addEventListener('click', e => { 
-            e.preventDefault(); 
-            openUploadPanel(); 
-        }));
+function setUploadType(type) {
+  activeUploadType = type; const s = uploadTypes[type]; $('mediaInput').accept = s.accept; $('dropTitle').textContent = s.title; $('dropHint').textContent = s.hint;
+  document.querySelectorAll('.upload-type-option').forEach(b => { const on = b.dataset.uploadType === type; b.classList.toggle('bg-[var(--color-primary)]', on); b.classList.toggle('bg-gray-800', !on); });
+  selectedFile = null; $('mediaInput').value = ''; $('filePanel').classList.add('hidden'); $('uploadStatus').classList.add('hidden');
+}
+document.querySelectorAll('.upload-type-option').forEach(b => b.onclick = () => setUploadType(b.dataset.uploadType));
 
-        const uploadTypes = {
-            photo: { accept:'image/jpeg,image/png,image/webp,image/avif', title:'Drag & drop a photo', hint:'JPG, PNG, WEBP, AVIF · up to 90 MB' },
-            video: { accept:'video/mp4,video/quicktime,video/webm,video/ogg,video/x-matroska', title:'Drag & drop a video', hint:'MP4, MOV, WEBM, OGG, MKV · up to 90 MB' },
-            gif: { accept:'image/gif', title:'Drag & drop a GIF', hint:'GIF · up to 90 MB' }
-        };
-        
-        let activeUploadType = 'photo'; 
-        let selectedFile = null; 
-        const maxUploadSize = 90 * 1024 * 1024;
+function readableSize(b) { return b < 1048576 ? `${Math.max(1, Math.round(b/1024))} KB` : `${(b/1048576).toFixed(1)} MB`; }
+function showUploadMessage(msg) { $('uploadStatus').textContent = msg; $('uploadStatus').classList.remove('hidden'); }
+function showFile(file) {
+  if (!file) return;
+  const matches = activeUploadType === 'photo' ? (file.type.startsWith('image/') && file.type !== 'image/gif') : activeUploadType === 'video' ? file.type.startsWith('video/') : file.type === 'image/gif';
+  if (!matches) return showUploadMessage(`Please choose a ${activeUploadType} file.`);
+  if (file.size > maxUploadSize) return showUploadMessage('File must be ≤ 90 MB.');
+  selectedFile = file; $('fileName').textContent = file.name; $('fileSize').textContent = `${readableSize(file.size)} · ready`; $('fileTypeIcon').textContent = (activeUploadType === 'video') ? '▶' : '▧';
+  $('filePanel').classList.remove('hidden'); $('uploadStatus').classList.add('hidden');
+}
+$('mediaInput').onchange = () => showFile($('mediaInput').files[0]);
+['dragenter','dragover'].forEach(ev => $('dropZone').addEventListener(ev, e => { e.preventDefault(); $('dropZone').classList.add('is-dragging'); }));
+['dragleave','drop'].forEach(ev => $('dropZone').addEventListener(ev, e => { e.preventDefault(); $('dropZone').classList.remove('is-dragging'); }));
+$('dropZone').addEventListener('drop', e => showFile(e.dataTransfer.files[0]));
+$('clearFile').onclick = () => { selectedFile = null; $('mediaInput').value=''; $('filePanel').classList.add('hidden'); };
 
-        function setUploadType(type) {
-            activeUploadType = type; 
-            const s = uploadTypes[type]; 
-            $('mediaInput').accept = s.accept; 
-            $('dropTitle').textContent = s.title; 
-            $('dropHint').textContent = s.hint;
-            document.querySelectorAll('.upload-type-option').forEach(b => { 
-                const on = b.dataset.uploadType === type; 
-                b.classList.toggle('bg-[var(--color-primary)]', on); 
-                b.classList.toggle('bg-gray-800', !on); 
-            });
-            selectedFile = null; 
-            $('mediaInput').value = ''; 
-            $('filePanel').classList.add('hidden'); 
-            $('uploadStatus').classList.add('hidden');
-        }
-        
-        document.querySelectorAll('.upload-type-option').forEach(b => b.onclick = () => setUploadType(b.dataset.uploadType));
+function showSignedInUser(user) {
+  googleUser = user; const users = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); users[user.email] = user; localStorage.setItem('reelsBookUsers', JSON.stringify(users)); localStorage.setItem('currentReelsUser', JSON.stringify(user));
+  $('accountButton').textContent = 'My Account'; $('authStatus').textContent = 'Signed in.'; $('authAccount').textContent = user.name || user.email;
+  $('googleSignInButton').classList.add('hidden'); $('signOutButton').classList.remove('hidden'); $('accountDialogStatus').textContent = 'Signed in.'; closeAccountDialog(); loadNotifications();
+}
+function showSignedOutUser(msg) { googleUser = null; $('accountButton').textContent = 'Log in'; $('authStatus').textContent = msg || 'Sign in with Google to upload.'; $('authAccount').textContent = ''; $('googleSignInButton').classList.remove('hidden'); $('signOutButton').classList.add('hidden'); $('accountDialogStatus').textContent = msg || ''; }
+async function verifyGoogleCredential(credential) { const r = await fetch('/api/auth/google', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ credential }) }); const data = await r.json(); if (!r.ok) throw new Error(data.error || 'Sign-in failed'); googleCredential = credential; localStorage.setItem(authStorageKey, credential); showSignedInUser(data); }
+async function initializeGoogleSignIn() {
+  try {
+    const r = await fetch('/api/auth/config'); const cfg = await r.json(); if (!cfg.googleClientId) { showSignedOutUser('Google sign-in not configured.'); return; }
+    let attempts = 0; const wait = setInterval(() => { attempts++; if (window.google?.accounts?.id) { clearInterval(wait);
+      google.accounts.id.initialize({ client_id: cfg.googleClientId, callback: async (res) => { try { await verifyGoogleCredential(res.credential); } catch (e) { showSignedOutUser(e.message); } } });
+      google.accounts.id.renderButton($('googleSignInButton'), { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill' });
+      google.accounts.id.renderButton($('googleContinueButton'), { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill', width:280 });
+      google.accounts.id.renderButton($('googleSignupButton'), { type:'standard', theme:'outline', size:'large', text:'signup_with', shape:'pill', width:280 });
+      if (googleCredential) verifyGoogleCredential(googleCredential).catch(() => { googleCredential=''; localStorage.removeItem(authStorageKey); showSignedOutUser('Sign-in expired.'); });
+    } else if (attempts >= 100) { clearInterval(wait); showSignedOutUser('Could not load Google sign-in.'); } }, 100);
+  } catch { showSignedOutUser('Could not check sign-in settings.'); }
+}
+$('signOutButton').onclick = () => { googleCredential=''; localStorage.removeItem(authStorageKey); window.google?.accounts?.id?.disableAutoSelect(); showSignedOutUser(); };
 
-        function readableSize(b) { 
-            return b < 1048576 ? `${Math.max(1, Math.round(b/1024))} KB` : `${(b/1048576).toFixed(1)} MB`; 
-        }
-        
-        function showUploadMessage(msg) { 
-            $('uploadStatus').textContent = msg; 
-            $('uploadStatus').classList.remove('hidden'); 
-        }
-        
-        function showFile(file) {
-            if (!file) return;
-            const matches = activeUploadType === 'photo' ? (file.type.startsWith('image/') && file.type !== 'image/gif') : activeUploadType === 'video' ? file.type.startsWith('video/') : file.type === 'image/gif';
-            if (!matches) return showUploadMessage(`Please choose a ${activeUploadType} file.`);
-            if (file.size > maxUploadSize) return showUploadMessage('File must be ≤ 90 MB.');
-            
-            selectedFile = file; 
-            $('fileName').textContent = file.name; 
-            $('fileSize').textContent = `${readableSize(file.size)} · ready`; 
-            $('fileTypeIcon').textContent = (activeUploadType === 'video') ? '▶' : '▧';
-            $('filePanel').classList.remove('hidden'); 
-            $('uploadStatus').classList.add('hidden');
-        }
-        
-        $('mediaInput').onchange = () => showFile($('mediaInput').files[0]);
-        
-        ['dragenter','dragover'].forEach(ev => $('dropZone').addEventListener(ev, e => { 
-            e.preventDefault(); 
-            $('dropZone').classList.add('is-dragging'); 
-        }));
-        
-        ['dragleave','drop'].forEach(ev => $('dropZone').addEventListener(ev, e => { 
-            e.preventDefault(); 
-            $('dropZone').classList.remove('is-dragging'); 
-        }));
-        
-        $('dropZone').addEventListener('drop', e => showFile(e.dataTransfer.files[0]));
-        $('clearFile').onclick = () => { 
-            selectedFile = null; 
-            $('mediaInput').value=''; 
-            $('filePanel').classList.add('hidden'); 
-        };
+function openAccountDialog() { $('accountDialog').classList.remove('hidden'); $('accountDialog').classList.add('flex'); }
+function closeAccountDialog() { $('accountDialog').classList.add('hidden'); $('accountDialog').classList.remove('flex'); }
+$('accountButton').onclick = openAccountDialog; $('closeAccountDialog').onclick = closeAccountDialog;
+$('accountDialog').addEventListener('click', e => { if (e.target === $('accountDialog')) closeAccountDialog(); });
 
-        // --- AUTH LOGIC ---
-        function showSignedInUser(user) {
-            googleUser = user; 
-            const users = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); 
-            users[user.email] = user; 
-            localStorage.setItem('reelsBookUsers', JSON.stringify(users)); 
-            localStorage.setItem('currentReelsUser', JSON.stringify(user));
-            
-            $('accountButton').textContent = 'My Account'; 
-            $('authStatus').textContent = 'Signed in.'; 
-            $('authAccount').textContent = user.name || user.email;
-            $('googleSignInButton').classList.add('hidden'); 
-            $('signOutButton').classList.remove('hidden'); 
-            $('accountDialogStatus').textContent = 'Signed in.'; 
-            closeAccountDialog(); 
-            loadNotifications();
-        }
-        
-        function showSignedOutUser(msg) { 
-            googleUser = null; 
-            $('accountButton').textContent = 'Log in'; 
-            $('authStatus').textContent = msg || 'Sign in with Google to upload.'; 
-            $('authAccount').textContent = ''; 
-            $('googleSignInButton').classList.remove('hidden'); 
-            $('signOutButton').classList.add('hidden'); 
-            $('accountDialogStatus').textContent = msg || ''; 
-        }
-        
-        async function verifyGoogleCredential(credential) { 
-            const r = await fetch('/api/auth/google', { 
-                method:'POST', 
-                headers:{'content-type':'application/json'}, 
-                body: JSON.stringify({ credential }) 
-            }); 
-            const data = await r.json(); 
-            if (!r.ok) throw new Error(data.error || 'Sign-in failed'); 
-            googleCredential = credential; 
-            localStorage.setItem(authStorageKey, credential); 
-            showSignedInUser(data); 
-        }
-        
-        async function initializeGoogleSignIn() {
-            try {
-                const r = await fetch('/api/auth/config'); 
-                const cfg = await r.json(); 
-                if (!cfg.googleClientId) { 
-                    showSignedOutUser('Google sign-in not configured.'); 
-                    return; 
-                }
-                let attempts = 0; 
-                const wait = setInterval(() => { 
-                    attempts++; 
-                    if (window.google?.accounts?.id) { 
-                        clearInterval(wait);
-                        google.accounts.id.initialize({ 
-                            client_id: cfg.googleClientId, 
-                            callback: async (res) => { 
-                                try { 
-                                    await verifyGoogleCredential(res.credential); 
-                                } catch (e) { 
-                                    showSignedOutUser(e.message); 
-                                } 
-                            } 
-                        });
-                        google.accounts.id.renderButton($('googleSignInButton'), { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill' });
-                        google.accounts.id.renderButton($('googleContinueButton'), { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill', width:280 });
-                        google.accounts.id.renderButton($('googleSignupButton'), { type:'standard', theme:'outline', size:'large', text:'signup_with', shape:'pill', width:280 });
-                        
-                        if (googleCredential) verifyGoogleCredential(googleCredential).catch(() => { 
-                            googleCredential=''; 
-                            localStorage.removeItem(authStorageKey); 
-                            showSignedOutUser('Sign-in expired.'); 
-                        });
-                    } else if (attempts >= 100) { 
-                        clearInterval(wait); 
-                        showSignedOutUser('Could not load Google sign-in.'); 
-                    } 
-                }, 100);
-            } catch { 
-                showSignedOutUser('Could not check sign-in settings.'); 
-            }
-        }
-        
-        $('signOutButton').onclick = () => { 
-            googleCredential=''; 
-            localStorage.removeItem(authStorageKey); 
-            window.google?.accounts?.id?.disableAutoSelect(); 
-            showSignedOutUser(); 
-        };
+$('publishButton').onclick = (ev) => {
+  if (!googleCredential || !googleUser) return showUploadMessage('Sign in with Google first.');
+  if (!selectedFile) return showUploadMessage('Choose a file first.');
+  const btn = ev.currentTarget; const title = $('mediaTitle').value.trim() || selectedFile.name.replace(/\.[^/.]+$/, '');
+  const fd = new FormData(); fd.append('media', selectedFile); fd.append('title', title); fd.append('creator', googleUser.name || 'Anonymous'); fd.append('creatorEmail', googleUser.email || ''); fd.append('creatorPic', googleUser.picture || '');
+  btn.disabled = true; btn.textContent = 'Uploading… 0%'; showUploadMessage('Uploading…');
+  const req = new XMLHttpRequest(); req.open('POST', '/api/upload'); req.setRequestHeader('Authorization', `Bearer ${googleCredential}`); req.timeout = 30 * 60 * 1000;
+  req.upload.addEventListener('progress', e => { if (!e.lengthComputable) return; const p = Math.round((e.loaded/e.total)*100); btn.textContent = `Uploading… ${p}%`; showUploadMessage(`Uploading… ${p}%`); });
+  req.addEventListener('load', async () => {
+    try { const result = JSON.parse(req.responseText); if (req.status < 200 || req.status >= 300) throw new Error(result.error || 'Upload failed');
+      showUploadMessage('Published!'); selectedFile = null; $('mediaInput').value=''; $('filePanel').classList.add('hidden'); $('mediaTitle').value=''; closeUploadPanel(); sessionStorage.removeItem(MEDIA_CACHE_KEY); await loadClips();
+    } catch (e) { showUploadMessage(e.message); } finally { btn.disabled = false; btn.textContent = 'Publish'; }
+  });
+  req.addEventListener('error', () => { showUploadMessage('Network error.'); btn.disabled = false; btn.textContent='Publish'; });
+  req.send(fd);
+};
 
-        function openAccountDialog() { 
-            $('accountDialog').classList.remove('hidden'); 
-            $('accountDialog').classList.add('flex'); 
-        }
-        
-        function closeAccountDialog() { 
-            $('accountDialog').classList.add('hidden'); 
-            $('accountDialog').classList.remove('flex'); 
-        }
-        
-        $('accountButton').onclick = openAccountDialog; 
-        $('closeAccountDialog').onclick = closeAccountDialog;
-        $('accountDialog').addEventListener('click', e => { 
-            if (e.target === $('accountDialog')) closeAccountDialog(); 
-        });
+initializeGoogleSignIn();
+loadClips();
+if (googleUser) loadNotifications();
 
-        // --- PUBLISH LOGIC ---
-        $('publishButton').onclick = (ev) => {
-            if (!googleCredential || !googleUser) return showUploadMessage('Sign in with Google first.');
-            if (!selectedFile) return showUploadMessage('Choose a file first.');
-            
-            const btn = ev.currentTarget; 
-            const title = $('mediaTitle').value.trim() || selectedFile.name.replace(/\.[^/.]+$/, '');
-            const fd = new FormData(); 
-            fd.append('media', selectedFile); 
-            fd.append('title', title); 
-            fd.append('creator', googleUser.name || 'Anonymous'); 
-            fd.append('creatorEmail', googleUser.email || ''); 
-            fd.append('creatorPic', googleUser.picture || '');
-            
-            btn.disabled = true; 
-            btn.textContent = 'Uploading… 0%'; 
-            showUploadMessage('Uploading…');
-            
-            const req = new XMLHttpRequest(); 
-            req.open('POST', '/api/upload'); 
-            req.setRequestHeader('Authorization', `Bearer ${googleCredential}`); 
-            req.timeout = 30 * 60 * 1000;
-            
-            req.upload.addEventListener('progress', e => { 
-                if (!e.lengthComputable) return; 
-                const p = Math.round((e.loaded/e.total)*100); 
-                btn.textContent = `Uploading… ${p}%`; 
-                showUploadMessage(`Uploading… ${p}%`); 
-            });
-            
-            req.addEventListener('load', async () => {
-                try { 
-                    const result = JSON.parse(req.responseText); 
-                    if (req.status < 200 || req.status >= 300) throw new Error(result.error || 'Upload failed');
-                    showUploadMessage('Published!'); 
-                    selectedFile = null; 
-                    $('mediaInput').value=''; 
-                    $('filePanel').classList.add('hidden'); 
-                    $('mediaTitle').value=''; 
-                    closeUploadPanel(); 
-                    sessionStorage.removeItem(MEDIA_CACHE_KEY); 
-                    await loadClips();
-                } catch (e) { 
-                    showUploadMessage(e.message); 
-                } finally { 
-                    btn.disabled = false; 
-                    btn.textContent = 'Publish'; 
-                }
-            });
-            
-            req.addEventListener('error', () => { 
-                showUploadMessage('Network error.'); 
-                btn.disabled = false; 
-                btn.textContent='Publish'; 
-            });
-            
-            req.send(fd);
-        };
-
-        // --- INIT ---
-        initializeGoogleSignIn();
-        loadClips();
-        if (googleUser) loadNotifications();
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then((reg) => {
-                    if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
-                    reg.addEventListener('updatefound', () => { 
-                        const nw = reg.installing; 
-                        if (nw) nw.addEventListener('statechange', () => { 
-                            if (nw.state === 'installed' && navigator.serviceWorker.controller) { 
-                                nw.postMessage('SKIP_WAITING'); 
-                            } 
-                        }); 
-                    });
-                }).catch(() => {});
-            });
-        }
-    </script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      if (reg.waiting) reg.waiting.postMessage('SKIP_WAITING');
+      reg.addEventListener('updatefound', () => { const nw = reg.installing; if (nw) nw.addEventListener('statechange', () => { if (nw.state === 'installed' && navigator.serviceWorker.controller) { nw.postMessage('SKIP_WAITING'); } }); });
+    }).catch(() => {});
+  });
+}
+</script>
 </body>
 </html>
