@@ -9,7 +9,7 @@ const MEDIA_CACHE_MS = 30 * 1000;
 const ADMIN_EMAIL = "saddmonsterr09@gmail.com"; 
 
 const SCHEMA = [
-  `CREATE TABLE IF NOT EXISTS likes (media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (media_id, visitor_id))`,
+  `CREATE TABLE IF NOT EXISTS likes (media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, user_email TEXT, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (media_id, visitor_id))`,
   `CREATE TABLE IF NOT EXISTS media_views (media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (media_id, visitor_id))`,
   `CREATE TABLE IF NOT EXISTS watch_events (id TEXT PRIMARY KEY, media_id TEXT NOT NULL, visitor_id TEXT NOT NULL, seconds REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE TABLE IF NOT EXISTS follows (follower_email TEXT NOT NULL, following_email TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (follower_email, following_email))`,
@@ -18,7 +18,9 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, name TEXT, picture TEXT, bio TEXT, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE TABLE IF NOT EXISTS comments (id TEXT PRIMARY KEY, media_id TEXT NOT NULL, author_email TEXT, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE TABLE IF NOT EXISTS copyright_reports (id TEXT PRIMARY KEY, media_id TEXT NOT NULL, media_url TEXT NOT NULL, reporter_email TEXT, reporter_name TEXT, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS blocked_users (user_email TEXT NOT NULL, blocked_email TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_email, blocked_email))`
+  `CREATE TABLE IF NOT EXISTS blocked_users (user_email TEXT NOT NULL, blocked_email TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_email, blocked_email))`,
+  // ⭐ NEW NOTIFICATIONS TABLE
+  `CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, user_email TEXT NOT NULL, type TEXT NOT NULL, from_email TEXT NOT NULL, from_name TEXT NOT NULL, from_pic TEXT, media_id TEXT, content TEXT, is_read INTEGER DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`
 ];
 
 let schemaReady = false;
@@ -28,6 +30,7 @@ async function ensureSchema(env) {
     try { await env.DB.prepare(sql).run(); } catch (e) { console.error("Schema:", e.message); }
   }
   try { await env.DB.prepare("ALTER TABLE users ADD COLUMN bio TEXT").run(); } catch (e) {}
+  try { await env.DB.prepare("ALTER TABLE likes ADD COLUMN user_email TEXT").run(); } catch (e) {}
   schemaReady = true;
 }
 
@@ -56,6 +59,13 @@ async function verifyGoogleToken(token, googleClientId) {
     const p = await r.json();
     if (p.aud !== googleClientId || p.email_verified !== "true" || !p.sub) return null;
     return p;
+  } catch { return null; }
+}
+
+async function getMediaCreator(env, key) {
+  try {
+    const stored = await env.VIDEOS.head(key);
+    return stored?.customMetadata?.creatoremail || stored?.customMetadata?.creatorEmail || null;
   } catch { return null; }
 }
 
@@ -178,6 +188,23 @@ export default {
       } catch { return json({ error: "Invalid request" }, 400); }
     }
 
+    // ⭐ NEW: GET USER STATS
+    if (path === "/api/users/stats" && method === "GET") {
+      const email = (url.searchParams.get("email") || "").toLowerCase();
+      if (!email) return json({ friends: 0, followers: 0 });
+      
+      const friendsRow = await env.DB.prepare(`
+        SELECT COUNT(*) as c FROM follows f1 
+        WHERE f1.follower_email = ? AND f1.following_email IN (
+          SELECT follower_email FROM follows WHERE following_email = ?
+        )
+      `).bind(email, email).first();
+      
+      const followersRow = await env.DB.prepare("SELECT COUNT(*) as c FROM follows WHERE following_email = ?").bind(email).first();
+      
+      return json({ friends: friendsRow?.c || 0, followers: followersRow?.c || 0 });
+    }
+
     if (path === "/api/user/update" && method === "POST") {
       try {
         const { email, name, picture, bio } = await request.json();
@@ -218,7 +245,7 @@ export default {
       return json(enriched);
     }
 
-    // ⭐ FOLLOW SYSTEM ROUTES
+    // FOLLOW SYSTEM ROUTES
     if (path === "/api/follow" && method === "POST") {
       try {
         const { me, target } = await request.json();
@@ -230,6 +257,14 @@ export default {
           return json({ ok: true, action: "unfollowed" });
         } else {
           await env.DB.prepare("INSERT INTO follows (follower_email, following_email) VALUES (?, ?)").bind(m, t).run();
+          
+          // ⭐ INSERT NOTIFICATION
+          try {
+            const u = await env.DB.prepare("SELECT name, picture FROM users WHERE email = ?").bind(m).first();
+            const nid = crypto.randomUUID();
+            await env.DB.prepare("INSERT INTO notifications (id, user_email, type, from_email, from_name, from_pic) VALUES (?, ?, 'follow', ?, ?, ?)").bind(nid, t, m, u?.name || m, u?.picture || "").run();
+          } catch (e) {}
+
           return json({ ok: true, action: "followed" });
         }
       } catch { return json({ error: "failed" }, 500); }
@@ -286,6 +321,20 @@ export default {
       return json({ incoming: inc.results || [], outgoing: [] });
     }
 
+    // ⭐ NOTIFICATIONS ROUTES
+    if (path === "/api/notifications" && method === "GET") {
+      const me = (url.searchParams.get("me") || "").toLowerCase();
+      if (!me) return json([]);
+      const rows = await env.DB.prepare("SELECT * FROM notifications WHERE user_email = ? AND is_read = 0 ORDER BY created_at DESC LIMIT 50").bind(me).all();
+      return json(rows.results || []);
+    }
+    if (path === "/api/notifications/read" && method === "POST") {
+      const { me } = await request.json();
+      if (!me) return json({ error: "missing" }, 400);
+      await env.DB.prepare("UPDATE notifications SET is_read = 1 WHERE user_email = ?").bind(me.toLowerCase()).run();
+      return json({ ok: true });
+    }
+
     if (path === "/api/likes" && method === "GET") {
       const mediaId = url.searchParams.get("mediaId");
       const visitorId = url.searchParams.get("visitorId");
@@ -295,11 +344,25 @@ export default {
     }
     if (path === "/api/likes" && method === "POST") {
       try {
-        const { mediaId, visitorId } = await request.json();
+        const { mediaId, visitorId, authorEmail } = await request.json();
         if (!mediaId || !visitorId) return json({ error: "Missing data" }, 400);
         const existing = await env.DB.prepare("SELECT * FROM likes WHERE media_id = ? AND visitor_id = ?").bind(mediaId, visitorId).first();
-        if (existing) await env.DB.prepare("DELETE FROM likes WHERE media_id = ? AND visitor_id = ?").bind(mediaId, visitorId).run();
-        else await env.DB.prepare("INSERT INTO likes (media_id, visitor_id) VALUES (?, ?)").bind(mediaId, visitorId).run();
+        
+        if (existing) {
+          await env.DB.prepare("DELETE FROM likes WHERE media_id = ? AND visitor_id = ?").bind(mediaId, visitorId).run();
+        } else {
+          await env.DB.prepare("INSERT INTO likes (media_id, visitor_id, user_email) VALUES (?, ?, ?)").bind(mediaId, visitorId, authorEmail || "").run();
+          
+          // ⭐ INSERT NOTIFICATION FOR LIKE
+          try {
+            const creatorEmail = await getMediaCreator(env, mediaId);
+            if (creatorEmail && creatorEmail !== authorEmail) {
+              const u = await env.DB.prepare("SELECT name, picture FROM users WHERE email = ?").bind(authorEmail).first();
+              const nid = crypto.randomUUID();
+              await env.DB.prepare("INSERT INTO notifications (id, user_email, type, from_email, from_name, from_pic, media_id) VALUES (?, ?, 'like', ?, ?, ?, ?)").bind(nid, creatorEmail, authorEmail, u?.name || authorEmail, u?.picture || "", mediaId).run();
+            }
+          } catch(e) {}
+        }
         const c = await env.DB.prepare("SELECT COUNT(*) as count FROM likes WHERE media_id = ?").bind(mediaId).first();
         mediaCache.ts = 0; return json({ mediaId, count: c ? c.count : 0, liked: !existing });
       } catch (err) { return json({ error: "Database error" }, 500); }
@@ -317,6 +380,17 @@ export default {
         if (!mediaId || !body) return json({ error: "Missing data" }, 400);
         const id = crypto.randomUUID();
         await env.DB.prepare("INSERT INTO comments (id, media_id, author_email, author_name, body) VALUES (?, ?, ?, ?, ?)").bind(id, mediaId, authorEmail || "", authorName || "Anonymous", String(body).trim().slice(0, 500)).run();
+        
+        // ⭐ INSERT NOTIFICATION FOR COMMENT
+        try {
+            const creatorEmail = await getMediaCreator(env, mediaId);
+            if (creatorEmail && creatorEmail !== authorEmail) {
+              const u = await env.DB.prepare("SELECT name, picture FROM users WHERE email = ?").bind(authorEmail).first();
+              const nid = crypto.randomUUID();
+              await env.DB.prepare("INSERT INTO notifications (id, user_email, type, from_email, from_name, from_pic, media_id, content) VALUES (?, ?, 'comment', ?, ?, ?, ?, ?)").bind(nid, creatorEmail, authorEmail, u?.name || authorEmail, u?.picture || "", mediaId, body).run();
+            }
+        } catch(e) {}
+
         mediaCache.ts = 0; return json({ ok: true, id });
       } catch (err) { return json({ error: "failed" }, 500); }
     }
