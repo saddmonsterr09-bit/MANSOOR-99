@@ -230,6 +230,12 @@
         const $ = (id) => document.getElementById(id);
         let currentCommentMediaId = null; 
 
+        // ⭐ SAFE CLICK BINDING (Fixes the crash)
+        function bindClick(id, fn) {
+            const el = $(id);
+            if (el) el.onclick = fn;
+        }
+
         // ==========================================
         // 2. NOTIFICATIONS
         // ==========================================
@@ -247,10 +253,16 @@
                 const msgBadge = $('headerMsgBadge'), notifBadge = $('headerNotifBadge');
                 const totalNotifs = totalMsgs + totalReqs;
                 
-                if (totalMsgs > 0) { msgBadge.textContent = totalMsgs > 9 ? '9+' : totalMsgs; msgBadge.classList.remove('hidden'); } else msgBadge.classList.add('hidden');
-                if (totalNotifs > 0) { notifBadge.textContent = totalNotifs > 9 ? '9+' : totalNotifs; notifBadge.classList.remove('hidden'); } else notifBadge.classList.add('hidden');
+                if (msgBadge) {
+                    if (totalMsgs > 0) { msgBadge.textContent = totalMsgs > 9 ? '9+' : totalMsgs; msgBadge.classList.remove('hidden'); } else msgBadge.classList.add('hidden');
+                }
+                if (notifBadge) {
+                    if (totalNotifs > 0) { notifBadge.textContent = totalNotifs > 9 ? '9+' : totalNotifs; notifBadge.classList.remove('hidden'); } else notifBadge.classList.add('hidden');
+                }
                 
-                const list = $('notifList'); list.innerHTML = '';
+                const list = $('notifList'); 
+                if (!list) return;
+                list.innerHTML = '';
                 if (convList.length === 0 && pendList.length === 0) { list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>'; return; }
                 
                 pendList.forEach(r => { 
@@ -278,8 +290,6 @@
                         `; 
                     } 
                 });
-                
-                if (list.innerHTML === '') { list.innerHTML = '<p class="text-gray-500 text-center py-4">No new notifications.</p>'; }
             } catch (err) {}
         }
         
@@ -292,7 +302,7 @@
         function closeNotif() { 
             $('notifModal').classList.add('hidden'); 
         }
-        $('notifBtn').onclick = openNotif;
+        bindClick('notifBtn', openNotif);
 
         // ==========================================
         // 3. LIKES & COMMENTS
@@ -362,7 +372,9 @@
             }
         }
         
-        $('commentForm').onsubmit = async (e) => {
+        bindClick('commentForm', null); // Form handles its own submit
+        const cf = $('commentForm');
+        if (cf) cf.onsubmit = async (e) => {
             e.preventDefault(); 
             if (!currentCommentMediaId) return; 
             const input = $('commentInput'); 
@@ -387,12 +399,16 @@
         // 4. REPORT SYSTEM
         // ==========================================
         function openReportModal(mediaId, mediaUrl) { 
-            document.getElementById('reportMediaId').value = mediaId; 
-            document.getElementById('reportMediaUrl').value = mediaUrl; 
-            document.getElementById('reportModal').classList.remove('hidden'); 
+            const rId = document.getElementById('reportMediaId');
+            const rUrl = document.getElementById('reportMediaUrl');
+            const rModal = document.getElementById('reportModal');
+            if (rId) rId.value = mediaId; 
+            if (rUrl) rUrl.value = mediaUrl; 
+            if (rModal) rModal.classList.remove('hidden'); 
         }
         
-        document.getElementById('reportForm').onsubmit = async (e) => {
+        const rf = document.getElementById('reportForm');
+        if (rf) rf.onsubmit = async (e) => {
             e.preventDefault();
             const data = { 
                 mediaId: document.getElementById('reportMediaId').value, 
@@ -418,17 +434,20 @@
         function renderClips(items) {
             const grid = $('clipsGrid'); 
             const status = $('clipsStatus'); 
+            if (!grid) return;
             grid.innerHTML = '';
             
             if (!Array.isArray(items)) items = [];
             const videos = items.filter(i => i.type === 'video').slice(0, 3); 
             
             if (!videos.length) { 
-                status.textContent = 'No clips yet — be the first!'; 
-                status.classList.remove('hidden'); 
+                if (status) {
+                    status.textContent = 'No clips yet — be the first!'; 
+                    status.classList.remove('hidden'); 
+                }
                 return; 
             }
-            status.classList.add('hidden');
+            if (status) status.classList.add('hidden');
 
             videos.forEach(v => {
                 const card = document.createElement('div'); 
@@ -509,6 +528,7 @@
         // ==========================================
         function renderStories(items) {
             const stories = $('storiesContainer'); 
+            if (!stories) return;
             stories.innerHTML = '';
             if (!Array.isArray(items) || !items.length) return;
             const creators = [...new Map(items.map(i => [i.creator, i])).values()];
@@ -548,8 +568,11 @@
                 renderClips(items); 
                 renderStories(items); 
             } catch { 
-                $('clipsStatus').textContent = 'Could not load clips. Check Worker logs.'; 
-                $('clipsStatus').classList.remove('hidden'); 
+                const status = $('clipsStatus');
+                if (status) {
+                    status.textContent = 'Could not load clips. Check Worker logs.'; 
+                    status.classList.remove('hidden'); 
+                }
                 renderClips([]); 
             }
         }
@@ -557,16 +580,21 @@
         // ==========================================
         // 8. UPLOAD SYSTEM
         // ==========================================
-        $('bottomPlus').onclick = () => { 
+        bindClick('bottomPlus', () => { 
             if (!googleUser) { openAccountDialog(); return; } 
             $('globalMediaInput').click(); 
-        };
-        $('addStoryBtn').onclick = () => { 
+        });
+        bindClick('addStoryBtn', () => { 
             if (!googleUser) { openAccountDialog(); return; } 
             $('globalMediaInput').click(); 
-        };
+        });
+        bindClick('toggleUploadTop', () => {
+            if (!googleUser) { openAccountDialog(); return; } 
+            $('globalMediaInput').click(); 
+        });
 
-        $('globalMediaInput').onchange = (e) => {
+        const gmi = $('globalMediaInput');
+        if (gmi) gmi.onchange = (e) => {
             const file = e.target.files[0];
             if (!file) return;
             if (file.size > 90 * 1024 * 1024) return alert('File must be ≤ 90 MB.');
@@ -578,13 +606,13 @@
             $('globalFilePanel').classList.add('flex');
         };
 
-        $('globalCancelUpload').onclick = () => {
+        bindClick('globalCancelUpload', () => {
             $('globalMediaInput').value = '';
             $('globalFilePanel').classList.add('hidden'); 
             $('globalFilePanel').classList.remove('flex');
-        };
+        });
 
-        $('globalPublishBtn').onclick = () => {
+        bindClick('globalPublishBtn', () => {
             const file = $('globalMediaInput').files[0];
             if (!file) return;
             const btn = $('globalPublishBtn');
@@ -638,7 +666,7 @@
             });
             
             req.send(fd);
-        };
+        });
 
         // ==========================================
         // 9. AUTHENTICATION
@@ -689,7 +717,7 @@
                 const cfg = await r.json(); 
                 
                 if (!cfg.googleClientId) { 
-                    showSignedOutUser('Google sign-in not configured (Missing ID).'); 
+                    showSignedOutUser('Google sign-in not configured.'); 
                     return; 
                 }
                 
@@ -705,9 +733,11 @@
                                 catch (e) { showSignedOutUser(e.message); } 
                             } 
                         });
-                        google.accounts.id.renderButton($('googleSignInButton'), { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill' });
-                        google.accounts.id.renderButton($('googleContinueButton'), { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill', width:280 });
-                        google.accounts.id.renderButton($('googleSignupButton'), { type:'standard', theme:'outline', size:'large', text:'signup_with', shape:'pill', width:280 });
+                        
+                        const g1 = $('googleSignInButton'), g2 = $('googleContinueButton'), g3 = $('googleSignupButton');
+                        if (g1) google.accounts.id.renderButton(g1, { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill' });
+                        if (g2) google.accounts.id.renderButton(g2, { type:'standard', theme:'outline', size:'large', text:'continue_with', shape:'pill', width:280 });
+                        if (g3) google.accounts.id.renderButton(g3, { type:'standard', theme:'outline', size:'large', text:'signup_with', shape:'pill', width:280 });
                         
                         if (googleCredential) verifyGoogleCredential(googleCredential).catch(() => { 
                             googleCredential=''; 
@@ -724,12 +754,12 @@
             }
         }
 
-        $('signOutButton').onclick = () => { 
+        bindClick('signOutButton', () => { 
             googleCredential=''; 
             localStorage.removeItem(authStorageKey); 
             window.google?.accounts?.id?.disableAutoSelect(); 
             showSignedOutUser(); 
-        };
+        });
 
         function openAccountDialog() { 
             $('accountDialog').classList.remove('hidden'); 
@@ -741,9 +771,11 @@
             $('accountDialog').classList.remove('flex'); 
         }
         
-        $('accountButton').onclick = openAccountDialog; 
-        $('closeAccountDialog').onclick = closeAccountDialog;
-        $('accountDialog').addEventListener('click', e => { 
+        bindClick('accountButton', openAccountDialog); 
+        bindClick('closeAccountDialog', closeAccountDialog);
+        
+        const ad = $('accountDialog');
+        if (ad) ad.addEventListener('click', e => { 
             if (e.target === $('accountDialog')) closeAccountDialog(); 
         });
 
