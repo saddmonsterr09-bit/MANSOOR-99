@@ -44,13 +44,14 @@ input, textarea { -webkit-user-select: text; user-select: text; }
       <p id="profileEmail" class="text-sm text-gray-400 mt-1"></p>
       <p id="profileBio" class="text-sm text-gray-300 mt-2 italic"></p>
       
-      <!-- ⭐ STATS ROW (Videos, Friends, Followers) -->
+      <!-- Stats Row -->
       <div class="flex justify-center sm:justify-start gap-6 mt-3">
         <div><p id="videoCount" class="text-lg font-bold">0</p><p class="text-xs text-gray-400">Videos</p></div>
         <div><p id="friendCount" class="text-lg font-bold">0</p><p class="text-xs text-gray-400">Friends</p></div>
         <div><p id="followerCount" class="text-lg font-bold">0</p><p class="text-xs text-gray-400">Followers</p></div>
       </div>
       
+      <!-- ⭐ BUTTONS (Follow/Message/Block) APPEAR HERE -->
       <div id="profileActions" class="mt-4 flex flex-wrap justify-center sm:justify-start gap-2"></div>
     </div>
   </section>
@@ -127,6 +128,7 @@ const urlParams = new URLSearchParams(location.search);
 const viewedEmail = (urlParams.get('email') || '').trim().toLowerCase();
 const viewedName = (urlParams.get('name') || '').trim();
 const viewedPic = urlParams.get('pic') || '';
+
 let me = null;
 try { const stored = localStorage.getItem('currentReelsUser'); if (stored && stored !== 'undefined') me = JSON.parse(stored); } catch(e) {}
 
@@ -251,19 +253,84 @@ async function loadConversations() {
 
 function updateMessagesBadge(count) { const badge = document.getElementById('msgTabBadge'); if (!badge) return; if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); } else badge.classList.add('hidden'); }
 
+// ⭐ FOLLOW BUTTON LOGIC
 async function loadFriendButton() { 
-  const actions = document.getElementById('profileActions'); actions.innerHTML = ''; if (isOwnProfile) return;
-  if (!me) { actions.innerHTML = '<a href="/" class="text-sm text-[var(--color-primary)] underline">Sign in to follow →</a>'; return; }
-  if (!targetEmail) { actions.innerHTML = '<span class="text-sm text-gray-400">Cannot find this user.</span>'; return; }
-  try { const r = await fetch(`/api/follow/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`); const data = await r.json();
-    const msgBtn = document.createElement('button'); msgBtn.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold'; msgBtn.textContent = '💬 Message'; msgBtn.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
-    const blockBtn = document.createElement('button'); blockBtn.className = 'rounded-full border border-red-700 text-red-500 px-4 py-2 text-sm font-bold ml-2'; blockBtn.textContent = 'Block';
-    blockBtn.onclick = async () => { if (confirm('Block this user?')) { await fetch('/api/block', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ me: me.email, target: targetEmail }) }); alert('User Blocked!'); window.location.href = '/'; } };
+  const actions = document.getElementById('profileActions'); 
+  if (!actions) return;
+  actions.innerHTML = ''; 
+  
+  if (isOwnProfile) return; // Own profile par kuch nahi dikhana
+  
+  if (!me) { 
+    actions.innerHTML = '<a href="/" class="text-sm text-[var(--color-primary)] underline">Sign in to follow →</a>'; 
+    return; 
+  }
+  
+  if (!targetEmail) { 
+    actions.innerHTML = '<span class="text-sm text-gray-400">Cannot find this user.</span>'; 
+    return; 
+  }
+
+  try { 
+    const r = await fetch(`/api/follow/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`); 
+    const data = await r.json();
     
-    if (data.status === 'friends') { const b = document.createElement('button'); b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold'; b.textContent = 'Friends ✓'; actions.append(b, msgBtn, blockBtn); }
-    else if (data.status === 'following') { const b = document.createElement('button'); b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold'; b.textContent = 'Following'; b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); }; actions.append(b, msgBtn, blockBtn); }
-    else if (data.status === 'follower') { const b = document.createElement('button'); b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold'; b.textContent = 'Follow Back'; b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); }; actions.append(b, msgBtn, blockBtn); }
-    else { const b = document.createElement('button'); b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold'; b.textContent = '+ Follow'; b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); }; actions.append(b, msgBtn, blockBtn); }
+    // Message Button
+    const msgBtn = document.createElement('button'); 
+    msgBtn.className = 'rounded-full border border-gray-600 text-white px-5 py-2 text-sm font-bold'; 
+    msgBtn.textContent = '💬 Message'; 
+    msgBtn.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
+    
+    // Block Button
+    const blockBtn = document.createElement('button'); 
+    blockBtn.className = 'rounded-full border border-red-700/50 text-red-500 px-4 py-2 text-sm font-bold ml-2'; 
+    blockBtn.textContent = 'Block';
+    blockBtn.onclick = async () => { 
+      if (confirm('Block this user?')) { 
+        await fetch('/api/block', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ me: me.email, target: targetEmail }) }); 
+        alert('User Blocked!'); window.location.href = '/'; 
+      } 
+    };
+    
+    // Follow / Following / Friends Button Logic
+    if (data.status === 'friends') { 
+      const b = document.createElement('button'); 
+      b.className = 'rounded-full bg-gray-800 border border-gray-700 text-white px-5 py-2 text-sm font-bold'; 
+      b.textContent = 'Friends ✓'; 
+      actions.append(b, msgBtn, blockBtn); 
+    } 
+    else if (data.status === 'following') { 
+      const b = document.createElement('button'); 
+      b.className = 'rounded-full border border-gray-700 text-gray-300 px-5 py-2 text-sm font-bold hover:bg-gray-800'; 
+      b.textContent = 'Following'; 
+      b.onclick = async () => { 
+        await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); 
+        loadFriendButton(); loadProfileStats(); 
+      }; 
+      actions.append(b, msgBtn, blockBtn); 
+    } 
+    else if (data.status === 'follower') { 
+      const b = document.createElement('button'); 
+      b.className = 'rounded-full bg-[var(--color-primary)] text-white px-5 py-2 text-sm font-bold'; 
+      b.textContent = 'Follow Back'; 
+      b.onclick = async () => { 
+        await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); 
+        loadFriendButton(); loadProfileStats(); 
+      }; 
+      actions.append(b, msgBtn, blockBtn); 
+    } 
+    else { 
+      // ⭐ "+ Follow" Button
+      const b = document.createElement('button'); 
+      b.className = 'rounded-full bg-[var(--color-primary)] text-white px-6 py-2 text-sm font-bold hover:brightness-110 transition'; 
+      b.textContent = '+ Follow'; 
+      b.onclick = async () => { 
+        b.disabled = true; b.textContent = '...';
+        await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); 
+        loadFriendButton(); loadProfileStats(); 
+      }; 
+      actions.append(b, msgBtn, blockBtn); 
+    }
   } catch {}
 }
 
@@ -296,9 +363,20 @@ document.getElementById('tabFriends').onclick = () => setTab('friends');
 document.getElementById('tabMessages').onclick = () => setTab('messages');
 
 (async () => {
-  await resolveTarget(); document.getElementById('profileName').textContent = targetName || 'User'; document.getElementById('profileEmail').textContent = targetEmail || ''; document.getElementById('profileBio').textContent = targetBio || ''; document.getElementById('profilePic').src = targetPic || `https://ui-avatars.com/api/?name=${encodeURIComponent(targetName || 'U')}&background=random&color=fff&size=128`;
-  if (isOwnProfile && me) { document.getElementById('settingsBtn').classList.remove('hidden'); }
-  loadProfileStats(); loadFriendButton(); loadFriendsList(); if (isOwnProfile) loadConversations();
+  await resolveTarget(); 
+  document.getElementById('profileName').textContent = targetName || 'User'; 
+  document.getElementById('profileEmail').textContent = targetEmail || ''; 
+  document.getElementById('profileBio').textContent = targetBio || ''; 
+  document.getElementById('profilePic').src = targetPic || `https://ui-avatars.com/api/?name=${encodeURIComponent(targetName || 'U')}&background=random&color=fff&size=128`;
+  
+  if (isOwnProfile && me) { 
+    document.getElementById('settingsBtn').classList.remove('hidden'); 
+  }
+  
+  loadProfileStats(); 
+  loadFriendButton(); 
+  loadFriendsList(); 
+  if (isOwnProfile) loadConversations();
 })();
 </script>
 </body>
