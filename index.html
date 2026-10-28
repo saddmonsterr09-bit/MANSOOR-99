@@ -108,6 +108,7 @@
             </div>
 
             <div id="clipsGrid" class="flex flex-col gap-6">
+                <!-- Skeletons -->
                 <div class="skeleton-card"><div class="skeleton-media"></div><div class="skeleton-text w-1/3"></div><div class="skeleton-text w-2/3"></div><div class="h-10"></div></div>
                 <div class="skeleton-card"><div class="skeleton-media"></div><div class="skeleton-text w-1/3"></div><div class="skeleton-text w-2/3"></div><div class="h-10"></div></div>
             </div>
@@ -157,7 +158,6 @@
         </a>
     </nav>
 
-    <!-- Notifications Modal -->
     <div id="notifModal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
@@ -168,7 +168,6 @@
         </div>
     </div>
 
-    <!-- Find People Modal -->
     <div id="findModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
         <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md h-[80vh] flex flex-col">
             <div class="flex justify-between items-center mb-4">
@@ -181,7 +180,6 @@
         </div>
     </div>
 
-    <!-- Comments Modal -->
     <div id="commentModal" class="modal-overlay hidden">
         <div class="modal-content">
             <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
@@ -196,7 +194,6 @@
         </div>
     </div>
     
-    <!-- Report Modal -->
     <div id="reportModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/80 px-4">
         <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-sm">
             <h3 class="text-xl font-bold mb-4 text-white">Report Copyright Violation</h3>
@@ -221,6 +218,7 @@
     </div>
 
     <script>
+        // ⭐ TEXT SELECTION FIX
         document.addEventListener('contextmenu', e => e.preventDefault());
         document.addEventListener('selectstart', e => e.preventDefault());
 
@@ -242,13 +240,16 @@
 
         const $ = (id) => document.getElementById(id);
         let currentCommentMediaId = null; 
+        
+        let allVideos = [];
+        let loadedCount = 0;
+        const VIDEOS_PER_PAGE = 3;
 
         function bindClick(id, fn) {
             const el = $(id);
             if (el) el.onclick = fn;
         }
 
-        // ⭐ NOTIFICATIONS (New Backend Logic)
         async function loadNotifications() { 
             if (!googleUser) return;
             try {
@@ -289,7 +290,6 @@
             if (!googleUser) { alert('Please sign in first.'); return; } 
             $('notifModal').classList.remove('hidden'); 
             await loadNotifications(); 
-            // Mark as read
             fetch('/api/notifications/read', { method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify({ me: googleUser.email }) }).then(() => {
                 const b = $('headerNotifBadge'); if (b) b.classList.add('hidden');
             });
@@ -297,7 +297,6 @@
         function closeNotif() { $('notifModal').classList.add('hidden'); }
         bindClick('notifBtn', openNotif);
 
-        // ⭐ FIND PEOPLE LOGIC
         bindClick('navFind', () => {
             if (!googleUser) { openAccountDialog(); return; }
             $('findModal').classList.remove('hidden');
@@ -345,11 +344,9 @@
         }
         
         let searchTimeout;
-        bindClick('findSearchInput', null); // reset
         const fsi = $('findSearchInput');
         if (fsi) fsi.addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(loadFindPeople, 300); });
 
-        // LIKES & COMMENTS
         function updateLikeBtnHtml(btn, count, liked) { btn.innerHTML = `<span style="color:${liked ? '#ec4899' : '#a1a1aa'};font-size:1.2rem;line-height:1">${liked ? '♥' : '♡'}</span> <span>${count}</span>`; btn.setAttribute('aria-pressed', String(liked)); }
         async function fetchLikeState(mediaId, btn) { try { const r = await fetch(`/api/likes?mediaId=${encodeURIComponent(mediaId)}&visitorId=${visitorId}`); if (r.ok) { const d = await r.json(); updateLikeBtnHtml(btn, d.count, d.liked); } } catch {} }
         function toggleLike(mediaId, btn) { 
@@ -392,45 +389,76 @@
             try { const res = await fetch('/api/report', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) }); if (res.ok) { alert('Report submitted successfully.'); document.getElementById('reportModal').classList.add('hidden'); } } catch { alert('Network error.'); }
         };
 
-        function renderClips(items) {
-            const grid = $('clipsGrid'); const status = $('clipsStatus'); 
-            if (!grid) return; grid.innerHTML = '';
-            if (!Array.isArray(items)) items = [];
-            const videos = items.filter(i => i.type === 'video').slice(0, 3); 
+        // ⭐ RENDER SINGLE VIDEO (THUMBNAIL FIX)
+        function renderSingleVideo(v) {
+            const grid = $('clipsGrid');
+            if (!grid) return;
+
+            const card = document.createElement('div'); card.className = 'feed-card';
+            const mediaWrap = document.createElement('div'); mediaWrap.className = 'feed-media-wrap'; 
+            mediaWrap.onclick = (e) => { e.preventDefault(); window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
             
-            if (!videos.length) { if (status) { status.textContent = 'No clips yet — be the first!'; status.classList.remove('hidden'); } return; }
-            if (status) status.classList.add('hidden');
-
-            videos.forEach(v => {
-                const card = document.createElement('div'); card.className = 'feed-card';
-                const mediaWrap = document.createElement('div'); mediaWrap.className = 'feed-media-wrap'; 
-                mediaWrap.onclick = (e) => { e.preventDefault(); window.location.href = `/reels/index.html?focus=${encodeURIComponent(v.key)}`; };
-                
-                const vid = document.createElement('video'); vid.src = v.url + '#t=0.1'; vid.muted = true; vid.playsInline = true; vid.preload = 'metadata'; 
-                vid.onerror = () => { vid.style.display = 'none'; mediaWrap.style.background = '#121212'; };
-                
-                const play = document.createElement('div'); play.className = 'feed-play-overlay'; play.textContent = '▶';
-                const views = document.createElement('div'); views.className = 'feed-view-badge'; views.textContent = `👁 ${v.views || 0}`;
-                mediaWrap.append(vid, play, views);
-
-                const details = document.createElement('div'); details.className = 'p-3';
-                const title = document.createElement('p'); title.className = 'text-sm text-white font-semibold mb-1'; title.textContent = v.title || 'Untitled';
-                
-                const creator = document.createElement('p'); creator.className = 'text-xs text-gray-400 mb-3 cursor-pointer hover:underline'; creator.textContent = `by ${v.creator || 'Anonymous'}`;
-                creator.onclick = () => { const params = new URLSearchParams(); params.set('name', v.creator || ''); if (v.creatorPic) params.set('pic', v.creatorPic); if (v.creatorEmail) params.set('email', v.creatorEmail); window.location.href = `/profile/index.html?${params.toString()}`; };
-
-                const actions = document.createElement('div'); actions.className = 'flex items-center gap-4 text-sm';
-                const likeBtn = document.createElement('button'); likeBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-[var(--color-primary)] transition'; 
-                updateLikeBtnHtml(likeBtn, v.likes || 0, false); fetchLikeState(v.key, likeBtn); likeBtn.onclick = () => toggleLike(v.key, likeBtn);
-                
-                const commentBtn = document.createElement('button'); commentBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-white transition'; 
-                commentBtn.innerHTML = `<span style="font-size:1.2rem;line-height:1">💬</span> <span>${v.comments || 0}</span>`; commentBtn.onclick = () => openComments(v.key);
-                
-                const reportBtn = document.createElement('button'); reportBtn.className = 'flex items-center gap-1 text-gray-400 hover:text-red-500 transition ml-auto text-xs font-bold'; 
-                reportBtn.innerHTML = '⚠️ Report'; reportBtn.onclick = () => openReportModal(v.key, v.url);
-                
-                actions.append(likeBtn, commentBtn, reportBtn); details.append(title, creator, actions); card.append(mediaWrap, details); grid.appendChild(card);
+            const vid = document.createElement('video'); 
+            vid.src = v.url; // ⭐ Direct URL
+            vid.muted = true; 
+            vid.playsInline = true; 
+            vid.preload = 'metadata'; 
+            
+            // ⭐ THUMBNAIL FIX: Force browser to show the first frame
+            vid.addEventListener('loadeddata', () => {
+                vid.currentTime = 0.1; 
             });
+
+            vid.onerror = () => { 
+                vid.style.display = 'none'; 
+                mediaWrap.style.background = '#121212'; 
+            };
+            
+            const play = document.createElement('div'); play.className = 'feed-play-overlay'; play.textContent = '▶';
+            const views = document.createElement('div'); views.className = 'feed-view-badge'; views.textContent = `👁 ${v.views || 0}`;
+            mediaWrap.append(vid, play, views);
+
+            const details = document.createElement('div'); details.className = 'p-3';
+            const title = document.createElement('p'); title.className = 'text-sm text-white font-semibold mb-1'; title.textContent = v.title || 'Untitled';
+            
+            const creator = document.createElement('p'); creator.className = 'text-xs text-gray-400 mb-3 cursor-pointer hover:underline'; creator.textContent = `by ${v.creator || 'Anonymous'}`;
+            creator.onclick = () => { const params = new URLSearchParams(); params.set('name', v.creator || ''); if (v.creatorPic) params.set('pic', v.creatorPic); if (v.creatorEmail) params.set('email', v.creatorEmail); window.location.href = `/profile/index.html?${params.toString()}`; };
+
+            const actions = document.createElement('div'); actions.className = 'flex items-center gap-4 text-sm';
+            const likeBtn = document.createElement('button'); likeBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-[var(--color-primary)] transition'; 
+            updateLikeBtnHtml(likeBtn, v.likes || 0, false); fetchLikeState(v.key, likeBtn); likeBtn.onclick = () => toggleLike(v.key, likeBtn);
+            
+            const commentBtn = document.createElement('button'); commentBtn.className = 'flex items-center gap-1 text-gray-300 hover:text-white transition'; 
+            commentBtn.innerHTML = `<span style="font-size:1.2rem;line-height:1">💬</span> <span>${v.comments || 0}</span>`; commentBtn.onclick = () => openComments(v.key);
+            
+            const reportBtn = document.createElement('button'); reportBtn.className = 'flex items-center gap-1 text-gray-400 hover:text-red-500 transition ml-auto text-xs font-bold'; 
+            reportBtn.innerHTML = '⚠️ Report'; reportBtn.onclick = () => openReportModal(v.key, v.url);
+            
+            actions.append(likeBtn, commentBtn, reportBtn); details.append(title, creator, actions); card.append(mediaWrap, details); grid.appendChild(card);
+        }
+
+        function loadMoreVideos() {
+            const grid = $('clipsGrid');
+            if (!grid) return;
+            
+            const nextVideos = allVideos.slice(loadedCount, loadedCount + VIDEOS_PER_PAGE);
+            if (!nextVideos.length) return;
+            
+            nextVideos.forEach(renderSingleVideo);
+            loadedCount += nextVideos.length;
+        }
+
+        function setupInfiniteScroll() {
+            const sentinel = document.getElementById('scrollSentinel');
+            if (!sentinel) return;
+            
+            const observer = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting) {
+                    loadMoreVideos();
+                }
+            }, { rootMargin: '200px' });
+            
+            observer.observe(sentinel);
         }
 
         function renderStories(items) {
@@ -452,8 +480,34 @@
                 const r = await fetch(url); if (!r.ok) throw new Error('load failed'); 
                 const galleryItems = await r.json(); 
                 let items = Array.isArray(galleryItems) ? galleryItems : (galleryItems.data || []);
-                renderClips(items); renderStories(items); 
-            } catch { const status = $('clipsStatus'); if (status) { status.textContent = 'Could not load clips. Check Worker logs.'; status.classList.remove('hidden'); } renderClips([]); }
+                
+                allVideos = items.filter(i => i.type === 'video');
+                loadedCount = 0;
+                
+                const grid = $('clipsGrid');
+                if (grid) grid.innerHTML = ''; 
+                
+                if (!allVideos.length) {
+                    const status = $('clipsStatus');
+                    if (status) { status.textContent = 'No clips yet — be the first!'; status.classList.remove('hidden'); }
+                    return;
+                }
+                
+                loadMoreVideos();
+                
+                if (grid) {
+                    const sentinel = document.createElement('div');
+                    sentinel.id = 'scrollSentinel';
+                    sentinel.className = 'h-10 w-full';
+                    grid.appendChild(sentinel);
+                    setupInfiniteScroll();
+                }
+
+                renderStories(items); 
+            } catch { 
+                const status = $('clipsStatus'); 
+                if (status) { status.textContent = 'Could not load clips. Check Worker logs.'; status.classList.remove('hidden'); } 
+            }
         }
 
         bindClick('bottomPlus', () => { if (!googleUser) { openAccountDialog(); return; } $('globalMediaInput').click(); });
@@ -487,7 +541,6 @@
             req.send(fd);
         });
 
-        // AUTHENTICATION
         function showSignedInUser(user) {
             googleUser = user; 
             const users = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); users[user.email] = user; 
