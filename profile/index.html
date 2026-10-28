@@ -82,7 +82,7 @@ body { background:#000; color:#fff; font-family:'Inter',sans-serif; }
 
 </main>
 
-<!-- ⭐ SETTINGS MODAL -->
+<!-- SETTINGS MODAL -->
 <div id="settingsModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 px-4 backdrop-blur-sm">
   <div class="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-md">
     <div class="flex justify-between items-center mb-4">
@@ -149,6 +149,23 @@ let isOwnProfile = false;
 let currentChatWith = null;
 let chatPollInterval = null;
 
+// ⭐ FIX FOR "5h ago" TIME BUG
+function formatTime(iso) {
+    if (!iso) return '';
+    let dateStr = iso;
+    if (!dateStr.includes('Z') && !dateStr.includes('+')) {
+        dateStr = dateStr.replace(' ', 'T') + 'Z';
+    }
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diff = (now - d) / 1000;
+    if (diff < 60) return 'now';
+    if (diff < 3600) return Math.floor(diff/60) + 'm';
+    if (diff < 86400) return Math.floor(diff/3600) + 'h';
+    if (diff < 604800) return Math.floor(diff/86400) + 'd';
+    return d.toLocaleDateString();
+}
+
 async function resolveTarget() {
   if (viewedEmail) {
     targetEmail = viewedEmail;
@@ -194,14 +211,12 @@ async function resolveTarget() {
   }
 }
 
-// ⭐ SETTINGS LOGIC
 document.getElementById('settingsBtn').onclick = () => {
   if (!isOwnProfile) return;
   document.getElementById('setName').value = me.name || '';
   document.getElementById('setBio').value = targetBio || '';
   document.getElementById('setPic').value = me.picture || '';
   
-  // Load saved accounts
   const savedUsers = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}');
   const list = document.getElementById('accountSwitcherList');
   list.innerHTML = '';
@@ -291,35 +306,46 @@ async function loadProfileStats() {
   } catch { document.getElementById('loadingState').textContent = 'Failed to load.'; }
 }
 
-async function loadFriendsList() { /* ... purana code ... */
+async function loadFriendsList() { 
   if (!targetEmail) return;
   const list = document.getElementById('friendsList');
   const incoming = document.getElementById('incomingList');
   list.innerHTML = ''; incoming.innerHTML = '';
+  
   if (isOwnProfile) {
     try {
       const r = await fetch(`/api/friends/pending?me=${encodeURIComponent(targetEmail)}`);
       if (r.ok) {
         const data = await r.json();
         if (data.incoming?.length) {
-          incoming.innerHTML = `<h3 class="font-bold mb-2">Pending requests</h3>`;
+          incoming.innerHTML = `<h3 class="font-bold mb-2">New Followers</h3>`;
           data.incoming.forEach(u => {
             const row = document.createElement('div');
             row.className = 'flex items-center gap-3 py-2 border-b border-gray-800';
-            row.innerHTML = `<img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full"><div class="flex-1"><p class="font-semibold text-sm">${u.name || u.email}</p></div><button class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold" data-accept="${u.id}">Accept</button><button class="text-xs border border-gray-700 px-3 py-1 rounded-full" data-reject="${u.id}">Reject</button>`;
+            row.innerHTML = `<img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full"><div class="flex-1"><p class="font-semibold text-sm">${u.name || u.email}</p></div><button class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold" data-followback="${u.email}">Follow Back</button>`;
             incoming.appendChild(row);
           });
-          incoming.querySelectorAll('[data-accept]').forEach(b => b.onclick = async () => { await fetch('/api/friends/accept', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: targetEmail, requestId: b.dataset.accept }) }); loadFriendsList(); loadProfileStats(); });
-          incoming.querySelectorAll('[data-reject]').forEach(b => b.onclick = async () => { await fetch('/api/friends/reject', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: targetEmail, requestId: b.dataset.reject }) }); loadFriendsList(); });
+          incoming.querySelectorAll('[data-followback]').forEach(b => b.onclick = async () => {
+            await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: targetEmail, target: b.dataset.followback }) });
+            loadFriendsList(); loadProfileStats();
+          });
         }
       }
     } catch {}
   }
+
   try {
     const r = await fetch(`/api/friends/list?me=${encodeURIComponent(targetEmail)}`);
     if (!r.ok) return;
     const friends = await r.json();
-    if (!friends.length) { if (list.innerHTML === '') list.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">No friends yet.</p>'; return; }
+    if (!friends.length) {
+      if (list.innerHTML === '') list.innerHTML = '<p class="text-center text-gray-400 text-sm py-4">No friends yet.</p>';
+      return;
+    }
+    const header = document.createElement('h3');
+    header.className = 'font-bold mb-2';
+    header.textContent = 'Friends';
+    list.appendChild(header);
     friends.forEach(f => {
       const row = document.createElement('div');
       row.className = 'flex items-center gap-3 py-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 px-2 rounded';
@@ -330,68 +356,246 @@ async function loadFriendsList() { /* ... purana code ... */
   } catch {}
 }
 
-async function loadConversations() { /* ... purana code ... */
+async function loadConversations() { 
   if (!isOwnProfile || !me) return;
+  const list = document.getElementById('conversationsList');
+  const empty = document.getElementById('messagesEmpty');
   try {
     const r = await fetch(`/api/conversations?me=${encodeURIComponent(me.email)}`);
     if (!r.ok) return;
     const convs = await r.json();
-    const list = document.getElementById('conversationsList');
-    const empty = document.getElementById('messagesEmpty');
     list.innerHTML = '';
-    if (!convs.length) { empty.classList.remove('hidden'); return; }
+    if (!convs.length) {
+      empty.classList.remove('hidden');
+      updateMessagesBadge(0);
+      return;
+    }
     empty.classList.add('hidden');
+    let totalUnread = 0;
     convs.forEach(c => {
+      totalUnread += c.unread || 0;
       const row = document.createElement('div');
       row.className = 'flex items-center gap-3 py-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 px-2 rounded';
-      row.innerHTML = `<img src="${c.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.name || c.email)}" class="w-12 h-12 rounded-full"><div class="flex-1 min-w-0"><p class="font-semibold text-sm truncate">${c.name || c.email}</p><p class="text-xs text-gray-400 truncate">${c.lastMessage || ''}</p></div>`;
+      row.innerHTML = `
+        <img src="${c.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.name || c.email)}" class="w-12 h-12 rounded-full">
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between items-baseline gap-2">
+            <p class="font-semibold text-sm truncate">${c.name || c.email}</p>
+            <span class="text-xs text-gray-500 whitespace-nowrap">${formatTime(c.lastAt)}</span>
+          </div>
+          <div class="flex justify-between items-center gap-2 mt-0.5">
+            <p class="text-xs text-gray-400 truncate">${c.lastFromMe ? 'You: ' : ''}${c.lastMessage || ''}</p>
+            ${c.unread > 0 ? `<span class="unread-dot">${c.unread}</span>` : ''}
+          </div>
+        </div>
+      `;
       row.onclick = () => openMessages({ email: c.email, name: c.name, picture: c.picture });
       list.appendChild(row);
     });
+    updateMessagesBadge(totalUnread);
   } catch {}
 }
 
-async function loadFriendButton() { /* ... purana code ... */
+function updateMessagesBadge(count) {
+  const badge = document.getElementById('msgTabBadge');
+  if (!badge) return;
+  if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); }
+  else badge.classList.add('hidden');
+}
+
+async function loadFriendButton() { 
   const actions = document.getElementById('profileActions');
   actions.innerHTML = '';
   if (isOwnProfile) return;
-  if (!me) { actions.innerHTML = '<a href="/" class="text-sm text-[var(--color-primary)] underline">Sign in to add friends →</a>'; return; }
+  if (!me) { actions.innerHTML = '<a href="/" class="text-sm text-[var(--color-primary)] underline">Sign in to follow →</a>'; return; }
   if (!targetEmail) { actions.innerHTML = '<span class="text-sm text-gray-400">Cannot find this user.</span>'; return; }
+  
   try {
-    const r = await fetch(`/api/friends/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`);
+    const r = await fetch(`/api/follow/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`);
     const data = await r.json();
+    
     const msgBtn = document.createElement('button');
     msgBtn.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold';
     msgBtn.textContent = '💬 Message';
     msgBtn.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
-    if (data.status === 'friends') { actions.appendChild(msgBtn); }
-    else if (data.status === 'outgoing') { actions.innerHTML = '<span class="text-sm text-gray-400">Friend request sent ✓</span>'; actions.appendChild(msgBtn); }
-    else if (data.status === 'incoming') {
-      const b = document.createElement('button'); b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold'; b.textContent = 'Accept request';
-      b.onclick = async () => { await fetch('/api/friends/accept', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, requestId: data.requestId }) }); loadFriendButton(); loadFriendsList(); };
-      actions.appendChild(b); actions.appendChild(msgBtn);
+    
+    const blockBtn = document.createElement('button');
+    blockBtn.className = 'rounded-full border border-red-700 text-red-500 px-4 py-2 text-sm font-bold ml-2';
+    blockBtn.textContent = 'Block';
+    blockBtn.onclick = async () => {
+      if (confirm('Are you sure you want to block this user?')) {
+        await fetch('/api/block', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ me: me.email, target: targetEmail }) });
+        alert('User Blocked!');
+        window.location.href = '/'; 
+      }
+    };
+
+    if (data.status === 'friends') {
+      const b = document.createElement('button'); b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold'; b.textContent = 'Friends ✓';
+      actions.append(b, msgBtn, blockBtn);
+    } else if (data.status === 'following') {
+      const b = document.createElement('button'); b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold'; b.textContent = 'Following';
+      b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); };
+      actions.append(b, msgBtn, blockBtn);
+    } else if (data.status === 'follower') {
+      const b = document.createElement('button'); b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold'; b.textContent = 'Follow Back';
+      b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); };
+      actions.append(b, msgBtn, blockBtn);
     } else {
-      const b = document.createElement('button'); b.className = 'rounded-full border border-gray-700 px-5 py-2 text-sm font-bold'; b.textContent = '+ Add friend';
-      b.onclick = async () => { b.disabled = true; b.textContent = 'Sending…'; await fetch('/api/friends/request', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from: me.email, to: targetEmail }) }); loadFriendButton(); };
-      actions.appendChild(b); actions.appendChild(msgBtn);
+      const b = document.createElement('button'); b.className = 'rounded-full bg-[var(--color-primary)] px-5 py-2 text-sm font-bold'; b.textContent = '+ Follow';
+      b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); };
+      actions.append(b, msgBtn, blockBtn);
     }
   } catch {}
 }
 
-async function loadFindPeople() { /* ... purana code ... */ }
-function openMessages(friend) { /* ... purana code ... */ }
-function closeMessages() { /* ... purana code ... */ }
-async function loadMessages() { /* ... purana code ... */ }
-document.getElementById('msgForm').onsubmit = async (e) => { /* ... purana code ... */ };
+async function loadFindPeople() { 
+  if (!me || !me.email) return;
+  const search = document.getElementById('findSearchInput').value.trim();
+  const statusEl = document.getElementById('findStatus');
+  const listEl = document.getElementById('findResultsList');
+  statusEl.textContent = 'Loading…'; statusEl.classList.remove('hidden');
+  listEl.innerHTML = '';
+  try {
+    const r = await fetch(`/api/users/list?me=${encodeURIComponent(me.email)}&q=${encodeURIComponent(search)}`);
+    if (!r.ok) throw new Error('failed');
+    const users = await r.json();
+    statusEl.classList.add('hidden');
+    if (!users.length) {
+      statusEl.textContent = 'No users found.';
+      statusEl.classList.remove('hidden');
+      return;
+    }
+    users.forEach(u => {
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-3 py-2 border-b border-gray-800';
+      let actionHtml = '';
+      if (u.status === 'friends') actionHtml = '<span class="text-xs text-[var(--color-primary)] font-bold">✓ Friends</span>';
+      else if (u.status === 'following') actionHtml = '<span class="text-xs text-gray-400">Following</span>';
+      else if (u.status === 'follower') actionHtml = `<button data-followback="${u.email}" class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">Follow Back</button>`;
+      else actionHtml = `<button data-follow="${u.email}" class="text-xs border border-gray-700 px-3 py-1 rounded-full hover:border-[var(--color-primary)]">+ Follow</button>`;
+      row.innerHTML = `
+        <img src="${u.picture || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(u.name || u.email)}" class="w-10 h-10 rounded-full">
+        <div class="flex-1 min-w-0">
+          <p class="font-semibold text-sm truncate">${u.name || u.email}</p>
+          <p class="text-xs text-gray-400 truncate">${u.email}</p>
+        </div>
+        ${actionHtml}
+        <button data-msg="${u.email}" data-name="${(u.name || '').replace(/"/g,'&quot;')}" data-pic="${u.picture || ''}" class="text-xs bg-[var(--color-primary)] px-3 py-1 rounded-full font-bold">💬</button>
+      `;
+      listEl.appendChild(row);
+    });
+    listEl.querySelectorAll('[data-follow]').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: b.dataset.follow }) });
+      loadFindPeople();
+    });
+    listEl.querySelectorAll('[data-followback]').forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: b.dataset.followback }) });
+      loadFindPeople(); loadFriendsList();
+    });
+    listEl.querySelectorAll('[data-msg]').forEach(b => b.onclick = () => {
+      openMessages({ email: b.dataset.msg, name: b.dataset.name, picture: b.dataset.pic });
+    });
+  } catch {
+    statusEl.textContent = 'Could not load users.'; statusEl.classList.remove('hidden');
+  }
+}
 
-function setTab(name) { /* ... purana code ... */ }
+function openMessages(friend) {
+  if (!me) { alert('Sign in first'); return; }
+  currentChatWith = friend;
+  document.getElementById('messageDrawer').classList.remove('hidden');
+  document.getElementById('msgWithName').textContent = friend.name || friend.email;
+  document.getElementById('msgWithEmail').textContent = friend.email;
+  const picEl = document.getElementById('msgWithPic');
+  if (friend.picture) { picEl.src = friend.picture; picEl.classList.remove('hidden'); }
+  else picEl.classList.add('hidden');
+  loadMessages();
+  if (chatPollInterval) clearInterval(chatPollInterval);
+  chatPollInterval = setInterval(loadMessages, 5000);
+}
+
+function closeMessages() {
+  document.getElementById('messageDrawer').classList.add('hidden');
+  currentChatWith = null;
+  if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
+  if (isOwnProfile) { loadConversations(); }
+}
+
+async function loadMessages() {
+  if (!currentChatWith || !me) return;
+  const r = await fetch(`/api/messages?me=${encodeURIComponent(me.email)}&with=${encodeURIComponent(currentChatWith.email)}`);
+  if (!r.ok) return;
+  const msgs = await r.json();
+  const list = document.getElementById('msgList');
+  list.innerHTML = '';
+  msgs.forEach(m => {
+    const mine = m.sender === me.email;
+    const wrap = document.createElement('div');
+    wrap.className = 'flex flex-col ' + (mine ? 'items-end' : 'items-start');
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble ' + (mine ? 'mine' : 'theirs');
+    bubble.textContent = m.body;
+    const time = document.createElement('div');
+    time.className = 'chat-time';
+    time.textContent = formatTime(m.created_at);
+    wrap.appendChild(bubble);
+    wrap.appendChild(time);
+    list.appendChild(wrap);
+  });
+  list.scrollTop = list.scrollHeight;
+}
+
+document.getElementById('msgForm').onsubmit = async (e) => {
+  e.preventDefault();
+  if (!currentChatWith || !me) return;
+  const input = document.getElementById('msgInput');
+  const body = input.value.trim();
+  if (!body) return;
+  input.value = '';
+  try {
+    const r = await fetch('/api/messages', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ from: me.email, to: currentChatWith.email, body }) });
+    if (!r.ok) { const d = await r.json().catch(()=>({})); alert('Could not send: ' + (d.error || r.status)); return; }
+    loadMessages();
+    if (isOwnProfile) loadConversations();
+  } catch (err) { alert('Network error: ' + err.message); }
+};
+
+function setTab(name) {
+  ['videos', 'friends', 'messages', 'findPeople'].forEach(t => {
+    const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    const content = document.getElementById(t + 'Tab');
+    if (!el || !content) return;
+    if (t === name) {
+      content.classList.remove('hidden');
+      el.classList.add('border-[var(--color-primary)]');
+      el.classList.remove('border-transparent', 'text-gray-400');
+    } else {
+      content.classList.add('hidden');
+      el.classList.add('border-transparent', 'text-gray-400');
+      el.classList.remove('border-[var(--color-primary)]');
+    }
+  });
+  if (name === 'findPeople') loadFindPeople();
+  if (name === 'messages') loadConversations();
+}
+
 document.getElementById('tabVideos').onclick = () => setTab('videos');
 document.getElementById('tabFriends').onclick = () => setTab('friends');
 document.getElementById('tabMessages').onclick = () => setTab('messages');
 document.getElementById('tabFindPeople').onclick = () => setTab('findPeople');
 
+function switchToFindPeople() {
+  document.getElementById('tabFindPeople')?.click();
+}
+
 let searchTimeout;
-document.getElementById('findSearchInput').addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(loadFindPeople, 300); });
+document.getElementById('findSearchInput').addEventListener('input', () => {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(loadFindPeople, 300);
+});
 
 (async () => {
   await resolveTarget();
