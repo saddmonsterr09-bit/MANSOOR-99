@@ -39,7 +39,6 @@ body { background:#000; color:#fff; }
   <p id="reelsStatus" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-sm text-gray-400 p-4"></p>
 </main>
 
-<!-- Comments Modal -->
 <div id="commentModal" class="modal-overlay hidden">
   <div class="modal-content">
     <div class="flex justify-between items-center px-4 py-3 border-b border-gray-800">
@@ -63,7 +62,6 @@ let currentCommentMediaId = null;
 const googleUser = JSON.parse(localStorage.getItem('currentReelsUser') || 'null');
 const visitorId = (() => { let v = localStorage.getItem('ReelsbookVisitorId'); if (!v) { v = crypto.randomUUID(); localStorage.setItem('ReelsbookVisitorId', v); } return v; })();
 
-// ⭐ Comments Logic
 async function openComments(mediaId) {
   currentCommentMediaId = mediaId;
   document.getElementById('commentModal').classList.remove('hidden');
@@ -108,7 +106,6 @@ document.getElementById('commentForm').onsubmit = async (e) => {
   } catch (err) { alert('Failed to post comment.'); }
 };
 
-// Likes Logic
 function updateLikeButton(button, result) {
   button.querySelector('.like-count').textContent = result.count;
   button.querySelector('.like-icon').textContent = result.liked ? '♥' : '♡';
@@ -135,7 +132,6 @@ function makeLikeButton(mediaId) {
   return b;
 }
 
-// Make Comment Button
 function makeCommentButton(mediaId, count) {
   const b = document.createElement('button');
   b.className = 'inline-flex items-center gap-1 rounded-full border border-white/30 bg-black/50 px-3 py-1 text-sm font-semibold text-white';
@@ -193,10 +189,16 @@ function renderReels(items) {
     const title = document.createElement('h3');
     title.className = 'text-lg font-bold';
     title.textContent = item.title || 'Untitled';
-    const creator = document.createElement('p');
-    creator.className = 'mt-1 mb-3 text-sm text-gray-300 cursor-pointer hover:underline';
-    creator.textContent = `by ${item.creator || 'Anonymous'}`;
-    creator.onclick = () => {
+
+    // ⭐ Profile Pic and Name together
+    const creator = document.createElement('div');
+    creator.className = 'mt-1 mb-3 flex items-center gap-2 cursor-pointer group';
+    creator.innerHTML = `
+      <img src="${item.creatorPic || 'https://ui-avatars.com/api/?name='+encodeURIComponent(item.creator||'U')}" class="w-7 h-7 rounded-full object-cover border border-gray-600 group-hover:border-white transition">
+      <span class="text-sm text-gray-300 group-hover:text-white transition">by ${item.creator || 'Anonymous'}</span>
+    `;
+    creator.onclick = (e) => {
+      e.stopPropagation();
       const params = new URLSearchParams();
       params.set('name', item.creator || '');
       if (item.creatorPic) params.set('pic', item.creatorPic);
