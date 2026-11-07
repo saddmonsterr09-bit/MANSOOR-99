@@ -19,7 +19,6 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS comments (id TEXT PRIMARY KEY, media_id TEXT NOT NULL, author_email TEXT, author_name TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE TABLE IF NOT EXISTS copyright_reports (id TEXT PRIMARY KEY, media_id TEXT NOT NULL, media_url TEXT NOT NULL, reporter_email TEXT, reporter_name TEXT, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
   `CREATE TABLE IF NOT EXISTS blocked_users (user_email TEXT NOT NULL, blocked_email TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (user_email, blocked_email))`,
-  // ⭐ NEW NOTIFICATIONS TABLE
   `CREATE TABLE IF NOT EXISTS notifications (id TEXT PRIMARY KEY, user_email TEXT NOT NULL, type TEXT NOT NULL, from_email TEXT NOT NULL, from_name TEXT NOT NULL, from_pic TEXT, media_id TEXT, content TEXT, is_read INTEGER DEFAULT 0, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`
 ];
 
@@ -188,7 +187,6 @@ export default {
       } catch { return json({ error: "Invalid request" }, 400); }
     }
 
-    // ⭐ NEW: GET USER STATS
     if (path === "/api/users/stats" && method === "GET") {
       const email = (url.searchParams.get("email") || "").toLowerCase();
       if (!email) return json({ friends: 0, followers: 0 });
@@ -213,6 +211,49 @@ export default {
         mediaCache.ts = 0;
         return json({ ok: true, name, picture, bio });
       } catch { return json({ error: "failed" }, 500); }
+    }
+
+    // ⭐ DELETE ACCOUNT ROUTE
+    if (path === "/api/user/delete" && method === "POST") {
+      try {
+        const { email } = await request.json();
+        if (!email) return json({ error: "Missing email" }, 400);
+        const e = email.toLowerCase();
+
+        // 1. Delete all user's videos from R2 and Database
+        const videos = await listMedia(env, "videos");
+        const photos = await listMedia(env, "photos");
+        const userMedia = [...videos, ...photos].filter(m => m.creatorEmail && m.creatorEmail.toLowerCase() === e);
+
+        for (const media of userMedia) {
+          try {
+            await env.VIDEOS.delete(media.key);
+            await env.DB.prepare("DELETE FROM likes WHERE media_id = ?").bind(media.key).run();
+            await env.DB.prepare("DELETE FROM media_views WHERE media_id = ?").bind(media.key).run();
+            await env.DB.prepare("DELETE FROM comments WHERE media_id = ?").bind(media.key).run();
+            await env.DB.prepare("DELETE FROM watch_events WHERE media_id = ?").bind(media.key).run();
+            await env.DB.prepare("DELETE FROM notifications WHERE media_id = ?").bind(media.key).run();
+          } catch (err) {}
+        }
+
+        // 2. Delete user's interactions
+        await env.DB.prepare("DELETE FROM likes WHERE user_email = ?").bind(e).run();
+        await env.DB.prepare("DELETE FROM comments WHERE author_email = ?").bind(e).run();
+        await env.DB.prepare("DELETE FROM follows WHERE follower_email = ? OR following_email = ?").bind(e, e).run();
+        await env.DB.prepare("DELETE FROM messages WHERE from_email = ? OR to_email = ?").bind(e, e).run();
+        await env.DB.prepare("DELETE FROM notifications WHERE user_email = ? OR from_email = ?").bind(e, e).run();
+        await env.DB.prepare("DELETE FROM blocked_users WHERE user_email = ? OR blocked_email = ?").bind(e, e).run();
+        await env.DB.prepare("DELETE FROM copyright_reports WHERE reporter_email = ?").bind(e).run();
+        await env.DB.prepare("DELETE FROM user_interests WHERE visitor_id = ?").bind(e).run();
+
+        // 3. Delete user record
+        await env.DB.prepare("DELETE FROM users WHERE email = ?").bind(e).run();
+
+        mediaCache.ts = 0;
+        return json({ ok: true });
+      } catch (err) {
+        return json({ error: "Failed to delete account", details: err.message }, 500);
+      }
     }
 
     if (path === "/api/users/find" && method === "GET") {
@@ -245,7 +286,6 @@ export default {
       return json(enriched);
     }
 
-    // FOLLOW SYSTEM ROUTES
     if (path === "/api/follow" && method === "POST") {
       try {
         const { me, target } = await request.json();
@@ -257,14 +297,11 @@ export default {
           return json({ ok: true, action: "unfollowed" });
         } else {
           await env.DB.prepare("INSERT INTO follows (follower_email, following_email) VALUES (?, ?)").bind(m, t).run();
-          
-          // ⭐ INSERT NOTIFICATION
           try {
             const u = await env.DB.prepare("SELECT name, picture FROM users WHERE email = ?").bind(m).first();
             const nid = crypto.randomUUID();
             await env.DB.prepare("INSERT INTO notifications (id, user_email, type, from_email, from_name, from_pic) VALUES (?, ?, 'follow', ?, ?, ?)").bind(nid, t, m, u?.name || m, u?.picture || "").run();
           } catch (e) {}
-
           return json({ ok: true, action: "followed" });
         }
       } catch { return json({ error: "failed" }, 500); }
@@ -321,7 +358,6 @@ export default {
       return json({ incoming: inc.results || [], outgoing: [] });
     }
 
-    // ⭐ NOTIFICATIONS ROUTES
     if (path === "/api/notifications" && method === "GET") {
       const me = (url.searchParams.get("me") || "").toLowerCase();
       if (!me) return json([]);
@@ -352,8 +388,6 @@ export default {
           await env.DB.prepare("DELETE FROM likes WHERE media_id = ? AND visitor_id = ?").bind(mediaId, visitorId).run();
         } else {
           await env.DB.prepare("INSERT INTO likes (media_id, visitor_id, user_email) VALUES (?, ?, ?)").bind(mediaId, visitorId, authorEmail || "").run();
-          
-          // ⭐ INSERT NOTIFICATION FOR LIKE
           try {
             const creatorEmail = await getMediaCreator(env, mediaId);
             if (creatorEmail && creatorEmail !== authorEmail) {
@@ -380,8 +414,6 @@ export default {
         if (!mediaId || !body) return json({ error: "Missing data" }, 400);
         const id = crypto.randomUUID();
         await env.DB.prepare("INSERT INTO comments (id, media_id, author_email, author_name, body) VALUES (?, ?, ?, ?, ?)").bind(id, mediaId, authorEmail || "", authorName || "Anonymous", String(body).trim().slice(0, 500)).run();
-        
-        // ⭐ INSERT NOTIFICATION FOR COMMENT
         try {
             const creatorEmail = await getMediaCreator(env, mediaId);
             if (creatorEmail && creatorEmail !== authorEmail) {
@@ -390,7 +422,6 @@ export default {
               await env.DB.prepare("INSERT INTO notifications (id, user_email, type, from_email, from_name, from_pic, media_id, content) VALUES (?, ?, 'comment', ?, ?, ?, ?, ?)").bind(nid, creatorEmail, authorEmail, u?.name || authorEmail, u?.picture || "", mediaId, body).run();
             }
         } catch(e) {}
-
         mediaCache.ts = 0; return json({ ok: true, id });
       } catch (err) { return json({ error: "failed" }, 500); }
     }
