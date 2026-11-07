@@ -44,14 +44,12 @@ input, textarea { -webkit-user-select: text; user-select: text; }
       <p id="profileEmail" class="text-sm text-gray-400 mt-1"></p>
       <p id="profileBio" class="text-sm text-gray-300 mt-2 italic"></p>
       
-      <!-- Stats Row -->
       <div class="flex justify-center sm:justify-start gap-6 mt-3">
         <div><p id="videoCount" class="text-lg font-bold">0</p><p class="text-xs text-gray-400">Videos</p></div>
         <div><p id="friendCount" class="text-lg font-bold">0</p><p class="text-xs text-gray-400">Friends</p></div>
         <div><p id="followerCount" class="text-lg font-bold">0</p><p class="text-xs text-gray-400">Followers</p></div>
       </div>
       
-      <!-- ⭐ BUTTONS (Follow/Message/Block) APPEAR HERE -->
       <div id="profileActions" class="mt-4 flex flex-wrap justify-center sm:justify-start gap-2"></div>
     </div>
   </section>
@@ -95,6 +93,13 @@ input, textarea { -webkit-user-select: text; user-select: text; }
       <button id="saveSettingsBtn" class="w-full bg-[var(--color-primary)] text-white font-bold py-3 rounded-lg mt-2">Save Profile</button>
     </div>
     <hr class="border-gray-800 my-6">
+    
+    <!-- ⭐ DELETE ACCOUNT BUTTON -->
+    <h4 class="font-bold text-sm mb-3 text-red-500">Danger Zone</h4>
+    <button onclick="deleteMyAccount()" class="w-full bg-red-600/10 border border-red-600 text-red-500 font-bold py-3 rounded-lg mb-4 hover:bg-red-600 hover:text-white transition">
+        Delete My Account
+    </button>
+    
     <h4 class="font-bold text-sm mb-3">Saved Accounts</h4>
     <div id="accountSwitcherList" class="space-y-2 mb-4"></div>
     <a href="/" class="block text-center w-full border border-gray-700 text-white font-bold py-2 rounded-lg">Add Another Account</a>
@@ -185,6 +190,38 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
 
 function switchAccount(email) { const savedUsers = JSON.parse(localStorage.getItem('reelsBookUsers') || '{}'); if (savedUsers[email]) { localStorage.setItem('currentReelsUser', JSON.stringify(savedUsers[email])); window.location.reload(); } }
 
+// ⭐ DELETE ACCOUNT FUNCTION
+async function deleteMyAccount() {
+    const confirm1 = confirm("WARNING: This will permanently delete your account, all your videos, photos, and messages. This action cannot be undone.");
+    if (!confirm1) return;
+    
+    const confirm2 = prompt("Type 'DELETE' to confirm account deletion:");
+    if (confirm2 !== 'DELETE') {
+        alert('Account deletion cancelled. You did not type DELETE.');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/user/delete', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ email: me.email })
+        });
+        
+        if (res.ok) {
+            alert('Your account has been permanently deleted.');
+            localStorage.removeItem('currentReelsUser');
+            localStorage.removeItem('reelsBookUsers');
+            localStorage.removeItem('fullMastiGoogleCredential');
+            window.location.href = '/';
+        } else {
+            alert('Failed to delete account. Please try again.');
+        }
+    } catch (e) {
+        alert('Network error. Could not delete account.');
+    }
+}
+
 async function loadProfileStats() {
   try {
     const [mediaR, statsR] = await Promise.all([ 
@@ -253,84 +290,22 @@ async function loadConversations() {
 
 function updateMessagesBadge(count) { const badge = document.getElementById('msgTabBadge'); if (!badge) return; if (count > 0) { badge.textContent = count; badge.classList.remove('hidden'); } else badge.classList.add('hidden'); }
 
-// ⭐ FOLLOW BUTTON LOGIC
 async function loadFriendButton() { 
   const actions = document.getElementById('profileActions'); 
   if (!actions) return;
   actions.innerHTML = ''; 
-  
-  if (isOwnProfile) return; // Own profile par kuch nahi dikhana
-  
-  if (!me) { 
-    actions.innerHTML = '<a href="/" class="text-sm text-[var(--color-primary)] underline">Sign in to follow →</a>'; 
-    return; 
-  }
-  
-  if (!targetEmail) { 
-    actions.innerHTML = '<span class="text-sm text-gray-400">Cannot find this user.</span>'; 
-    return; 
-  }
-
-  try { 
-    const r = await fetch(`/api/follow/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`); 
-    const data = await r.json();
+  if (isOwnProfile) return;
+  if (!me) { actions.innerHTML = '<a href="/" class="text-sm text-[var(--color-primary)] underline">Sign in to follow →</a>'; return; }
+  if (!targetEmail) { actions.innerHTML = '<span class="text-sm text-gray-400">Cannot find this user.</span>'; return; }
+  try { const r = await fetch(`/api/follow/status?me=${encodeURIComponent(me.email)}&target=${encodeURIComponent(targetEmail)}`); const data = await r.json();
+    const msgBtn = document.createElement('button'); msgBtn.className = 'rounded-full border border-gray-600 text-white px-5 py-2 text-sm font-bold'; msgBtn.textContent = '💬 Message'; msgBtn.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
+    const blockBtn = document.createElement('button'); blockBtn.className = 'rounded-full border border-red-700/50 text-red-500 px-4 py-2 text-sm font-bold ml-2'; blockBtn.textContent = 'Block';
+    blockBtn.onclick = async () => { if (confirm('Block this user?')) { await fetch('/api/block', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ me: me.email, target: targetEmail }) }); alert('User Blocked!'); window.location.href = '/'; } };
     
-    // Message Button
-    const msgBtn = document.createElement('button'); 
-    msgBtn.className = 'rounded-full border border-gray-600 text-white px-5 py-2 text-sm font-bold'; 
-    msgBtn.textContent = '💬 Message'; 
-    msgBtn.onclick = () => openMessages({ email: targetEmail, name: targetName, picture: targetPic });
-    
-    // Block Button
-    const blockBtn = document.createElement('button'); 
-    blockBtn.className = 'rounded-full border border-red-700/50 text-red-500 px-4 py-2 text-sm font-bold ml-2'; 
-    blockBtn.textContent = 'Block';
-    blockBtn.onclick = async () => { 
-      if (confirm('Block this user?')) { 
-        await fetch('/api/block', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ me: me.email, target: targetEmail }) }); 
-        alert('User Blocked!'); window.location.href = '/'; 
-      } 
-    };
-    
-    // Follow / Following / Friends Button Logic
-    if (data.status === 'friends') { 
-      const b = document.createElement('button'); 
-      b.className = 'rounded-full bg-gray-800 border border-gray-700 text-white px-5 py-2 text-sm font-bold'; 
-      b.textContent = 'Friends ✓'; 
-      actions.append(b, msgBtn, blockBtn); 
-    } 
-    else if (data.status === 'following') { 
-      const b = document.createElement('button'); 
-      b.className = 'rounded-full border border-gray-700 text-gray-300 px-5 py-2 text-sm font-bold hover:bg-gray-800'; 
-      b.textContent = 'Following'; 
-      b.onclick = async () => { 
-        await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); 
-        loadFriendButton(); loadProfileStats(); 
-      }; 
-      actions.append(b, msgBtn, blockBtn); 
-    } 
-    else if (data.status === 'follower') { 
-      const b = document.createElement('button'); 
-      b.className = 'rounded-full bg-[var(--color-primary)] text-white px-5 py-2 text-sm font-bold'; 
-      b.textContent = 'Follow Back'; 
-      b.onclick = async () => { 
-        await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); 
-        loadFriendButton(); loadProfileStats(); 
-      }; 
-      actions.append(b, msgBtn, blockBtn); 
-    } 
-    else { 
-      // ⭐ "+ Follow" Button
-      const b = document.createElement('button'); 
-      b.className = 'rounded-full bg-[var(--color-primary)] text-white px-6 py-2 text-sm font-bold hover:brightness-110 transition'; 
-      b.textContent = '+ Follow'; 
-      b.onclick = async () => { 
-        b.disabled = true; b.textContent = '...';
-        await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); 
-        loadFriendButton(); loadProfileStats(); 
-      }; 
-      actions.append(b, msgBtn, blockBtn); 
-    }
+    if (data.status === 'friends') { const b = document.createElement('button'); b.className = 'rounded-full bg-gray-800 border border-gray-700 text-white px-5 py-2 text-sm font-bold'; b.textContent = 'Friends ✓'; actions.append(b, msgBtn, blockBtn); }
+    else if (data.status === 'following') { const b = document.createElement('button'); b.className = 'rounded-full border border-gray-700 text-gray-300 px-5 py-2 text-sm font-bold hover:bg-gray-800'; b.textContent = 'Following'; b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); loadProfileStats(); }; actions.append(b, msgBtn, blockBtn); }
+    else if (data.status === 'follower') { const b = document.createElement('button'); b.className = 'rounded-full bg-[var(--color-primary)] text-white px-5 py-2 text-sm font-bold'; b.textContent = 'Follow Back'; b.onclick = async () => { await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); loadProfileStats(); }; actions.append(b, msgBtn, blockBtn); }
+    else { const b = document.createElement('button'); b.className = 'rounded-full bg-[var(--color-primary)] text-white px-6 py-2 text-sm font-bold hover:brightness-110 transition'; b.textContent = '+ Follow'; b.onclick = async () => { b.disabled = true; b.textContent = '...'; await fetch('/api/follow', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ me: me.email, target: targetEmail }) }); loadFriendButton(); loadProfileStats(); }; actions.append(b, msgBtn, blockBtn); }
   } catch {}
 }
 
